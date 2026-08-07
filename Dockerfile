@@ -11,6 +11,10 @@ COPY src ./src
 COPY test ./test
 RUN npm run build
 
+FROM deps AS dev
+EXPOSE 3000
+CMD ["npm", "run", "start:dev"]
+
 FROM base AS production-deps
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
