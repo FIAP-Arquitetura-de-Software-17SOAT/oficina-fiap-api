@@ -1,4 +1,7 @@
 import { randomUUID } from 'crypto';
+import { DomainException } from '../../../shared/domain/domain.exception';
+import { CpfCnpj } from '../value-objects/cpf-cnpj.vo';
+import { Email } from '../value-objects/email.vo';
 
 export interface ClientProps {
   name: string;
@@ -12,10 +15,10 @@ export interface ClientProps {
 export class Client {
   private readonly id: string;
   private name: string;
-  private document: string;
-  private email: string;
+  private document: CpfCnpj;
+  private email: Email;
   private phone: string;
-  private createdAt: Date;
+  private readonly createdAt: Date;
   private updatedAt: Date;
 
   private constructor(id: string, props: ClientProps) {
@@ -46,11 +49,11 @@ export class Client {
     return this.name;
   }
 
-  getDocument(): string {
+  getDocument(): CpfCnpj {
     return this.document;
   }
 
-  getEmail(): string {
+  getEmail(): Email {
     return this.email;
   }
 
@@ -82,35 +85,31 @@ export class Client {
   }
 
   private setName(name: string): void {
-    if (!name.trim()) {
-      throw new Error('Client name is required');
+    const trimmed = (name ?? '').trim();
+
+    if (!trimmed) {
+      throw new DomainException('Nome do cliente é obrigatório');
     }
 
-    this.name = name;
+    this.name = trimmed;
   }
 
   private setDocument(document: string): void {
-    if (!document.trim()) {
-      throw new Error('Client document is required');
-    }
-
-    this.document = document;
+    this.document = CpfCnpj.create(document);
   }
 
   private setEmail(email: string): void {
-    if (!email.includes('@')) {
-      throw new Error('Invalid email');
-    }
-
-    this.email = email;
+    this.email = Email.create(email);
   }
 
   private setPhone(phone: string): void {
-    if (!phone.trim()) {
-      throw new Error('Client phone is required');
+    const digits = (phone ?? '').replace(/\D/g, '');
+
+    if (digits.length < 10 || digits.length > 11) {
+      throw new DomainException('Telefone deve ter DDD e 8 ou 9 dígitos');
     }
 
-    this.phone = phone;
+    this.phone = digits;
   }
 
   private touch(): void {

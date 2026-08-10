@@ -1,6 +1,9 @@
 node_modules
 dist
 coverage
+generated
+.agents
+.claude
 .git
 .gitignore
 .env

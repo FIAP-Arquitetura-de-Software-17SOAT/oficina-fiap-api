@@ -1,17 +1,31 @@
 FROM node:lts-bookworm-slim AS base
 WORKDIR /app
 
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 FROM base AS deps
 COPY package*.json ./
 RUN npm ci
 
-FROM deps AS build
+FROM deps AS prisma
+COPY prisma.config.ts ./
+COPY prisma ./prisma
+RUN npx prisma generate
+
+FROM prisma AS build
+COPY tsconfig*.json nest-cli.json ./
+COPY src ./src
+RUN npm run build
+
+FROM prisma AS migrator
+CMD ["npx", "prisma", "migrate", "deploy"]
+
+FROM prisma AS dev
 COPY tsconfig*.json nest-cli.json ./
 COPY src ./src
 COPY test ./test
-RUN npm run build
-
-FROM deps AS dev
 EXPOSE 3000
 CMD ["npm", "run", "start:dev"]
 
@@ -29,4 +43,5 @@ COPY package*.json ./
 
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+
+CMD ["node", "dist/src/main"]
