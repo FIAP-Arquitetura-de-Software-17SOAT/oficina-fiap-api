@@ -1,9 +1,9 @@
 import { Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ClientModule } from './modules/client/client.module';
+import { PrismaModule } from './shared/database/prisma.module';
 
 @Module({
   imports: [
@@ -25,13 +25,13 @@ import { ClientModule } from './modules/client/client.module';
               ? { target: 'pino-pretty' }
               : undefined,
         },
-        exclude: [{ method: RequestMethod.GET, path: 'health' }],
+        exclude: [{ method: RequestMethod.GET, path: 'api/v1/health' }],
         forRoutes: [{ method: RequestMethod.ALL, path: '{*path}' }],
       }),
     }),
+    PrismaModule,
     ClientModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

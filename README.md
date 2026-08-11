@@ -1,98 +1,182 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Oficina FIAP API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Back-end do Sistema Integrado de Atendimento e Execução de Serviços de uma
+oficina mecânica — Tech Challenge da Fase 1 (15SOAT).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+MVP monolítico em **arquitetura em camadas**, aplicando DDD nos agregados do
+domínio.
 
-## Description
+## Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Camada | Escolha |
+|---|---|
+| Runtime | Node.js LTS + TypeScript |
+| Framework | NestJS 11 |
+| Banco | PostgreSQL 16 |
+| ORM | Prisma 7 (driver adapter `@prisma/adapter-pg`) |
+| Documentação | Swagger / OpenAPI |
+| Logs | Pino (`nestjs-pino`) |
+| Testes | Jest + Supertest |
 
-## Project setup
+### Por que PostgreSQL
 
-```bash
-$ npm install
-```
+O domínio da oficina é fortemente relacional: uma Ordem de Serviço referencia
+cliente, veículo, itens de serviço e itens de peça, e o orçamento é derivado
+desses vínculos. Isso pede integridade referencial e transações ACID — baixar o
+estoque e mudar o status da OS precisam acontecer atomicamente. Além disso, as
+regras de unicidade do negócio (um CPF/CNPJ por cliente, uma placa por veículo)
+são expressas diretamente como constraints, e não como validação em código
+sujeita a corrida. Um banco documental exigiria replicar esses dados e resolver
+consistência na aplicação, sem ganho de escala relevante para um MVP.
 
-## Compile and run the project
+## Subindo o projeto
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
+Pré-requisitos: Docker e Docker Compose.
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cp .env.sample .env
+docker compose up --build
 ```
 
-## Deployment
+Só isso. O compose orquestra três serviços em ordem:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+1. **`db`** — Postgres sobe e espera ficar `healthy`
+2. **`migrate`** — roda `prisma migrate deploy` e encerra
+3. **`app`** — só inicia depois que a migration termina com sucesso
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+O serviço `migrate` roda a **cada `docker compose up`**. Se não houver migration
+pendente ele sai imediatamente, então é seguro e ninguém precisa rodar Prisma na
+mão.
+
+| Recurso | URL |
+|---|---|
+| API | http://localhost:3000/api/v1 |
+| Swagger UI | http://localhost:3000/api/v1/docs |
+| OpenAPI JSON | http://localhost:3000/api/v1/docs-json |
+| Health check | http://localhost:3000/api/v1/health |
+
+> A porta do host vem de `PORT` no `.env`. Se você mudar para `8080`, a API
+> responde em `http://localhost:8080`.
+
+### Problemas comuns
+
+**`service "migrate" didn't complete successfully: exit 1`** com
+`P1010: User was denied access` ou `database "oficina_fiap" does not exist`:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+docker compose down -v && docker compose up -d
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+O `-v` é o que importa — ele apaga o volume do Postgres.
 
-## Resources
+Motivo: `POSTGRES_DB` e `POSTGRES_PASSWORD` só têm efeito na **primeira** criação
+do volume. Se o volume já existe, a imagem do Postgres imprime
+`Skipping initialization` e ignora as duas variáveis para sempre. Então basta
+que uma inicialização tenha sido interrompida no meio (um `Ctrl+C`, um
+`docker compose down` durante o primeiro `up`), ou que alguém mude
+`POSTGRES_PASSWORD`/`POSTGRES_DB` no `.env` depois do volume já existir, para o
+banco ficar num estado que nenhum `up` posterior conserta.
 
-Check out a few resources that may come in handy when working with NestJS:
+> `docker compose down -v` apaga os dados locais. Como as migrations são
+> reaplicadas automaticamente no próximo `up`, isso é seguro em desenvolvimento.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Desenvolvimento local (fora do container)
 
-## Support
+```bash
+npm install
+docker compose up -d db      # só o banco
+npx prisma migrate dev       # aplica migrations e gera o Prisma Client
+npm run start:dev
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+O `DATABASE_URL` do `.env.sample` já aponta para `localhost:5432`, que é o
+endereço correto quando a app roda no host.
 
-## Stay in touch
+### Criando uma migration
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+npx prisma migrate dev --name descricao_da_mudanca
+```
 
-## License
+O arquivo gerado em `prisma/migrations/` **deve ser commitado** — é ele que o
+serviço `migrate` aplica no ambiente de todo mundo.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Testes
+
+```bash
+npm test          # unitários
+npm run test:cov  # unitários + cobertura (falha abaixo de 80%)
+npm run test:e2e  # integração (HTTP completo, sem precisar de banco)
+```
+
+Os testes de integração substituem o repositório por uma implementação em
+memória e sobem a aplicação com **a mesma configuração do `main.ts`** (prefixo,
+`ValidationPipe`, filtro de exceção de domínio), via `configureApp()`. Rodam em
+CI sem infraestrutura.
+
+`test/swagger.e2e-spec.ts` valida o contrato OpenAPI: quebra se alguém adicionar
+uma rota sem documentar ou mudar o response sem atualizar o DTO.
+
+O `coverageThreshold` está em 80% (branches, funções, linhas e statements),
+conforme exigido pelo Tech Challenge.
+
+## Estrutura
+
+```
+src/
+├── modules/                  # um módulo por agregado do domínio
+│   └── client/
+│       ├── controllers/      # borda HTTP, fala em DTO
+│       ├── services/         # orquestra o caso de uso
+│       ├── repositories/     # acesso a dados, traduz entidade <-> Prisma
+│       ├── entities/         # entidade rica, dona das invariantes
+│       ├── value-objects/    # CpfCnpj, Email
+│       ├── mappers/          # entidade -> DTO de resposta
+│       └── dto/              # contrato de entrada/saída + Swagger
+└── shared/
+    ├── database/             # PrismaModule global (uma conexão para todos)
+    ├── domain/               # DomainException
+    └── http/filters/         # tradução de erro de domínio para HTTP
+```
+
+### Convenções para novos módulos
+
+Ao criar `vehicle`, `service-order`, `stock` etc., siga o módulo `client`:
+
+- **Não crie um `PrismaService` por módulo.** O `PrismaModule` é `@Global`;
+  basta injetar `PrismaService` no repositório. Um por módulo significaria um
+  pool de conexões por módulo.
+- **A entidade protege as próprias invariantes** e lança `DomainException` —
+  nunca `Error` genérico, que viraria 500.
+- **Value Object onde há regra própria** (CPF/CNPJ, placa, dinheiro). Nome e
+  telefone continuam `string`; VO em tudo é overengineering.
+- **Sempre mapeie entidade → DTO no controller.** Devolver a entidade direto
+  serializa o VO como `{ "value": "..." }` e quebra o contrato do Swagger.
+- **Documente toda rota** com `@ApiOperation` e as respostas de erro.
+
+## Domínio
+
+Modelagem via Event Storming, com os agregados: **Cliente**, **Veículo**,
+**Ordem de Serviço**, **Orçamento** e **Estoque**.
+
+Status da Ordem de Serviço: `Recebida` → `Em diagnóstico` →
+`Aguardando aprovação` → `Em execução` → `Finalizada` → `Entregue`.
+
+### Cliente (implementado)
+
+| Verbo | Rota | Descrição |
+|---|---|---|
+| POST | `/api/v1/client` | Cadastra |
+| GET | `/api/v1/client` | Lista |
+| GET | `/api/v1/client/:id` | Busca por id |
+| PATCH | `/api/v1/client/:id` | Atualiza |
+| DELETE | `/api/v1/client/:id` | Remove |
+
+Regras aplicadas:
+
+- CPF **e** CNPJ com validação de dígito verificador; aceita com ou sem
+  máscara e persiste apenas dígitos
+- E-mail normalizado para minúsculas (a coluna é única)
+- Telefone exige DDD, aceita 8 ou 9 dígitos, persiste apenas dígitos
+- Documento é **imutável** após o cadastro — não existe no `UpdateClientDto`
+- Documento e e-mail duplicados retornam `409`; dado inválido retorna `400`

@@ -1,111 +1,93 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
+import { PrismaService } from '../../../shared/database/prisma.service';
 import { Client } from '../entities/client.entity';
+
+interface ClientRow {
+  id: string;
+  name: string;
+  document: string;
+  email: string;
+  phone: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 @Injectable()
 export class ClientRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(client: Client): Promise<Client> {
-    const data = await this.prisma.client.create({
-      data: {
-        id: client.getId(),
-        name: client.getName(),
-        document: client.getDocument(),
-        email: client.getEmail(),
-        phone: client.getPhone(),
-        createdAt: client.getCreatedAt(),
-        updatedAt: client.getUpdatedAt(),
-      },
+    const row = await this.prisma.client.create({
+      data: this.toPersistence(client),
     });
 
-    return Client.restore(data.id, {
-      name: data.name,
-      document: data.document,
-      email: data.email,
-      phone: data.phone,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-    });
+    return this.toDomain(row);
   }
 
   async findById(id: string): Promise<Client | null> {
-    const data = await this.prisma.client.findUnique({
-      where: { id },
-    });
+    const row = await this.prisma.client.findUnique({ where: { id } });
 
-    if (!data) {
-      return null;
-    }
-
-    return Client.restore(data.id, {
-      name: data.name,
-      document: data.document,
-      email: data.email,
-      phone: data.phone,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-    });
+    return row ? this.toDomain(row) : null;
   }
 
   async findByDocument(document: string): Promise<Client | null> {
-    const data = await this.prisma.client.findUnique({
-      where: { document },
-    });
+    const row = await this.prisma.client.findUnique({ where: { document } });
 
-    if (!data) {
-      return null;
-    }
+    return row ? this.toDomain(row) : null;
+  }
 
-    return Client.restore(data.id, {
-      name: data.name,
-      document: data.document,
-      email: data.email,
-      phone: data.phone,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-    });
+  async findByEmail(email: string): Promise<Client | null> {
+    const row = await this.prisma.client.findUnique({ where: { email } });
+
+    return row ? this.toDomain(row) : null;
   }
 
   async findAll(): Promise<Client[]> {
-    const clients = await this.prisma.client.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+    const rows = await this.prisma.client.findMany({
+      orderBy: { createdAt: 'desc' },
     });
 
-    return clients.map((data) =>
-      Client.restore(data.id, {
-        name: data.name,
-        document: data.document,
-        email: data.email,
-        phone: data.phone,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-      }),
-    );
+    return rows.map((row) => this.toDomain(row));
   }
 
   async update(client: Client): Promise<Client> {
-    const data = await this.prisma.client.update({
-      where: {
-        id: client.getId(),
-      },
+    const row = await this.prisma.client.update({
+      where: { id: client.getId() },
       data: {
         name: client.getName(),
-        email: client.getEmail(),
+        email: client.getEmail().getValue(),
         phone: client.getPhone(),
         updatedAt: client.getUpdatedAt(),
       },
     });
 
-    return Client.restore(data.id, {
-      name: data.name,
-      document: data.document,
-      email: data.email,
-      phone: data.phone,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
+    return this.toDomain(row);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.client.delete({ where: { id } });
+  }
+
+  private toPersistence(client: Client) {
+    return {
+      id: client.getId(),
+      name: client.getName(),
+      document: client.getDocument().getValue(),
+      email: client.getEmail().getValue(),
+      phone: client.getPhone(),
+      createdAt: client.getCreatedAt(),
+      updatedAt: client.getUpdatedAt(),
+    };
+  }
+
+  private toDomain(row: ClientRow): Client {
+    return Client.restore(row.id, {
+      name: row.name,
+      document: row.document,
+      email: row.email,
+      phone: row.phone,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     });
   }
 }

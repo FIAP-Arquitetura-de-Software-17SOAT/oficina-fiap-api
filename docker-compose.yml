@@ -1,20 +1,4 @@
 services:
-  app:
-    build:
-      context: .
-      target: runtime
-    container_name: oficina-fiap-api
-    ports:
-      - "${PORT:-3000}:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oficina_fiap}
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-
   db:
     image: postgres:16-bookworm
     container_name: oficina-fiap-postgres
@@ -27,11 +11,59 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-oficina_fiap}"]
+      # Consulta o banco de verdade em vez de usar pg_isready: o pg_isready
+      # ignora o -d e responde "pronto" mesmo quando o banco alvo não existe,
+      # o que liberava o migrate para rodar e falhar com um erro confuso.
+      test:
+        [
+          "CMD-SHELL",
+          "psql -U postgres -d ${POSTGRES_DB:-oficina_fiap} -c 'SELECT 1' > /dev/null 2>&1 || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    container_name: oficina-fiap-migrate
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oficina_fiap}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: oficina-fiap-api
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oficina_fiap}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
 volumes:

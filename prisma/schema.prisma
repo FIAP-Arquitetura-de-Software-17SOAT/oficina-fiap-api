@@ -7,6 +7,10 @@ generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
   moduleFormat = "cjs"
+  // Sem isso o gerador escolhe a extensão dos imports conforme o tsconfig que
+  // encontra no ambiente: gera ".js" na máquina do dev e ".ts" dentro do
+  // Docker (onde o tsconfig não está presente no estágio), quebrando o build.
+  importFileExtension = "js"
 }
 
 datasource db {
