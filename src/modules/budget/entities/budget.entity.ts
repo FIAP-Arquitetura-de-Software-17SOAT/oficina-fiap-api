@@ -159,6 +159,7 @@ export class Budget {
   accept(): void {
     this.assertWaitingApproval();
     this.status = BudgetStatus.ACCEPTED;
+    this.refusalReason = null;
     this.answeredAt = new Date();
     this.touch();
   }

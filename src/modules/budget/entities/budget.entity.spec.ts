@@ -111,9 +111,25 @@ describe('Budget', () => {
 
     expect(budget.getStatus()).toBe(BudgetStatus.ACCEPTED);
     expect(budget.getAnsweredAt()).toBeInstanceOf(Date);
+    expect(budget.getRefusalReason()).toBeNull();
   });
 
-  it('refuses only budgets waiting for approval and stores refusal reason', () => {
+  it('clears a persisted refusal reason when accepting', () => {
+    const budget = Budget.restore('budget-123', {
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [serviceItem],
+      status: BudgetStatus.WAITING_APPROVAL,
+      refusalReason: 'Previous refusal',
+    });
+
+    budget.accept();
+
+    expect(budget.getStatus()).toBe(BudgetStatus.ACCEPTED);
+    expect(budget.getRefusalReason()).toBeNull();
+  });
+
+  it('refuses only budgets waiting for approval, trims reason, and stores answeredAt', () => {
     const budget = Budget.create({
       serviceOrderId: 'service-123',
       version: 1,
@@ -121,9 +137,60 @@ describe('Budget', () => {
     });
 
     budget.sendToCustomer();
-    budget.refuse('Customer found it expensive');
+    budget.refuse('  Customer found it expensive  ');
 
     expect(budget.getStatus()).toBe(BudgetStatus.REFUSED);
     expect(budget.getRefusalReason()).toBe('Customer found it expensive');
+    expect(budget.getAnsweredAt()).toBeInstanceOf(Date);
+  });
+
+  it('requires a non-blank refusal reason', () => {
+    const budget = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [serviceItem],
+    });
+
+    budget.sendToCustomer();
+
+    expect(() => budget.refuse('   ')).toThrow(DomainException);
+  });
+
+  it('does not allow answering, resending, or changing terminal budgets', () => {
+    const acceptedBudget = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [serviceItem],
+    });
+    acceptedBudget.sendToCustomer();
+    acceptedBudget.accept();
+
+    expect(() => acceptedBudget.accept()).toThrow(DomainException);
+    expect(() => acceptedBudget.refuse('Changed my mind')).toThrow(
+      DomainException,
+    );
+    expect(() => acceptedBudget.sendToCustomer()).toThrow(DomainException);
+    expect(() => acceptedBudget.addItem(serviceItem)).toThrow(DomainException);
+    expect(() => acceptedBudget.removeItem(acceptedBudget.getItems()[0].getId())).toThrow(
+      DomainException,
+    );
+
+    const refusedBudget = Budget.create({
+      serviceOrderId: 'service-456',
+      version: 1,
+      items: [serviceItem],
+    });
+    refusedBudget.sendToCustomer();
+    refusedBudget.refuse('Customer found it expensive');
+
+    expect(() => refusedBudget.accept()).toThrow(DomainException);
+    expect(() => refusedBudget.refuse('Another reason')).toThrow(
+      DomainException,
+    );
+    expect(() => refusedBudget.sendToCustomer()).toThrow(DomainException);
+    expect(() => refusedBudget.addItem(serviceItem)).toThrow(DomainException);
+    expect(() => refusedBudget.removeItem(refusedBudget.getItems()[0].getId())).toThrow(
+      DomainException,
+    );
   });
 });
