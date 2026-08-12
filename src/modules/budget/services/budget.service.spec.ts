@@ -1,0 +1,191 @@
+import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  Budget,
+  BudgetItemType,
+  BudgetStatus,
+} from '../entities/budget.entity';
+import { BudgetRepository } from '../repositories/budget.repository';
+import { BudgetService } from './budget.service';
+
+type MockedRepository = {
+  [K in keyof BudgetRepository]: jest.Mock;
+};
+
+const makeBudget = () =>
+  Budget.create({
+    serviceOrderId: 'service-123',
+    version: 1,
+    items: [
+      {
+        description: 'Oil change',
+        type: BudgetItemType.SERVICE,
+        quantity: 1,
+        unitPrice: 120,
+      },
+    ],
+  });
+
+describe('BudgetService', () => {
+  let service: BudgetService;
+  let repository: MockedRepository;
+
+  beforeEach(async () => {
+    repository = {
+      create: jest.fn((budget: Budget) => budget),
+      update: jest.fn((budget: Budget) => budget),
+      findById: jest.fn(),
+      findByServiceOrderId: jest.fn(),
+      findLastVersionByServiceOrderId: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BudgetService,
+        { provide: BudgetRepository, useValue: repository },
+      ],
+    }).compile();
+
+    service = module.get<BudgetService>(BudgetService);
+  });
+
+  it('creates first budget with version 1', async () => {
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
+
+    const result = await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(result.getVersion()).toBe(1);
+    expect(repository.create).toHaveBeenCalled();
+  });
+
+  it('creates next budget with incremented version for same serviceOrderId', async () => {
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(2);
+
+    const result = await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Brake pad',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 80,
+        },
+      ],
+    });
+
+    expect(result.getVersion()).toBe(3);
+  });
+
+  it('adds an item to a generated budget and persists the new total', async () => {
+    const budget = makeBudget();
+    repository.findById.mockResolvedValue(budget);
+
+    const result = await service.addItem(budget.getId(), {
+      description: 'Oil filter',
+      type: BudgetItemType.PART,
+      quantity: 1,
+      unitPrice: 40,
+    });
+
+    expect(result.getItems()).toHaveLength(2);
+    expect(result.getTotalAmount()).toBe(160);
+    expect(repository.update).toHaveBeenCalledWith(result);
+  });
+
+  it('removes an item from a generated budget and persists the new total', async () => {
+    const budget = makeBudget();
+    budget.addItem({
+      description: 'Oil filter',
+      type: BudgetItemType.PART,
+      quantity: 1,
+      unitPrice: 40,
+    });
+    repository.findById.mockResolvedValue(budget);
+
+    const itemId = budget.getItems()[1].getId();
+    const result = await service.removeItem(budget.getId(), itemId);
+
+    expect(result.getItems()).toHaveLength(1);
+    expect(result.getTotalAmount()).toBe(120);
+    expect(repository.update).toHaveBeenCalledWith(result);
+  });
+
+  it('calculates total from persisted budget items', async () => {
+    const budget = makeBudget();
+    budget.addItem({
+      description: 'Oil change',
+      type: BudgetItemType.SERVICE,
+      quantity: 1,
+      unitPrice: 120,
+    });
+    repository.findById.mockResolvedValue(budget);
+
+    await expect(service.calculateTotal(budget.getId())).resolves.toBe(240);
+  });
+
+  it('sends a generated budget to the customer', async () => {
+    const budget = makeBudget();
+    repository.findById.mockResolvedValue(budget);
+
+    const result = await service.send(budget.getId());
+
+    expect(result.getStatus()).toBe(BudgetStatus.WAITING_APPROVAL);
+    expect(result.getSentAt()).toBeInstanceOf(Date);
+    expect(repository.update).toHaveBeenCalledWith(result);
+  });
+
+  it('accepts a budget waiting for approval and persists terminal status', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+
+    const result = await service.accept(budget.getId());
+
+    expect(result.getStatus()).toBe(BudgetStatus.ACCEPTED);
+    expect(result.getAnsweredAt()).toBeInstanceOf(Date);
+    expect(result.getRefusalReason()).toBeNull();
+    expect(repository.update).toHaveBeenCalledWith(result);
+  });
+
+  it('refuses a budget waiting for approval with a required reason', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+
+    const result = await service.refuse(budget.getId(), {
+      reason: 'Customer found it expensive',
+    });
+
+    expect(result.getStatus()).toBe(BudgetStatus.REFUSED);
+    expect(result.getRefusalReason()).toBe('Customer found it expensive');
+    expect(result.getAnsweredAt()).toBeInstanceOf(Date);
+    expect(repository.update).toHaveBeenCalledWith(result);
+  });
+
+  it('throws NotFoundException when budget does not exist', async () => {
+    repository.findById.mockResolvedValue(null);
+
+    await expect(service.findById('missing')).rejects.toThrow(
+      new NotFoundException('Budget not found'),
+    );
+  });
+
+  it('finds budgets by service order id', async () => {
+    const budgets = [makeBudget()];
+    repository.findByServiceOrderId.mockResolvedValue(budgets);
+
+    await expect(service.findByServiceOrderId('service-123')).resolves.toBe(
+      budgets,
+    );
+  });
+});
