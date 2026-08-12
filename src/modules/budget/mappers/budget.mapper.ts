@@ -1,4 +1,9 @@
-import { Budget, BudgetItemType, BudgetStatus } from '../entities/budget.entity';
+import {
+  Budget,
+  BudgetItemType,
+  BudgetStatus,
+} from '../entities/budget.entity';
+import { BudgetResponseDto } from '../dto/budget.dto';
 
 type BudgetWithItems = {
   id: string;
@@ -20,6 +25,33 @@ type BudgetWithItems = {
 };
 
 export class BudgetMapper {
+  static toResponse(budget: Budget): BudgetResponseDto {
+    return {
+      id: budget.getId(),
+      serviceOrderId: budget.getServiceOrderId(),
+      version: budget.getVersion(),
+      status: budget.getStatus(),
+      totalAmount: budget.getTotalAmount(),
+      refusalReason: budget.getRefusalReason(),
+      sentAt: budget.getSentAt(),
+      answeredAt: budget.getAnsweredAt(),
+      createdAt: budget.getCreatedAt(),
+      updatedAt: budget.getUpdatedAt(),
+      items: budget.getItems().map((item) => ({
+        id: item.getId(),
+        description: item.getDescription(),
+        type: item.getType(),
+        quantity: item.getQuantity(),
+        unitPrice: item.getUnitPrice(),
+        subtotal: item.getSubtotal(),
+      })),
+    };
+  }
+
+  static toResponseList(budgets: Budget[]): BudgetResponseDto[] {
+    return budgets.map((budget) => BudgetMapper.toResponse(budget));
+  }
+
   static toPersistence(budget: Budget) {
     return {
       id: budget.getId(),
