@@ -23,6 +23,7 @@ import {
   BudgetTotalResponseDto,
   CreateBudgetDto,
   CreateBudgetItemDto,
+  FindBudgetsQueryDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { BudgetMapper } from '../mappers/budget.mapper';
@@ -137,10 +138,10 @@ export class BudgetController {
   @ApiOperation({ summary: 'Lista orcamentos por ordem de servico' })
   @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
   async findByServiceOrderId(
-    @Query('serviceOrderId') serviceOrderId: string,
+    @Query() query: FindBudgetsQueryDto,
   ): Promise<BudgetResponseDto[]> {
     return BudgetMapper.toResponseList(
-      await this.budgetService.findByServiceOrderId(serviceOrderId),
+      await this.budgetService.findByServiceOrderId(query.serviceOrderId),
     );
   }
 }

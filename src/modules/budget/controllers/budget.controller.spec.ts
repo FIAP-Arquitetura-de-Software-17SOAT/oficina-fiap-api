@@ -176,7 +176,9 @@ describe('BudgetController', () => {
     const budgets = [makeBudget()];
     service.findByServiceOrderId.mockResolvedValue(budgets);
 
-    const result = await controller.findByServiceOrderId('service-123');
+    const result = await controller.findByServiceOrderId({
+      serviceOrderId: 'service-123',
+    });
 
     expect(service.findByServiceOrderId).toHaveBeenCalledWith('service-123');
     expect(result).toHaveLength(1);

@@ -193,6 +193,14 @@ describe('Budget (e2e)', () => {
       .expect(400);
   });
 
+  it('rejects budget list requests without a valid service order id', async () => {
+    await request(http).get('/api/v1/budgets').expect(400);
+    await request(http).get('/api/v1/budgets?serviceOrderId=').expect(400);
+    await request(http)
+      .get('/api/v1/budgets?serviceOrderId=%20%20%20')
+      .expect(400);
+  });
+
   it('rejects item changes after send and all changes after acceptance', async () => {
     const { id, itemId } = await createBudget();
 

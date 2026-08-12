@@ -15,6 +15,14 @@ import { BudgetItemType, BudgetStatus } from '../entities/budget.entity';
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
 
+export class FindBudgetsQueryDto {
+  @ApiProperty({ example: 'service-123' })
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  serviceOrderId: string;
+}
+
 export class CreateBudgetItemDto {
   @ApiProperty({ example: 'Oil change' })
   @Transform(trim)
