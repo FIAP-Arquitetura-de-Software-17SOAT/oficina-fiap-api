@@ -29,3 +29,50 @@ model Client {
 
   @@map("client")
 }
+
+enum BudgetStatus {
+  GENERATED
+  WAITING_APPROVAL
+  ACCEPTED
+  REFUSED
+}
+
+enum BudgetItemType {
+  SERVICE
+  PART
+}
+
+model Budget {
+  id              String       @id
+  serviceOrderId  String
+  version         Int
+  status          BudgetStatus
+  totalAmount     Decimal      @db.Decimal(10, 2)
+  refusalReason   String?
+  sentAt          DateTime?
+  answeredAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  items BudgetItem[]
+
+  // TODO(service-order-integration): replace simple serviceOrderId with a relationship/validation
+  // with the ServiceOrder or Service module when it exists in the domain.
+  @@unique([serviceOrderId, version])
+  @@index([serviceOrderId])
+  @@map("budget")
+}
+
+model BudgetItem {
+  id          String         @id
+  budgetId    String
+  description String
+  type        BudgetItemType
+  quantity    Decimal        @db.Decimal(10, 2)
+  unitPrice   Decimal        @db.Decimal(10, 2)
+  subtotal    Decimal        @db.Decimal(10, 2)
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@map("budget_item")
+}
