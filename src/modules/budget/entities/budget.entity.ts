@@ -126,10 +126,31 @@ export class Budget {
     return new Budget(id, props);
   }
 
-  sendToCustomer(): void {
-    if (this.status !== BudgetStatus.GENERATED) {
-      throw new DomainException('Only generated budgets can be sent');
+  addItem(item: BudgetItemProps): void {
+    this.assertGenerated();
+    this.items.push(new BudgetItem(item));
+    this.touch();
+  }
+
+  removeItem(itemId: string): void {
+    this.assertGenerated();
+
+    if (this.items.length === 1) {
+      throw new DomainException('Budget must have at least one item');
     }
+
+    const itemIndex = this.items.findIndex((item) => item.getId() === itemId);
+
+    if (itemIndex === -1) {
+      throw new DomainException('Budget item not found');
+    }
+
+    this.items.splice(itemIndex, 1);
+    this.touch();
+  }
+
+  sendToCustomer(): void {
+    this.assertGenerated();
     this.status = BudgetStatus.WAITING_APPROVAL;
     this.sentAt = new Date();
     this.touch();
@@ -221,6 +242,12 @@ export class Budget {
       throw new DomainException(
         'Only budgets waiting for approval can be answered',
       );
+    }
+  }
+
+  private assertGenerated(): void {
+    if (this.status !== BudgetStatus.GENERATED) {
+      throw new DomainException('Only generated budgets can be changed');
     }
   }
 
