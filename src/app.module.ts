@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ClientModule } from './modules/client/client.module';
+import { BudgetModule } from './modules/budget/budget.module';
 import { PrismaModule } from './shared/database/prisma.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { PrismaModule } from './shared/database/prisma.module';
     }),
     PrismaModule,
     ClientModule,
+    BudgetModule,
   ],
   controllers: [AppController],
 })
