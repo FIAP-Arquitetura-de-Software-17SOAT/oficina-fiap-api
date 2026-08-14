@@ -3,7 +3,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
-import { Budget } from '../src/modules/budget/entities/budget.entity';
+import {
+  Budget,
+  BudgetItemType,
+  BudgetStatus,
+} from '../src/modules/budget/entities/budget.entity';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
@@ -12,24 +16,64 @@ class InMemoryBudgetRepository {
   private readonly budgets = new Map<string, Budget>();
 
   create(budget: Budget): Promise<Budget> {
-    this.budgets.set(budget.getId(), budget);
-    return Promise.resolve(budget);
+    const persisted = this.clone(budget);
+    this.budgets.set(persisted.getId(), persisted);
+    return Promise.resolve(this.clone(persisted));
   }
 
-  update(budget: Budget): Promise<Budget> {
-    this.budgets.set(budget.getId(), budget);
-    return Promise.resolve(budget);
+  updateGenerated(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    return this.updateWhenStatus(
+      budget,
+      BudgetStatus.GENERATED,
+      expectedUpdatedAt,
+    );
+  }
+
+  updateWaitingApproval(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    return this.updateWhenStatus(
+      budget,
+      BudgetStatus.WAITING_APPROVAL,
+      expectedUpdatedAt,
+    );
+  }
+
+  private updateWhenStatus(
+    budget: Budget,
+    expectedStatus: BudgetStatus,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    const stored = this.budgets.get(budget.getId());
+
+    if (
+      !stored ||
+      stored.getStatus() !== expectedStatus ||
+      stored.getUpdatedAt().getTime() !== expectedUpdatedAt.getTime()
+    ) {
+      return Promise.resolve(null);
+    }
+
+    const persisted = this.clone(budget);
+    this.budgets.set(persisted.getId(), persisted);
+    return Promise.resolve(this.clone(persisted));
   }
 
   findById(id: string): Promise<Budget | null> {
-    return Promise.resolve(this.budgets.get(id) ?? null);
+    const budget = this.budgets.get(id);
+    return Promise.resolve(budget ? this.clone(budget) : null);
   }
 
   findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
     return Promise.resolve(
-      Array.from(this.budgets.values()).filter(
-        (budget) => budget.getServiceOrderId() === serviceOrderId,
-      ),
+      Array.from(this.budgets.values())
+        .filter((budget) => budget.getServiceOrderId() === serviceOrderId)
+        .sort((left, right) => left.getVersion() - right.getVersion())
+        .map((budget) => this.clone(budget)),
     );
   }
 
@@ -40,7 +84,88 @@ class InMemoryBudgetRepository {
 
     return Promise.resolve(versions.length ? Math.max(...versions) : 0);
   }
+
+  private clone(budget: Budget): Budget {
+    return Budget.restore(budget.getId(), {
+      serviceOrderId: budget.getServiceOrderId(),
+      version: budget.getVersion(),
+      items: budget.getItems().map((item) => ({
+        id: item.getId(),
+        description: item.getDescription(),
+        type: item.getType(),
+        quantity: item.getQuantity(),
+        unitPrice: item.getUnitPrice(),
+      })),
+      status: budget.getStatus(),
+      refusalReason: budget.getRefusalReason(),
+      sentAt: budget.getSentAt(),
+      answeredAt: budget.getAnsweredAt(),
+      createdAt: budget.getCreatedAt(),
+      updatedAt: budget.getUpdatedAt(),
+    });
+  }
 }
+
+describe('InMemoryBudgetRepository', () => {
+  it('does not share mutable budget instances with persisted state', async () => {
+    const repository = new InMemoryBudgetRepository();
+    const budget = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    await repository.create(budget);
+    budget.sendToCustomer();
+
+    const persisted = await repository.findById(budget.getId());
+
+    expect(persisted).not.toBe(budget);
+    expect(persisted?.getStatus()).toBe('GENERATED');
+  });
+
+  it('lists budgets in ascending version order regardless of insertion order', async () => {
+    const repository = new InMemoryBudgetRepository();
+    const versionThree = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 3,
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+    const versionOne = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [
+        {
+          description: 'Brake pad',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 80,
+        },
+      ],
+    });
+
+    await repository.create(versionThree);
+    await repository.create(versionOne);
+
+    const budgets = await repository.findByServiceOrderId('service-123');
+
+    expect(budgets.map((budget) => budget.getVersion())).toEqual([1, 3]);
+  });
+});
 
 describe('Budget (e2e)', () => {
   let app: INestApplication<App>;
@@ -193,6 +318,38 @@ describe('Budget (e2e)', () => {
       .expect(400);
   });
 
+  it('rejects item monetary values beyond supported precision and range', async () => {
+    await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Precision overflow',
+            type: 'PART',
+            quantity: 1.001,
+            unitPrice: 1,
+          },
+        ],
+      })
+      .expect(400);
+
+    await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Range overflow',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 100_000_000,
+          },
+        ],
+      })
+      .expect(400);
+  });
+
   it('rejects budget list requests without a valid service order id', async () => {
     await request(http).get('/api/v1/budgets').expect(400);
     await request(http).get('/api/v1/budgets?serviceOrderId=').expect(400);
@@ -250,7 +407,19 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${id}/refuse`)
       .send({ reason: 'Customer found it expensive' })
-      .expect(200);
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('REFUSED');
+        expect(body.refusalReason).toBe('Customer found it expensive');
+      });
+
+    await request(http)
+      .get(`/api/v1/budgets/${id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('REFUSED');
+        expect(body.refusalReason).toBe('Customer found it expensive');
+      });
 
     await request(http).post(`/api/v1/budgets/${id}/send`).expect(400);
     await request(http).post(`/api/v1/budgets/${id}/accept`).expect(400);

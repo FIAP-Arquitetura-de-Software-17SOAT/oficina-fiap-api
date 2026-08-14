@@ -22,6 +22,81 @@ describe('Budget', () => {
     expect(budget.getTotalAmount()).toBe(120);
   });
 
+  it('calculates fractional item subtotals and totals to two decimal places', () => {
+    const budget = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [
+        {
+          description: 'Part one',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 0.1,
+        },
+        {
+          description: 'Part two',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 0.2,
+        },
+      ],
+    });
+
+    expect(budget.getItems().map((item) => item.getSubtotal())).toEqual([
+      0.1, 0.2,
+    ]);
+    expect(budget.getTotalAmount()).toBe(0.3);
+  });
+
+  it('rejects monetary values beyond two decimal places or Decimal(10,2) range', () => {
+    expect(() =>
+      Budget.create({
+        serviceOrderId: 'service-123',
+        version: 1,
+        items: [
+          {
+            description: 'Precision overflow',
+            type: BudgetItemType.PART,
+            quantity: 1.001,
+            unitPrice: 1,
+          },
+        ],
+      }),
+    ).toThrow(DomainException);
+
+    expect(() =>
+      Budget.create({
+        serviceOrderId: 'service-123',
+        version: 1,
+        items: [
+          {
+            description: 'Range overflow',
+            type: BudgetItemType.PART,
+            quantity: 1,
+            unitPrice: 100_000_000,
+          },
+        ],
+      }),
+    ).toThrow(DomainException);
+  });
+
+  it('rejects item subtotals that exceed Decimal(10,2) range', () => {
+    expect(() =>
+      Budget.create({
+        serviceOrderId: 'service-123',
+        version: 1,
+        items: [
+          {
+            description: 'Subtotal overflow',
+            type: BudgetItemType.PART,
+            quantity: 1_000_000,
+            unitPrice: 100,
+          },
+        ],
+      }),
+    ).toThrow(DomainException);
+  });
+
   it('does not allow creating without serviceOrderId', () => {
     expect(() =>
       Budget.create({ serviceOrderId: '', version: 1, items: [serviceItem] }),
@@ -72,6 +147,28 @@ describe('Budget', () => {
 
     expect(budget.getItems()).toHaveLength(1);
     expect(budget.getTotalAmount()).toBe(120);
+  });
+
+  it('advances updatedAt when a mutation occurs in the same clock millisecond', () => {
+    const originalUpdatedAt = new Date('2099-01-01T00:00:00.000Z');
+    const budget = Budget.restore('budget-123', {
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [serviceItem],
+      status: BudgetStatus.GENERATED,
+      updatedAt: originalUpdatedAt,
+    });
+
+    budget.addItem({
+      description: 'Oil filter',
+      type: BudgetItemType.PART,
+      quantity: 1,
+      unitPrice: 40,
+    });
+
+    expect(budget.getUpdatedAt().getTime()).toBeGreaterThan(
+      originalUpdatedAt.getTime(),
+    );
   });
 
   it('does not allow changing items after sending to customer', () => {
@@ -171,9 +268,9 @@ describe('Budget', () => {
     );
     expect(() => acceptedBudget.sendToCustomer()).toThrow(DomainException);
     expect(() => acceptedBudget.addItem(serviceItem)).toThrow(DomainException);
-    expect(() => acceptedBudget.removeItem(acceptedBudget.getItems()[0].getId())).toThrow(
-      DomainException,
-    );
+    expect(() =>
+      acceptedBudget.removeItem(acceptedBudget.getItems()[0].getId()),
+    ).toThrow(DomainException);
 
     const refusedBudget = Budget.create({
       serviceOrderId: 'service-456',
@@ -189,8 +286,8 @@ describe('Budget', () => {
     );
     expect(() => refusedBudget.sendToCustomer()).toThrow(DomainException);
     expect(() => refusedBudget.addItem(serviceItem)).toThrow(DomainException);
-    expect(() => refusedBudget.removeItem(refusedBudget.getItems()[0].getId())).toThrow(
-      DomainException,
-    );
+    expect(() =>
+      refusedBudget.removeItem(refusedBudget.getItems()[0].getId()),
+    ).toThrow(DomainException);
   });
 });

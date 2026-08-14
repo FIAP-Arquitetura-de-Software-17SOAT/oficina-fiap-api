@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
-import { Budget, BudgetItemType, BudgetStatus } from '../entities/budget.entity';
+import {
+  Budget,
+  BudgetItemType,
+  BudgetStatus,
+} from '../entities/budget.entity';
 import { BudgetMapper } from '../mappers/budget.mapper';
 
 type BudgetRecord = Prisma.BudgetGetPayload<{ include: { items: true } }>;
@@ -19,34 +23,71 @@ export class BudgetRepository {
     return this.toDomain(created);
   }
 
-  async update(budget: Budget): Promise<Budget> {
+  async updateGenerated(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.budgetItem.deleteMany({ where: { budgetId: budget.getId() } });
+      const result = await tx.budget.updateMany({
+        where: {
+          id: budget.getId(),
+          status: BudgetStatus.GENERATED,
+          updatedAt: expectedUpdatedAt,
+        },
+        data: this.toUpdateData(budget),
+      });
 
-      return tx.budget.update({
+      if (result.count === 0) {
+        return null;
+      }
+
+      await tx.budgetItem.deleteMany({ where: { budgetId: budget.getId() } });
+      await tx.budgetItem.createMany({
+        data: budget.getItems().map((item) => ({
+          id: item.getId(),
+          budgetId: budget.getId(),
+          description: item.getDescription(),
+          type: item.getType(),
+          quantity: item.getQuantity(),
+          unitPrice: item.getUnitPrice(),
+          subtotal: item.getSubtotal(),
+        })),
+      });
+
+      return tx.budget.findUnique({
         where: { id: budget.getId() },
         include: { items: true },
-        data: {
-          status: budget.getStatus(),
-          totalAmount: budget.getTotalAmount(),
-          refusalReason: budget.getRefusalReason(),
-          sentAt: budget.getSentAt(),
-          answeredAt: budget.getAnsweredAt(),
-          items: {
-            create: budget.getItems().map((item) => ({
-              id: item.getId(),
-              description: item.getDescription(),
-              type: item.getType(),
-              quantity: item.getQuantity(),
-              unitPrice: item.getUnitPrice(),
-              subtotal: item.getSubtotal(),
-            })),
-          },
-        },
       });
     });
 
-    return this.toDomain(updated);
+    return updated ? this.toDomain(updated) : null;
+  }
+
+  async updateWaitingApproval(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.budget.updateMany({
+        where: {
+          id: budget.getId(),
+          status: BudgetStatus.WAITING_APPROVAL,
+          updatedAt: expectedUpdatedAt,
+        },
+        data: this.toUpdateData(budget),
+      });
+
+      if (result.count === 0) {
+        return null;
+      }
+
+      return tx.budget.findUnique({
+        where: { id: budget.getId() },
+        include: { items: true },
+      });
+    });
+
+    return updated ? this.toDomain(updated) : null;
   }
 
   async findById(id: string): Promise<Budget | null> {
@@ -62,6 +103,7 @@ export class BudgetRepository {
     const records = await this.prisma.budget.findMany({
       where: { serviceOrderId },
       include: { items: true },
+      orderBy: { version: 'asc' },
     });
 
     return records.map((record) => this.toDomain(record));
@@ -88,5 +130,16 @@ export class BudgetRepository {
         type: item.type as BudgetItemType,
       })),
     });
+  }
+
+  private toUpdateData(budget: Budget) {
+    return {
+      status: budget.getStatus(),
+      totalAmount: budget.getTotalAmount(),
+      refusalReason: budget.getRefusalReason(),
+      sentAt: budget.getSentAt(),
+      answeredAt: budget.getAnsweredAt(),
+      updatedAt: budget.getUpdatedAt(),
+    };
   }
 }
