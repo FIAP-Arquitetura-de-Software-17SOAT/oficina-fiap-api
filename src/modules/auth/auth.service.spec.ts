@@ -316,6 +316,7 @@ describe('AuthService', () => {
     ['a sub-second access TTL', '999ms', '7d'],
     ['a non-whole-second refresh TTL', '15m', '1500ms'],
     ['an overflowing access TTL', '9007199254740992s', '7d'],
+    ['a refresh TTL outside the Date TimeClip range', '15m', '280000y'],
   ])('rejects %s', (_label, accessTtl, refreshTtl) => {
     expect(() =>
       readJwtSettings({

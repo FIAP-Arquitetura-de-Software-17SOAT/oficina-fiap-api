@@ -67,12 +67,14 @@ function readTtl(config: ConfigService, key: string): JwtTtl {
 
   const durationValue = Number(match[1]);
   const durationMilliseconds = durationValue * TTL_MULTIPLIERS[match[2]];
+  const expiryDate = new Date(Date.now() + durationMilliseconds);
 
   if (
     !Number.isSafeInteger(durationValue) ||
     !Number.isSafeInteger(durationMilliseconds) ||
     durationMilliseconds < 1_000 ||
-    durationMilliseconds % 1_000 !== 0
+    durationMilliseconds % 1_000 !== 0 ||
+    !Number.isFinite(expiryDate.getTime())
   ) {
     throw new Error(`${key} must be a positive whole-second JWT duration`);
   }
