@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { RefreshSession } from '../../shared/identity/entities/refresh-session.entity';
 import { User, UserRole } from '../../shared/identity/entities/user.entity';
@@ -36,7 +36,16 @@ export interface JwtSettings {
   refreshTtl: JwtTtl;
 }
 
-const TTL_PATTERN = /^[1-9]\d*(ms|s|m|h|d|w|y)$/;
+const TTL_PATTERN = /^([1-9]\d*)(ms|s|m|h|d|w|y)$/;
+const TTL_MULTIPLIERS: Record<string, number> = {
+  ms: 1,
+  s: 1_000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+  w: 604_800_000,
+  y: 31_557_600_000,
+};
 
 function requiredSetting(config: ConfigService, key: string): string {
   const value = config.get<string>(key)?.trim();
@@ -50,9 +59,22 @@ function requiredSetting(config: ConfigService, key: string): string {
 
 function readTtl(config: ConfigService, key: string): JwtTtl {
   const value = requiredSetting(config, key);
+  const match = TTL_PATTERN.exec(value);
 
-  if (!TTL_PATTERN.test(value)) {
-    throw new Error(`${key} must be a positive JWT duration such as 15m`);
+  if (!match) {
+    throw new Error(`${key} must be a positive whole-second JWT duration`);
+  }
+
+  const durationValue = Number(match[1]);
+  const durationMilliseconds = durationValue * TTL_MULTIPLIERS[match[2]];
+
+  if (
+    !Number.isSafeInteger(durationValue) ||
+    !Number.isSafeInteger(durationMilliseconds) ||
+    durationMilliseconds < 1_000 ||
+    durationMilliseconds % 1_000 !== 0
+  ) {
+    throw new Error(`${key} must be a positive whole-second JWT duration`);
   }
 
   return value as JwtTtl;
@@ -116,7 +138,10 @@ export class AuthService {
       consumedSession.getUserId() !== consumedPayload.sub ||
       consumedSession.isRevoked() ||
       consumedSession.isExpired() ||
-      !(await this.passwordHash.compare(token, consumedSession.getTokenHash()))
+      !(await this.passwordHash.compare(
+        this.refreshTokenDigest(token),
+        consumedSession.getTokenHash(),
+      ))
     ) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -159,7 +184,10 @@ export class AuthService {
     if (
       !session ||
       session.getUserId() !== payload.sub ||
-      !(await this.passwordHash.compare(token, session.getTokenHash()))
+      !(await this.passwordHash.compare(
+        this.refreshTokenDigest(token),
+        session.getTokenHash(),
+      ))
     ) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -193,7 +221,9 @@ export class AuthService {
       tokens: { accessToken, refreshToken },
       session: RefreshSession.create({
         jti: refreshPayload.jti,
-        tokenHash: await this.passwordHash.hash(refreshToken),
+        tokenHash: await this.passwordHash.hash(
+          this.refreshTokenDigest(refreshToken),
+        ),
         expiresAt: new Date(refreshPayload.exp * 1000),
         userId: user.getId(),
       }),
@@ -207,6 +237,10 @@ export class AuthService {
       type,
       jti: randomUUID(),
     };
+  }
+
+  private refreshTokenDigest(token: string): string {
+    return createHash('sha256').update(token).digest('base64url');
   }
 
   private async verifyRefreshToken(token: string): Promise<AuthTokenPayload> {

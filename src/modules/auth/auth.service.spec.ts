@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { createHash } from 'crypto';
 import { AuthService, AuthTokenPayload, readJwtSettings } from './auth.service';
 import { User } from '../../shared/identity/entities/user.entity';
 import { RefreshSession } from '../../shared/identity/entities/refresh-session.entity';
@@ -8,6 +9,9 @@ import { PasswordHashService } from '../../shared/identity/services/password-has
 const ACCESS_SECRET = 'access-secret-for-tests';
 const REFRESH_SECRET = 'refresh-secret-for-tests';
 const PASSWORD = 'correct-horse-battery-staple';
+
+const refreshTokenDigest = (token: string): string =>
+  createHash('sha256').update(token).digest('base64url');
 
 class InMemoryRefreshSessionRepository {
   readonly sessions = new Map<string, RefreshSession>();
@@ -161,8 +165,34 @@ describe('AuthService', () => {
       exp: expect.any(Number),
     });
     await expect(
-      passwordHash.compare(tokens.refreshToken, session!.getTokenHash()),
+      passwordHash.compare(
+        refreshTokenDigest(tokens.refreshToken),
+        session!.getTokenHash(),
+      ),
     ).resolves.toBe(true);
+  });
+
+  it('does not accept a separately issued refresh token for the stored session', async () => {
+    const firstTokens = await service.login({
+      email: 'admin@example.com',
+      password: PASSWORD,
+    });
+    const secondTokens = await service.login({
+      email: 'admin@example.com',
+      password: PASSWORD,
+    });
+    const firstPayload = await jwt.verifyAsync<AuthTokenPayload>(
+      firstTokens.refreshToken,
+      { secret: REFRESH_SECRET },
+    );
+    const firstSession = await sessions.findByJti(firstPayload.jti);
+
+    await expect(
+      passwordHash.compare(
+        secondTokens.refreshToken,
+        firstSession!.getTokenHash(),
+      ),
+    ).resolves.toBe(false);
   });
 
   it('rejects an incorrect password instead of issuing tokens', async () => {
@@ -194,10 +224,13 @@ describe('AuthService', () => {
     expect(replacement?.getUserId()).toBe('admin-id');
     await expect(
       passwordHash.compare(
-        rotatedTokens.refreshToken,
+        refreshTokenDigest(rotatedTokens.refreshToken),
         replacement!.getTokenHash(),
       ),
     ).resolves.toBe(true);
+    await expect(service.refresh(initialTokens.refreshToken)).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('rejects a revoked refresh session', async () => {
@@ -237,6 +270,22 @@ describe('AuthService', () => {
     expect((await sessions.findByJti(payload.jti))?.isRevoked()).toBe(true);
   });
 
+  it('rejects an access-typed token even when it has a refresh-token signature', async () => {
+    const accessTypedToken = await jwt.signAsync(
+      {
+        sub: 'admin-id',
+        role: 'ADMIN',
+        type: 'access',
+        jti: 'access-token-jti',
+      },
+      { secret: REFRESH_SECRET, expiresIn: '15m' },
+    );
+
+    await expect(service.refresh(accessTypedToken)).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
   it.each([
     [
       'a missing access secret',
@@ -259,6 +308,26 @@ describe('AuthService', () => {
     expect(() =>
       readJwtSettings({
         get: (key: keyof typeof values) => values[key],
+      } as never),
+    ).toThrow();
+  });
+
+  it.each([
+    ['a sub-second access TTL', '999ms', '7d'],
+    ['a non-whole-second refresh TTL', '15m', '1500ms'],
+    ['an overflowing access TTL', '9007199254740992s', '7d'],
+  ])('rejects %s', (_label, accessTtl, refreshTtl) => {
+    expect(() =>
+      readJwtSettings({
+        get: (key: string) =>
+          (
+            ({
+              JWT_ACCESS_SECRET: ACCESS_SECRET,
+              JWT_ACCESS_TTL: accessTtl,
+              JWT_REFRESH_SECRET: REFRESH_SECRET,
+              JWT_REFRESH_TTL: refreshTtl,
+            }) as Record<string, string>
+          )[key],
       } as never),
     ).toThrow();
   });
