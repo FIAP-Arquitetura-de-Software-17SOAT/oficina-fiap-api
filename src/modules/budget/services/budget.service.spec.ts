@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   Budget,
@@ -33,7 +33,8 @@ describe('BudgetService', () => {
   beforeEach(async () => {
     repository = {
       create: jest.fn((budget: Budget) => budget),
-      update: jest.fn((budget: Budget) => budget),
+      updateGenerated: jest.fn((budget: Budget) => budget),
+      updateWaitingApproval: jest.fn((budget: Budget) => budget),
       findById: jest.fn(),
       findByServiceOrderId: jest.fn(),
       findLastVersionByServiceOrderId: jest.fn(),
@@ -86,6 +87,55 @@ describe('BudgetService', () => {
     expect(result.getVersion()).toBe(3);
   });
 
+  it('retries allocation with the next version after a duplicate version conflict', async () => {
+    repository.findLastVersionByServiceOrderId
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(2);
+    repository.create
+      .mockRejectedValueOnce({
+        code: 'P2002',
+        meta: { target: ['serviceOrderId', 'version'] },
+      })
+      .mockImplementation((budget: Budget) => budget);
+
+    const result = await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Brake pad',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 80,
+        },
+      ],
+    });
+
+    expect(result.getVersion()).toBe(3);
+    expect(repository.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('translates a non-version unique conflict to a controlled error', async () => {
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
+    repository.create.mockRejectedValue({
+      code: 'P2002',
+      meta: { target: ['id'] },
+    });
+
+    await expect(
+      service.create({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Brake pad',
+            type: BudgetItemType.PART,
+            quantity: 1,
+            unitPrice: 80,
+          },
+        ],
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
   it('adds an item to a generated budget and persists the new total', async () => {
     const budget = makeBudget();
     repository.findById.mockResolvedValue(budget);
@@ -99,7 +149,7 @@ describe('BudgetService', () => {
 
     expect(result.getItems()).toHaveLength(2);
     expect(result.getTotalAmount()).toBe(160);
-    expect(repository.update).toHaveBeenCalledWith(result);
+    expect(repository.updateGenerated).toHaveBeenCalledWith(result);
   });
 
   it('removes an item from a generated budget and persists the new total', async () => {
@@ -117,7 +167,7 @@ describe('BudgetService', () => {
 
     expect(result.getItems()).toHaveLength(1);
     expect(result.getTotalAmount()).toBe(120);
-    expect(repository.update).toHaveBeenCalledWith(result);
+    expect(repository.updateGenerated).toHaveBeenCalledWith(result);
   });
 
   it('calculates total from persisted budget items', async () => {
@@ -141,7 +191,7 @@ describe('BudgetService', () => {
 
     expect(result.getStatus()).toBe(BudgetStatus.WAITING_APPROVAL);
     expect(result.getSentAt()).toBeInstanceOf(Date);
-    expect(repository.update).toHaveBeenCalledWith(result);
+    expect(repository.updateGenerated).toHaveBeenCalledWith(result);
   });
 
   it('accepts a budget waiting for approval and persists terminal status', async () => {
@@ -154,7 +204,7 @@ describe('BudgetService', () => {
     expect(result.getStatus()).toBe(BudgetStatus.ACCEPTED);
     expect(result.getAnsweredAt()).toBeInstanceOf(Date);
     expect(result.getRefusalReason()).toBeNull();
-    expect(repository.update).toHaveBeenCalledWith(result);
+    expect(repository.updateWaitingApproval).toHaveBeenCalledWith(result);
   });
 
   it('refuses a budget waiting for approval with a required reason', async () => {
@@ -169,7 +219,33 @@ describe('BudgetService', () => {
     expect(result.getStatus()).toBe(BudgetStatus.REFUSED);
     expect(result.getRefusalReason()).toBe('Customer found it expensive');
     expect(result.getAnsweredAt()).toBeInstanceOf(Date);
-    expect(repository.update).toHaveBeenCalledWith(result);
+    expect(repository.updateWaitingApproval).toHaveBeenCalledWith(result);
+  });
+
+  it('rejects a generated-state change when its conditional persistence is stale', async () => {
+    const budget = makeBudget();
+    repository.findById.mockResolvedValue(budget);
+    repository.updateGenerated.mockResolvedValue(null);
+
+    await expect(
+      service.addItem(budget.getId(), {
+        description: 'Oil filter',
+        type: BudgetItemType.PART,
+        quantity: 1,
+        unitPrice: 40,
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('rejects a waiting-approval decision when its conditional persistence is stale', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+    repository.updateWaitingApproval.mockResolvedValue(null);
+
+    await expect(service.accept(budget.getId())).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('throws NotFoundException when budget does not exist', async () => {

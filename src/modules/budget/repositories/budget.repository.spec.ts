@@ -46,9 +46,9 @@ describe('BudgetRepository', () => {
       findUnique: jest.Mock;
       findMany: jest.Mock;
       findFirst: jest.Mock;
-      update: jest.Mock;
+      updateMany: jest.Mock;
     };
-    budgetItem: { deleteMany: jest.Mock };
+    budgetItem: { deleteMany: jest.Mock; createMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -59,9 +59,9 @@ describe('BudgetRepository', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
         findFirst: jest.fn(),
-        update: jest.fn(),
+        updateMany: jest.fn(),
       },
-      budgetItem: { deleteMany: jest.fn() },
+      budgetItem: { deleteMany: jest.fn(), createMany: jest.fn() },
       $transaction: jest.fn(),
     };
     repository = new BudgetRepository(prisma as unknown as PrismaService);
@@ -101,7 +101,7 @@ describe('BudgetRepository', () => {
     await expect(repository.findById('missing')).resolves.toBeNull();
   });
 
-  it('replaces all items transactionally when updating a budget', async () => {
+  it('persists generated-only changes only while the stored status is GENERATED', async () => {
     const budget = makeBudget();
     budget.addItem({
       description: 'Oil filter',
@@ -112,7 +112,8 @@ describe('BudgetRepository', () => {
     prisma.$transaction.mockImplementation(async (callback) =>
       callback({ budget: prisma.budget, budgetItem: prisma.budgetItem }),
     );
-    prisma.budget.update.mockResolvedValue({
+    prisma.budget.updateMany.mockResolvedValue({ count: 1 });
+    prisma.budget.findUnique.mockResolvedValue({
       ...row,
       totalAmount: 130,
       items: [
@@ -127,22 +128,59 @@ describe('BudgetRepository', () => {
       ],
     });
 
-    const updated = await repository.update(budget);
+    const updated = await repository.updateGenerated(budget);
 
+    expect(prisma.budget.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: row.id, status: BudgetStatus.GENERATED },
+      }),
+    );
     expect(prisma.budgetItem.deleteMany).toHaveBeenCalledWith({
       where: { budgetId: row.id },
     });
-    expect(prisma.budget.update).toHaveBeenCalledWith(
+    expect(prisma.budgetItem.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: row.id },
-        include: { items: true },
-        data: expect.objectContaining({
-          totalAmount: 130,
-          items: { create: expect.arrayContaining([expect.any(Object)]) },
-        }) as unknown,
+        data: expect.arrayContaining([
+          expect.objectContaining({ budgetId: row.id }),
+        ]),
       }),
     );
-    expect(updated.getTotalAmount()).toBe(130);
+    expect(updated?.getTotalAmount()).toBe(130);
+  });
+
+  it('does not persist a generated-state change after the budget was sent', async () => {
+    const budget = makeBudget();
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({ budget: prisma.budget, budgetItem: prisma.budgetItem }),
+    );
+    prisma.budget.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(repository.updateGenerated(budget)).resolves.toBeNull();
+    expect(prisma.budgetItem.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('persists waiting-approval decisions only while the stored status is WAITING_APPROVAL', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    budget.accept();
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({ budget: prisma.budget, budgetItem: prisma.budgetItem }),
+    );
+    prisma.budget.updateMany.mockResolvedValue({ count: 1 });
+    prisma.budget.findUnique.mockResolvedValue({
+      ...row,
+      status: BudgetStatus.ACCEPTED,
+      answeredAt: budget.getAnsweredAt(),
+    });
+
+    const updated = await repository.updateWaitingApproval(budget);
+
+    expect(prisma.budget.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: row.id, status: BudgetStatus.WAITING_APPROVAL },
+      }),
+    );
+    expect(updated?.getStatus()).toBe(BudgetStatus.ACCEPTED);
   });
 
   it('lists budgets for a service order with their items', async () => {
@@ -153,6 +191,7 @@ describe('BudgetRepository', () => {
     expect(prisma.budget.findMany).toHaveBeenCalledWith({
       where: { serviceOrderId: row.serviceOrderId },
       include: { items: true },
+      orderBy: { version: 'asc' },
     });
     expect(budgets).toHaveLength(1);
   });
