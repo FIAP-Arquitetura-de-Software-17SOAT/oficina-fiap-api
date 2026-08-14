@@ -23,6 +23,15 @@ function requiredEnv(env: SeedEnvironment, name: 'ADMIN_EMAIL' | 'ADMIN_PASSWORD
   return value;
 }
 
+function isUniqueConstraintViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
+}
+
 export async function seedAdmin(
   prisma: SeedPrisma,
   env: SeedEnvironment,
@@ -37,13 +46,19 @@ export async function seedAdmin(
 
   const passwordHash = await hash(requiredEnv(env, 'ADMIN_PASSWORD'));
 
-  await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      role: 'ADMIN',
-    },
-  });
+  try {
+    await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: 'ADMIN',
+      },
+    });
+  } catch (error: unknown) {
+    if (!isUniqueConstraintViolation(error)) {
+      throw error;
+    }
+  }
 }
 
 async function runSeed(): Promise<void> {
