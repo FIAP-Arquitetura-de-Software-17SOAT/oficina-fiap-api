@@ -253,6 +253,10 @@ export class Budget {
   }
 
   private touch(): void {
-    this.updatedAt = new Date();
+    const now = new Date();
+    this.updatedAt =
+      now.getTime() > this.updatedAt.getTime()
+        ? now
+        : new Date(this.updatedAt.getTime() + 1);
   }
 }

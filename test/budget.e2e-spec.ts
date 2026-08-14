@@ -20,21 +20,40 @@ class InMemoryBudgetRepository {
     return Promise.resolve(this.clone(persisted));
   }
 
-  updateGenerated(budget: Budget): Promise<Budget | null> {
-    return this.updateWhenStatus(budget, BudgetStatus.GENERATED);
+  updateGenerated(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    return this.updateWhenStatus(
+      budget,
+      BudgetStatus.GENERATED,
+      expectedUpdatedAt,
+    );
   }
 
-  updateWaitingApproval(budget: Budget): Promise<Budget | null> {
-    return this.updateWhenStatus(budget, BudgetStatus.WAITING_APPROVAL);
+  updateWaitingApproval(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    return this.updateWhenStatus(
+      budget,
+      BudgetStatus.WAITING_APPROVAL,
+      expectedUpdatedAt,
+    );
   }
 
   private updateWhenStatus(
     budget: Budget,
     expectedStatus: BudgetStatus,
+    expectedUpdatedAt: Date,
   ): Promise<Budget | null> {
     const stored = this.budgets.get(budget.getId());
 
-    if (!stored || stored.getStatus() !== expectedStatus) {
+    if (
+      !stored ||
+      stored.getStatus() !== expectedStatus ||
+      stored.getUpdatedAt().getTime() !== expectedUpdatedAt.getTime()
+    ) {
       return Promise.resolve(null);
     }
 
@@ -52,6 +71,7 @@ class InMemoryBudgetRepository {
     return Promise.resolve(
       Array.from(this.budgets.values())
         .filter((budget) => budget.getServiceOrderId() === serviceOrderId)
+        .sort((left, right) => left.getVersion() - right.getVersion())
         .map((budget) => this.clone(budget)),
     );
   }
@@ -108,6 +128,41 @@ describe('InMemoryBudgetRepository', () => {
 
     expect(persisted).not.toBe(budget);
     expect(persisted?.getStatus()).toBe('GENERATED');
+  });
+
+  it('lists budgets in ascending version order regardless of insertion order', async () => {
+    const repository = new InMemoryBudgetRepository();
+    const versionThree = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 3,
+      items: [
+        {
+          description: 'Oil change',
+          type: 'SERVICE',
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+    const versionOne = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [
+        {
+          description: 'Brake pad',
+          type: 'PART',
+          quantity: 1,
+          unitPrice: 80,
+        },
+      ],
+    });
+
+    await repository.create(versionThree);
+    await repository.create(versionOne);
+
+    const budgets = await repository.findByServiceOrderId('service-123');
+
+    expect(budgets.map((budget) => budget.getVersion())).toEqual([1, 3]);
   });
 });
 

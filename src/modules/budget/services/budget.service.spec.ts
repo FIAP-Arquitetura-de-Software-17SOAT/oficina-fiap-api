@@ -138,6 +138,7 @@ describe('BudgetService', () => {
 
   it('adds an item to a generated budget and persists the new total', async () => {
     const budget = makeBudget();
+    const expectedUpdatedAt = budget.getUpdatedAt();
     repository.findById.mockResolvedValue(budget);
 
     const result = await service.addItem(budget.getId(), {
@@ -149,7 +150,10 @@ describe('BudgetService', () => {
 
     expect(result.getItems()).toHaveLength(2);
     expect(result.getTotalAmount()).toBe(160);
-    expect(repository.updateGenerated).toHaveBeenCalledWith(result);
+    expect(repository.updateGenerated).toHaveBeenCalledWith(
+      result,
+      expectedUpdatedAt,
+    );
   });
 
   it('removes an item from a generated budget and persists the new total', async () => {
@@ -167,7 +171,10 @@ describe('BudgetService', () => {
 
     expect(result.getItems()).toHaveLength(1);
     expect(result.getTotalAmount()).toBe(120);
-    expect(repository.updateGenerated).toHaveBeenCalledWith(result);
+    expect(repository.updateGenerated).toHaveBeenCalledWith(
+      result,
+      expect.any(Date),
+    );
   });
 
   it('calculates total from persisted budget items', async () => {
@@ -191,12 +198,16 @@ describe('BudgetService', () => {
 
     expect(result.getStatus()).toBe(BudgetStatus.WAITING_APPROVAL);
     expect(result.getSentAt()).toBeInstanceOf(Date);
-    expect(repository.updateGenerated).toHaveBeenCalledWith(result);
+    expect(repository.updateGenerated).toHaveBeenCalledWith(
+      result,
+      expect.any(Date),
+    );
   });
 
   it('accepts a budget waiting for approval and persists terminal status', async () => {
     const budget = makeBudget();
     budget.sendToCustomer();
+    const expectedUpdatedAt = budget.getUpdatedAt();
     repository.findById.mockResolvedValue(budget);
 
     const result = await service.accept(budget.getId());
@@ -204,7 +215,10 @@ describe('BudgetService', () => {
     expect(result.getStatus()).toBe(BudgetStatus.ACCEPTED);
     expect(result.getAnsweredAt()).toBeInstanceOf(Date);
     expect(result.getRefusalReason()).toBeNull();
-    expect(repository.updateWaitingApproval).toHaveBeenCalledWith(result);
+    expect(repository.updateWaitingApproval).toHaveBeenCalledWith(
+      result,
+      expectedUpdatedAt,
+    );
   });
 
   it('refuses a budget waiting for approval with a required reason', async () => {
@@ -219,7 +233,10 @@ describe('BudgetService', () => {
     expect(result.getStatus()).toBe(BudgetStatus.REFUSED);
     expect(result.getRefusalReason()).toBe('Customer found it expensive');
     expect(result.getAnsweredAt()).toBeInstanceOf(Date);
-    expect(repository.updateWaitingApproval).toHaveBeenCalledWith(result);
+    expect(repository.updateWaitingApproval).toHaveBeenCalledWith(
+      result,
+      expect.any(Date),
+    );
   });
 
   it('rejects a generated-state change when its conditional persistence is stale', async () => {

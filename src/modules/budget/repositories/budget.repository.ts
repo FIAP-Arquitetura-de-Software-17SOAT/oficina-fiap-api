@@ -23,10 +23,17 @@ export class BudgetRepository {
     return this.toDomain(created);
   }
 
-  async updateGenerated(budget: Budget): Promise<Budget | null> {
+  async updateGenerated(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.budget.updateMany({
-        where: { id: budget.getId(), status: BudgetStatus.GENERATED },
+        where: {
+          id: budget.getId(),
+          status: BudgetStatus.GENERATED,
+          updatedAt: expectedUpdatedAt,
+        },
         data: this.toUpdateData(budget),
       });
 
@@ -56,10 +63,17 @@ export class BudgetRepository {
     return updated ? this.toDomain(updated) : null;
   }
 
-  async updateWaitingApproval(budget: Budget): Promise<Budget | null> {
+  async updateWaitingApproval(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.budget.updateMany({
-        where: { id: budget.getId(), status: BudgetStatus.WAITING_APPROVAL },
+        where: {
+          id: budget.getId(),
+          status: BudgetStatus.WAITING_APPROVAL,
+          updatedAt: expectedUpdatedAt,
+        },
         data: this.toUpdateData(budget),
       });
 

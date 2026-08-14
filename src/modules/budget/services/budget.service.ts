@@ -56,14 +56,16 @@ export class BudgetService {
 
   async addItem(id: string, dto: CreateBudgetItemDto): Promise<Budget> {
     const budget = await this.findById(id);
+    const expectedUpdatedAt = budget.getUpdatedAt();
     budget.addItem(dto);
-    return this.persistGeneratedChange(budget);
+    return this.persistGeneratedChange(budget, expectedUpdatedAt);
   }
 
   async removeItem(id: string, itemId: string): Promise<Budget> {
     const budget = await this.findById(id);
+    const expectedUpdatedAt = budget.getUpdatedAt();
     budget.removeItem(itemId);
-    return this.persistGeneratedChange(budget);
+    return this.persistGeneratedChange(budget, expectedUpdatedAt);
   }
 
   async calculateTotal(id: string): Promise<number> {
@@ -73,20 +75,23 @@ export class BudgetService {
 
   async send(id: string): Promise<Budget> {
     const budget = await this.findById(id);
+    const expectedUpdatedAt = budget.getUpdatedAt();
     budget.sendToCustomer();
-    return this.persistGeneratedChange(budget);
+    return this.persistGeneratedChange(budget, expectedUpdatedAt);
   }
 
   async accept(id: string): Promise<Budget> {
     const budget = await this.findById(id);
+    const expectedUpdatedAt = budget.getUpdatedAt();
     budget.accept();
-    return this.persistWaitingApprovalDecision(budget);
+    return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
   }
 
   async refuse(id: string, dto: RefuseBudgetDto): Promise<Budget> {
     const budget = await this.findById(id);
+    const expectedUpdatedAt = budget.getUpdatedAt();
     budget.refuse(dto.reason);
-    return this.persistWaitingApprovalDecision(budget);
+    return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
   }
 
   async findById(id: string): Promise<Budget> {
@@ -103,8 +108,14 @@ export class BudgetService {
     return this.budgetRepository.findByServiceOrderId(serviceOrderId);
   }
 
-  private async persistGeneratedChange(budget: Budget): Promise<Budget> {
-    const updated = await this.budgetRepository.updateGenerated(budget);
+  private async persistGeneratedChange(
+    budget: Budget,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget> {
+    const updated = await this.budgetRepository.updateGenerated(
+      budget,
+      expectedUpdatedAt,
+    );
 
     if (!updated) {
       throw new ConflictException(
@@ -117,8 +128,12 @@ export class BudgetService {
 
   private async persistWaitingApprovalDecision(
     budget: Budget,
+    expectedUpdatedAt: Date,
   ): Promise<Budget> {
-    const updated = await this.budgetRepository.updateWaitingApproval(budget);
+    const updated = await this.budgetRepository.updateWaitingApproval(
+      budget,
+      expectedUpdatedAt,
+    );
 
     if (!updated) {
       throw new ConflictException(

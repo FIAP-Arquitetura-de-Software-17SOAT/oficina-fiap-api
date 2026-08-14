@@ -74,6 +74,28 @@ describe('Budget', () => {
     expect(budget.getTotalAmount()).toBe(120);
   });
 
+  it('advances updatedAt when a mutation occurs in the same clock millisecond', () => {
+    const originalUpdatedAt = new Date('2099-01-01T00:00:00.000Z');
+    const budget = Budget.restore('budget-123', {
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [serviceItem],
+      status: BudgetStatus.GENERATED,
+      updatedAt: originalUpdatedAt,
+    });
+
+    budget.addItem({
+      description: 'Oil filter',
+      type: BudgetItemType.PART,
+      quantity: 1,
+      unitPrice: 40,
+    });
+
+    expect(budget.getUpdatedAt().getTime()).toBeGreaterThan(
+      originalUpdatedAt.getTime(),
+    );
+  });
+
   it('does not allow changing items after sending to customer', () => {
     const budget = Budget.create({
       serviceOrderId: 'service-123',
@@ -171,9 +193,9 @@ describe('Budget', () => {
     );
     expect(() => acceptedBudget.sendToCustomer()).toThrow(DomainException);
     expect(() => acceptedBudget.addItem(serviceItem)).toThrow(DomainException);
-    expect(() => acceptedBudget.removeItem(acceptedBudget.getItems()[0].getId())).toThrow(
-      DomainException,
-    );
+    expect(() =>
+      acceptedBudget.removeItem(acceptedBudget.getItems()[0].getId()),
+    ).toThrow(DomainException);
 
     const refusedBudget = Budget.create({
       serviceOrderId: 'service-456',
@@ -189,8 +211,8 @@ describe('Budget', () => {
     );
     expect(() => refusedBudget.sendToCustomer()).toThrow(DomainException);
     expect(() => refusedBudget.addItem(serviceItem)).toThrow(DomainException);
-    expect(() => refusedBudget.removeItem(refusedBudget.getItems()[0].getId())).toThrow(
-      DomainException,
-    );
+    expect(() =>
+      refusedBudget.removeItem(refusedBudget.getItems()[0].getId()),
+    ).toThrow(DomainException);
   });
 });

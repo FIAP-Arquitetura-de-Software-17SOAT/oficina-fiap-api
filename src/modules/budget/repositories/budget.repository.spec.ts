@@ -128,11 +128,15 @@ describe('BudgetRepository', () => {
       ],
     });
 
-    const updated = await repository.updateGenerated(budget);
+    const updated = await repository.updateGenerated(budget, row.updatedAt);
 
     expect(prisma.budget.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: row.id, status: BudgetStatus.GENERATED },
+        where: {
+          id: row.id,
+          status: BudgetStatus.GENERATED,
+          updatedAt: row.updatedAt,
+        },
       }),
     );
     expect(prisma.budgetItem.deleteMany).toHaveBeenCalledWith({
@@ -155,7 +159,9 @@ describe('BudgetRepository', () => {
     );
     prisma.budget.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(repository.updateGenerated(budget)).resolves.toBeNull();
+    await expect(
+      repository.updateGenerated(budget, row.updatedAt),
+    ).resolves.toBeNull();
     expect(prisma.budgetItem.deleteMany).not.toHaveBeenCalled();
   });
 
@@ -173,11 +179,18 @@ describe('BudgetRepository', () => {
       answeredAt: budget.getAnsweredAt(),
     });
 
-    const updated = await repository.updateWaitingApproval(budget);
+    const updated = await repository.updateWaitingApproval(
+      budget,
+      row.updatedAt,
+    );
 
     expect(prisma.budget.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: row.id, status: BudgetStatus.WAITING_APPROVAL },
+        where: {
+          id: row.id,
+          status: BudgetStatus.WAITING_APPROVAL,
+          updatedAt: row.updatedAt,
+        },
       }),
     );
     expect(updated?.getStatus()).toBe(BudgetStatus.ACCEPTED);
