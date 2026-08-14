@@ -45,6 +45,14 @@ describe('seedAdmin', () => {
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
+  it('treats a concurrent unique-email create as already seeded', async () => {
+    prisma.user.create.mockRejectedValueOnce({ code: 'P2002' });
+
+    await expect(seedAdmin(prisma, env, hash)).resolves.toBeUndefined();
+
+    expect(prisma.user.create).toHaveBeenCalledTimes(1);
+  });
+
   it('hashes the configured password without modifying it', async () => {
     await seedAdmin(
       prisma,
