@@ -69,6 +69,28 @@ describe('BudgetService', () => {
     expect(repository.create).toHaveBeenCalled();
   });
 
+  it('normalizes service order id before allocating the next version', async () => {
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+
+    const result = await service.create({
+      serviceOrderId: ' service-123 ',
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(repository.findLastVersionByServiceOrderId).toHaveBeenCalledWith(
+      'service-123',
+    );
+    expect(result.getServiceOrderId()).toBe('service-123');
+    expect(result.getVersion()).toBe(2);
+  });
+
   it('creates next budget with incremented version for same serviceOrderId', async () => {
     repository.findLastVersionByServiceOrderId.mockResolvedValue(2);
 
@@ -362,8 +384,11 @@ describe('BudgetService', () => {
     const budgets = [makeBudget()];
     repository.findByServiceOrderId.mockResolvedValue(budgets);
 
-    await expect(service.findByServiceOrderId('service-123')).resolves.toBe(
+    await expect(service.findByServiceOrderId(' service-123 ')).resolves.toBe(
       budgets,
+    );
+    expect(repository.findByServiceOrderId).toHaveBeenCalledWith(
+      'service-123',
     );
   });
 });

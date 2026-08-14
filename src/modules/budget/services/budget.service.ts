@@ -18,40 +18,9 @@ export class BudgetService {
   constructor(private readonly budgetRepository: BudgetRepository) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
-    for (
-      let attempt = 0;
-      attempt < BudgetService.MAX_VERSION_ALLOCATION_ATTEMPTS;
-      attempt += 1
-    ) {
-      const lastVersion =
-        await this.budgetRepository.findLastVersionByServiceOrderId(
-          dto.serviceOrderId,
-        );
-      const budget = Budget.create({
-        serviceOrderId: dto.serviceOrderId,
-        version: lastVersion + 1,
-        items: dto.items,
-      });
+    const serviceOrderId = this.normalizeServiceOrderId(dto.serviceOrderId);
 
-      try {
-        return await this.budgetRepository.create(budget);
-      } catch (error) {
-        if (!this.isUniqueConstraintError(error)) {
-          throw error;
-        }
-
-        if (
-          this.isVersionUniqueConstraintError(error) &&
-          attempt < BudgetService.MAX_VERSION_ALLOCATION_ATTEMPTS - 1
-        ) {
-          continue;
-        }
-
-        throw new ConflictException('Could not allocate budget version');
-      }
-    }
-
-    throw new ConflictException('Could not allocate budget version');
+    return this.createWithNextAvailableVersion(serviceOrderId, dto.items);
   }
 
   async addItem(id: string, dto: CreateBudgetItemDto): Promise<Budget> {
@@ -105,7 +74,49 @@ export class BudgetService {
   }
 
   async findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
-    return this.budgetRepository.findByServiceOrderId(serviceOrderId);
+    return this.budgetRepository.findByServiceOrderId(
+      this.normalizeServiceOrderId(serviceOrderId),
+    );
+  }
+
+  private async createWithNextAvailableVersion(
+    serviceOrderId: string,
+    items: CreateBudgetItemDto[],
+  ): Promise<Budget> {
+    for (
+      let attempt = 0;
+      attempt < BudgetService.MAX_VERSION_ALLOCATION_ATTEMPTS;
+      attempt += 1
+    ) {
+      const lastVersion =
+        await this.budgetRepository.findLastVersionByServiceOrderId(
+          serviceOrderId,
+        );
+      const budget = Budget.create({
+        serviceOrderId,
+        version: lastVersion + 1,
+        items,
+      });
+
+      try {
+        return await this.budgetRepository.create(budget);
+      } catch (error) {
+        if (!this.isUniqueConstraintError(error)) {
+          throw error;
+        }
+
+        if (
+          this.isVersionUniqueConstraintError(error) &&
+          attempt < BudgetService.MAX_VERSION_ALLOCATION_ATTEMPTS - 1
+        ) {
+          continue;
+        }
+
+        throw new ConflictException('Could not allocate budget version');
+      }
+    }
+
+    throw new ConflictException('Could not allocate budget version');
   }
 
   private async persistGeneratedChange(
@@ -186,5 +197,9 @@ export class BudgetService {
     }
 
     return typeof fields === 'string' ? [fields] : [];
+  }
+
+  private normalizeServiceOrderId(serviceOrderId: string): string {
+    return serviceOrderId.trim();
   }
 }

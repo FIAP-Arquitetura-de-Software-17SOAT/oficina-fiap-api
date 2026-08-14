@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import {
   Budget,
+  BudgetItemType,
   BudgetStatus,
 } from '../src/modules/budget/entities/budget.entity';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
@@ -114,7 +115,7 @@ describe('InMemoryBudgetRepository', () => {
       items: [
         {
           description: 'Oil change',
-          type: 'SERVICE',
+          type: BudgetItemType.SERVICE,
           quantity: 1,
           unitPrice: 120,
         },
@@ -138,7 +139,7 @@ describe('InMemoryBudgetRepository', () => {
       items: [
         {
           description: 'Oil change',
-          type: 'SERVICE',
+          type: BudgetItemType.SERVICE,
           quantity: 1,
           unitPrice: 120,
         },
@@ -150,7 +151,7 @@ describe('InMemoryBudgetRepository', () => {
       items: [
         {
           description: 'Brake pad',
-          type: 'PART',
+          type: BudgetItemType.PART,
           quantity: 1,
           unitPrice: 80,
         },
