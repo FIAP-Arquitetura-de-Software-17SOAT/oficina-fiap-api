@@ -37,6 +37,11 @@ export interface JwtSettings {
 }
 
 const TTL_PATTERN = /^([1-9]\d*)(ms|s|m|h|d|w|y)$/;
+const MIN_PRODUCTION_SECRET_BYTES = 32;
+const LEGACY_SECRET_PLACEHOLDERS = new Set([
+  'change-me-access-secret',
+  'change-me-refresh-secret',
+]);
 const TTL_MULTIPLIERS: Record<string, number> = {
   ms: 1,
   s: 1_000,
@@ -55,6 +60,26 @@ function requiredSetting(config: ConfigService, key: string): string {
   }
 
   return value;
+}
+
+function assertProductionSecret(
+  config: ConfigService,
+  key: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET',
+  value: string,
+): void {
+  if (config.get<string>('NODE_ENV') !== 'production') {
+    return;
+  }
+
+  if (LEGACY_SECRET_PLACEHOLDERS.has(value)) {
+    throw new Error(`${key} must not use a known placeholder in production`);
+  }
+
+  if (Buffer.byteLength(value, 'utf8') < MIN_PRODUCTION_SECRET_BYTES) {
+    throw new Error(
+      `${key} must be at least ${MIN_PRODUCTION_SECRET_BYTES} UTF-8 bytes in production`,
+    );
+  }
 }
 
 function readTtl(config: ConfigService, key: string): JwtTtl {
@@ -85,6 +110,9 @@ function readTtl(config: ConfigService, key: string): JwtTtl {
 export function readJwtSettings(config: ConfigService): JwtSettings {
   const accessSecret = requiredSetting(config, 'JWT_ACCESS_SECRET');
   const refreshSecret = requiredSetting(config, 'JWT_REFRESH_SECRET');
+
+  assertProductionSecret(config, 'JWT_ACCESS_SECRET', accessSecret);
+  assertProductionSecret(config, 'JWT_REFRESH_SECRET', refreshSecret);
 
   if (accessSecret === refreshSecret) {
     throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ');
