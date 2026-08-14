@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  Max,
   IsString,
   Min,
   ValidateNested,
@@ -34,14 +35,16 @@ export class CreateBudgetItemDto {
   @IsEnum(BudgetItemType)
   type: BudgetItemType;
 
-  @ApiProperty({ example: 1, minimum: 0.01 })
-  @IsNumber()
+  @ApiProperty({ example: 1, minimum: 0.01, maximum: 99_999_999.99 })
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
+  @Max(99_999_999.99)
   quantity: number;
 
-  @ApiProperty({ example: 120, minimum: 0.01 })
-  @IsNumber()
+  @ApiProperty({ example: 120, minimum: 0.01, maximum: 99_999_999.99 })
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
+  @Max(99_999_999.99)
   unitPrice: number;
 }
 

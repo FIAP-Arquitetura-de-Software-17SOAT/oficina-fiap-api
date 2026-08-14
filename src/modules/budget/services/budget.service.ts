@@ -158,19 +158,33 @@ export class BudgetService {
       return false;
     }
 
-    const target =
-      typeof error === 'object' && error !== null && 'meta' in error
-        ? (error.meta as { target?: unknown } | undefined)?.target
-        : undefined;
+    const fields = this.getUniqueConstraintFields(error);
+    return (
+      fields.some((field) => field.includes('serviceOrderId')) &&
+      fields.some((field) => field.includes('version'))
+    );
+  }
 
-    if (Array.isArray(target)) {
-      return target.includes('serviceOrderId') && target.includes('version');
+  private getUniqueConstraintFields(error: unknown): string[] {
+    if (typeof error !== 'object' || error === null || !('meta' in error)) {
+      return [];
     }
 
-    return (
-      typeof target === 'string' &&
-      target.includes('serviceOrderId') &&
-      target.includes('version')
-    );
+    const meta = error.meta as {
+      target?: unknown;
+      driverAdapterError?: {
+        cause?: { constraint?: { fields?: unknown } };
+      };
+    };
+    const fields =
+      meta.driverAdapterError?.cause?.constraint?.fields ?? meta.target;
+
+    if (Array.isArray(fields)) {
+      return fields.filter(
+        (field): field is string => typeof field === 'string',
+      );
+    }
+
+    return typeof fields === 'string' ? [fields] : [];
   }
 }

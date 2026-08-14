@@ -1,6 +1,9 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
 
+const MAX_DECIMAL_AMOUNT = 99_999_999.99;
+const MAX_CENTS = 9_999_999_999;
+
 export enum BudgetStatus {
   GENERATED = 'GENERATED',
   WAITING_APPROVAL = 'WAITING_APPROVAL',
@@ -47,8 +50,9 @@ export class BudgetItem {
     this.id = props.id ?? randomUUID();
     this.description = this.validateDescription(props.description);
     this.type = props.type;
-    this.quantity = this.validatePositiveNumber(props.quantity, 'Quantity');
-    this.unitPrice = this.validatePositiveNumber(props.unitPrice, 'Unit price');
+    this.quantity = this.validateDecimalAmount(props.quantity, 'Quantity');
+    this.unitPrice = this.validateDecimalAmount(props.unitPrice, 'Unit price');
+    this.assertSubtotalFits();
   }
 
   getId(): string {
@@ -72,7 +76,13 @@ export class BudgetItem {
   }
 
   getSubtotal(): number {
-    return this.quantity * this.unitPrice;
+    return this.getSubtotalInCents() / 100;
+  }
+
+  getSubtotalInCents(): number {
+    return Math.round(
+      (this.toCents(this.quantity) * this.toCents(this.unitPrice)) / 100,
+    );
   }
 
   private validateDescription(description: string): string {
@@ -81,11 +91,32 @@ export class BudgetItem {
     return trimmed;
   }
 
-  private validatePositiveNumber(value: number, field: string): number {
-    if (!Number.isFinite(value) || value <= 0) {
+  private validateDecimalAmount(value: number, field: string): number {
+    const cents = this.toCents(value);
+
+    if (
+      !Number.isFinite(value) ||
+      value <= 0 ||
+      !Number.isSafeInteger(cents) ||
+      Math.abs(value * 100 - cents) > 0.000001 ||
+      value > MAX_DECIMAL_AMOUNT
+    ) {
       throw new DomainException(`${field} must be greater than zero`);
     }
     return value;
+  }
+
+  private assertSubtotalFits(): void {
+    const quantityCents = this.toCents(this.quantity);
+    const unitPriceCents = this.toCents(this.unitPrice);
+
+    if (quantityCents > (MAX_CENTS * 100) / unitPriceCents) {
+      throw new DomainException('Item subtotal exceeds supported range');
+    }
+  }
+
+  private toCents(value: number): number {
+    return Math.round(value * 100);
   }
 }
 
@@ -128,7 +159,9 @@ export class Budget {
 
   addItem(item: BudgetItemProps): void {
     this.assertGenerated();
-    this.items.push(new BudgetItem(item));
+    const budgetItem = new BudgetItem(item);
+    this.assertTotalFits([...this.items, budgetItem]);
+    this.items.push(budgetItem);
     this.touch();
   }
 
@@ -195,7 +228,7 @@ export class Budget {
   }
 
   getTotalAmount(): number {
-    return this.items.reduce((total, item) => total + item.getSubtotal(), 0);
+    return this.getTotalInCents() / 100;
   }
 
   getRefusalReason(): string | null {
@@ -235,7 +268,25 @@ export class Budget {
     if (!items?.length) {
       throw new DomainException('Budget must have at least one item');
     }
-    return items.map((item) => new BudgetItem(item));
+    const budgetItems = items.map((item) => new BudgetItem(item));
+    this.assertTotalFits(budgetItems);
+    return budgetItems;
+  }
+
+  private assertTotalFits(items: BudgetItem[]): void {
+    if (
+      items.reduce((total, item) => total + item.getSubtotalInCents(), 0) >
+      MAX_CENTS
+    ) {
+      throw new DomainException('Budget total exceeds supported range');
+    }
+  }
+
+  private getTotalInCents(): number {
+    return this.items.reduce(
+      (total, item) => total + item.getSubtotalInCents(),
+      0,
+    );
   }
 
   private assertWaitingApproval(): void {

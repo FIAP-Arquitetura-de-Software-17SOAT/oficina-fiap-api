@@ -136,6 +136,91 @@ describe('BudgetService', () => {
     ).rejects.toThrow(ConflictException);
   });
 
+  it('retries allocation after an adapter-reported version unique conflict', async () => {
+    repository.findLastVersionByServiceOrderId
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(2);
+    repository.create
+      .mockRejectedValueOnce({
+        code: 'P2002',
+        meta: {
+          driverAdapterError: {
+            cause: { constraint: { fields: ['serviceOrderId', 'version'] } },
+          },
+        },
+      })
+      .mockImplementation((budget: Budget) => budget);
+
+    const result = await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Brake pad',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 80,
+        },
+      ],
+    });
+
+    expect(result.getVersion()).toBe(3);
+    expect(repository.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries allocation when Prisma reports the version constraint as a string', async () => {
+    repository.findLastVersionByServiceOrderId
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(2);
+    repository.create
+      .mockRejectedValueOnce({
+        code: 'P2002',
+        meta: { target: 'budget_serviceOrderId_version_key' },
+      })
+      .mockImplementation((budget: Budget) => budget);
+
+    const result = await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Brake pad',
+          type: BudgetItemType.PART,
+          quantity: 1,
+          unitPrice: 80,
+        },
+      ],
+    });
+
+    expect(result.getVersion()).toBe(3);
+    expect(repository.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry an adapter-reported non-version unique conflict', async () => {
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
+    repository.create.mockRejectedValue({
+      code: 'P2002',
+      meta: {
+        driverAdapterError: {
+          cause: { constraint: { fields: ['id'] } },
+        },
+      },
+    });
+
+    await expect(
+      service.create({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Brake pad',
+            type: BudgetItemType.PART,
+            quantity: 1,
+            unitPrice: 80,
+          },
+        ],
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(repository.create).toHaveBeenCalledTimes(1);
+  });
+
   it('adds an item to a generated budget and persists the new total', async () => {
     const budget = makeBudget();
     const expectedUpdatedAt = budget.getUpdatedAt();

@@ -317,6 +317,38 @@ describe('Budget (e2e)', () => {
       .expect(400);
   });
 
+  it('rejects item monetary values beyond supported precision and range', async () => {
+    await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Precision overflow',
+            type: 'PART',
+            quantity: 1.001,
+            unitPrice: 1,
+          },
+        ],
+      })
+      .expect(400);
+
+    await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Range overflow',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 100_000_000,
+          },
+        ],
+      })
+      .expect(400);
+  });
+
   it('rejects budget list requests without a valid service order id', async () => {
     await request(http).get('/api/v1/budgets').expect(400);
     await request(http).get('/api/v1/budgets?serviceOrderId=').expect(400);

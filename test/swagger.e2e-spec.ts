@@ -102,6 +102,21 @@ describe('Swagger', () => {
     );
   });
 
+  it('documenta conflitos nas operacoes mutaveis de budget', () => {
+    const budgetPaths = [
+      ['/api/v1/budgets', 'post'],
+      ['/api/v1/budgets/{id}/items', 'post'],
+      ['/api/v1/budgets/{id}/items/{itemId}', 'delete'],
+      ['/api/v1/budgets/{id}/send', 'post'],
+      ['/api/v1/budgets/{id}/accept', 'post'],
+      ['/api/v1/budgets/{id}/refuse', 'post'],
+    ] as const;
+
+    for (const [path, method] of budgetPaths) {
+      expect(document.paths[path][method]!.responses).toHaveProperty('409');
+    }
+  });
+
   it('serve a UI e o JSON em /api/v1/docs', () => {
     expect(document.paths['/api/v1/health']).toBeDefined();
   });

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -38,6 +39,7 @@ export class BudgetController {
   @ApiOperation({ summary: 'Cria um orcamento' })
   @ApiCreatedResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({ description: 'Dados do orcamento invalidos' })
+  @ApiConflictResponse({ description: 'Budget version already exists' })
   async create(@Body() dto: CreateBudgetDto): Promise<BudgetResponseDto> {
     return BudgetMapper.toResponse(await this.budgetService.create(dto));
   }
@@ -48,6 +50,7 @@ export class BudgetController {
   @ApiBadRequestResponse({
     description: 'Item ou status do orcamento invalido',
   })
+  @ApiConflictResponse({ description: 'Budget was changed by another request' })
   @ApiNotFoundResponse({ description: 'Budget not found' })
   async addItem(
     @Param('id', ParseUUIDPipe) id: string,
@@ -62,6 +65,7 @@ export class BudgetController {
   @ApiBadRequestResponse({
     description: 'Item ou status do orcamento invalido',
   })
+  @ApiConflictResponse({ description: 'Budget was changed by another request' })
   @ApiNotFoundResponse({ description: 'Budget not found' })
   async removeItem(
     @Param('id', ParseUUIDPipe) id: string,
@@ -90,6 +94,7 @@ export class BudgetController {
   @ApiOperation({ summary: 'Envia o orcamento ao cliente' })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({ description: 'Budget status is invalid' })
+  @ApiConflictResponse({ description: 'Budget was changed by another request' })
   @ApiNotFoundResponse({ description: 'Budget not found' })
   async send(
     @Param('id', ParseUUIDPipe) id: string,
@@ -102,6 +107,7 @@ export class BudgetController {
   @ApiOperation({ summary: 'Aceita o orcamento' })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({ description: 'Budget status is invalid' })
+  @ApiConflictResponse({ description: 'Budget was changed by another request' })
   @ApiNotFoundResponse({ description: 'Budget not found' })
   async accept(
     @Param('id', ParseUUIDPipe) id: string,
@@ -116,6 +122,7 @@ export class BudgetController {
   @ApiBadRequestResponse({
     description: 'Motivo ou status do orcamento invalido',
   })
+  @ApiConflictResponse({ description: 'Budget was changed by another request' })
   @ApiNotFoundResponse({ description: 'Budget not found' })
   async refuse(
     @Param('id', ParseUUIDPipe) id: string,
