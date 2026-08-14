@@ -13,6 +13,9 @@ and Swagger.
 - Follow TDD when a plan asks for failing tests first.
 - Keep implementation scoped to the active plan or user request.
 - Do not skip verification commands requested by the plan.
+- When preparing a pull request description, follow
+  `.github/pull_request_template.md` and fill in summary, changes, tests, and
+  observations based on the actual diff.
 
 ## Commands
 
