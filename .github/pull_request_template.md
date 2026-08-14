@@ -31,8 +31,8 @@
 
 ## 📋 Checklist
 
-- [ ] Mantive controllers finos e regras de negócio nas entidades/services
-- [ ] Não aceitei totais calculados pelo request body
-- [ ] Atualizei/adaptei testes quando necessário
-- [ ] Verifiquei impactos em Prisma/schema/migrations, se aplicável
-- [ ] Atualizei documentação/Swagger quando aplicável
+- [ ] A mudança está coerente com o escopo do PR
+- [ ] Testes foram adicionados ou atualizados quando necessário
+- [ ] A documentação/Swagger foi atualizada quando aplicável
+- [ ] Impactos em Prisma/schema/migrations foram avaliados quando aplicável
+- [ ] Foram avaliados riscos de regressão ou efeitos colaterais
