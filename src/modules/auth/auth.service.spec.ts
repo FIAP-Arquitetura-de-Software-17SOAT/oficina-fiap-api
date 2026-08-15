@@ -313,6 +313,77 @@ describe('AuthService', () => {
   });
 
   it.each([
+    ['change-me-access-secret', `${'r'.repeat(32)}-refresh`],
+    [`${'a'.repeat(32)}-access`, 'change-me-refresh-secret'],
+  ])(
+    'rejects legacy placeholder JWT secrets in production',
+    (accessSecret, refreshSecret) => {
+      expect(() =>
+        readJwtSettings({
+          get: (key: string) =>
+            (
+              ({
+                NODE_ENV: 'production',
+                JWT_ACCESS_SECRET: accessSecret,
+                JWT_ACCESS_TTL: '15m',
+                JWT_REFRESH_SECRET: refreshSecret,
+                JWT_REFRESH_TTL: '7d',
+              }) as Record<string, string>
+            )[key],
+        } as never),
+      ).toThrow('must not use a known placeholder in production');
+    },
+  );
+
+  it.each([
+    ['access', 'a'.repeat(31), `${'r'.repeat(32)}-refresh`],
+    ['refresh', `${'a'.repeat(32)}-access`, 'r'.repeat(31)],
+  ])(
+    'rejects a production %s secret below 32 UTF-8 bytes',
+    (_case, accessSecret, refreshSecret) => {
+      expect(() =>
+        readJwtSettings({
+          get: (key: string) =>
+            (
+              ({
+                NODE_ENV: 'production',
+                JWT_ACCESS_SECRET: accessSecret,
+                JWT_ACCESS_TTL: '15m',
+                JWT_REFRESH_SECRET: refreshSecret,
+                JWT_REFRESH_TTL: '7d',
+              }) as Record<string, string>
+            )[key],
+        } as never),
+      ).toThrow('must be at least 32 UTF-8 bytes in production');
+    },
+  );
+
+  it('accepts distinct 32-byte JWT secrets in production', () => {
+    const accessSecret = 'aB3dE5fG7hJ9kL2mN4pQ6rS8tU0vW1xy';
+    const refreshSecret = 'zY8xW6vU4tS2rQ0pN9mL7kJ5hG3fE1dC';
+
+    expect(Buffer.byteLength(accessSecret, 'utf8')).toBe(32);
+    expect(Buffer.byteLength(refreshSecret, 'utf8')).toBe(32);
+    expect(
+      readJwtSettings({
+        get: (key: string) =>
+          (
+            ({
+              NODE_ENV: 'production',
+              JWT_ACCESS_SECRET: accessSecret,
+              JWT_ACCESS_TTL: '15m',
+              JWT_REFRESH_SECRET: refreshSecret,
+              JWT_REFRESH_TTL: '7d',
+            }) as Record<string, string>
+          )[key],
+      } as never),
+    ).toMatchObject({
+      accessSecret,
+      refreshSecret,
+    });
+  });
+
+  it.each([
     ['a sub-second access TTL', '999ms', '7d'],
     ['a non-whole-second refresh TTL', '15m', '1500ms'],
     ['an overflowing access TTL', '9007199254740992s', '7d'],

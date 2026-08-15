@@ -25,6 +25,30 @@ describe('auth DTOs', () => {
     );
   });
 
+  it('accepts a password at the 72-byte UTF-8 bcrypt boundary', async () => {
+    const password = `${'é'.repeat(32)}12345678`;
+    const dto = plainToInstance(LoginDto, {
+      email: 'admin@example.com',
+      password,
+    });
+
+    expect(Buffer.byteLength(password, 'utf8')).toBe(72);
+    await expect(validate(dto)).resolves.toHaveLength(0);
+  });
+
+  it('rejects a password over the 72-byte UTF-8 bcrypt boundary', async () => {
+    const password = `${'é'.repeat(32)}123456789`;
+    const dto = plainToInstance(LoginDto, {
+      email: 'admin@example.com',
+      password,
+    });
+
+    expect(Buffer.byteLength(password, 'utf8')).toBe(73);
+    expect((await validate(dto)).map((error) => error.property)).toContain(
+      'password',
+    );
+  });
+
   it('requires a refresh token body value', async () => {
     const dto = plainToInstance(RefreshTokenDto, {});
 
