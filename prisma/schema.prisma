@@ -5,8 +5,9 @@
 
 generator client {
   provider     = "prisma-client"
-  output       = "../generated/prisma"
-  moduleFormat = "cjs"
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "cjs"
   // Sem isso o gerador escolhe a extensão dos imports conforme o tsconfig que
   // encontra no ambiente: gera ".js" na máquina do dev e ".ts" dentro do
   // Docker (onde o tsconfig não está presente no estágio), quebrando o build.
@@ -28,4 +29,34 @@ model Client {
   updatedAt DateTime @updatedAt
 
   @@map("client")
+}
+
+model PurchaseOrder {
+  id       String @id @default(uuid())
+  number   String @unique
+  supplier String
+  status   String
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deliveredAt DateTime?
+
+  items PurchaseOrderItem[]
+
+  @@map("purchase_order")
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(uuid())
+  purchaseOrderId String
+
+  pecaId String
+
+  quantity Int
+
+  unitPriceCents Int
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_order_item")
 }
