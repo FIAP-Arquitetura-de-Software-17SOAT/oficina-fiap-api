@@ -35,10 +35,22 @@ Pré-requisitos: Docker e Docker Compose.
 
 ```bash
 cp .env.sample .env
+# preencha os valores vazios do .env
 docker compose up --build
 ```
 
-Só isso. O compose orquestra quatro serviços em ordem:
+Antes do `up`, defina `POSTGRES_PASSWORD`, `JWT_ACCESS_SECRET`,
+`JWT_REFRESH_SECRET`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`. O Compose interrompe a
+configuração se qualquer um deles estiver vazio. Gere valores aleatórios
+independentes para os dois secrets JWT; por exemplo, execute duas vezes:
+
+```bash
+openssl rand -base64 48
+```
+
+Para a senha do Postgres, `openssl rand -hex 24` produz um valor forte que pode
+ser usado diretamente na URL. O compose então orquestra quatro serviços em
+ordem:
 
 1. **`db`** — Postgres sobe e espera ficar `healthy`
 2. **`migrate`** — roda `prisma migrate deploy` e encerra
@@ -61,20 +73,24 @@ mão.
 
 ## Autenticação administrativa
 
-Configure as credenciais e os JWTs no `.env` antes de subir a aplicação:
+Configure as credenciais e os JWTs no `.env` antes de subir a aplicação. Os
+campos de segredo e senha ficam deliberadamente vazios no `.env.sample`:
 
-| Variável             | Finalidade                      | Exemplo local              |
-| -------------------- | ------------------------------- | -------------------------- |
-| `JWT_ACCESS_SECRET`  | Assina access tokens            | `change-me-access-secret`  |
-| `JWT_ACCESS_TTL`     | Validade do access token        | `15m`                      |
-| `JWT_REFRESH_SECRET` | Assina refresh tokens           | `change-me-refresh-secret` |
-| `JWT_REFRESH_TTL`    | Validade do refresh token       | `7d`                       |
-| `ADMIN_EMAIL`        | E-mail do administrador inicial | `admin@example.com`        |
-| `ADMIN_PASSWORD`     | Senha do administrador inicial  | `change-me-admin-password` |
+| Variável             | Finalidade                      | Regra                          |
+| -------------------- | ------------------------------- | ------------------------------ |
+| `JWT_ACCESS_SECRET`  | Assina access tokens            | aleatório, distinto do refresh |
+| `JWT_ACCESS_TTL`     | Validade do access token        | duração JWT; padrão `15m`      |
+| `JWT_REFRESH_SECRET` | Assina refresh tokens           | aleatório, distinto do access  |
+| `JWT_REFRESH_TTL`    | Validade do refresh token       | duração JWT; padrão `7d`       |
+| `ADMIN_EMAIL`        | E-mail do administrador inicial | e-mail válido                  |
+| `ADMIN_PASSWORD`     | Senha do administrador inicial  | 8–72 caracteres, até 72 bytes  |
 
-Os dois secrets JWT são obrigatórios, devem ser diferentes e, fora do ambiente
-local, devem ser valores aleatórios de alta entropia. Os TTLs aceitam durações
-JWT inteiras como `15m`, `1h` ou `7d`. A senha deve ter entre 8 e 72 caracteres.
+Em `NODE_ENV=production`, cada secret JWT deve ter pelo menos 32 bytes UTF-8;
+os placeholders conhecidos de versões anteriores são rejeitados. Tamanho
+mínimo não substitui aleatoriedade: gere os valores com uma fonte
+criptograficamente segura. Os TTLs aceitam durações JWT inteiras como `15m`,
+`1h` ou `7d`. O limite de 72 bytes da senha evita o truncamento silencioso do
+bcrypt para caracteres UTF-8 multibyte.
 
 O Docker Compose executa o seed automaticamente. No desenvolvimento local, após
 aplicar as migrations, rode:
@@ -83,9 +99,21 @@ aplicar as migrations, rode:
 npx prisma db seed
 ```
 
-O seed é idempotente e usa `ADMIN_EMAIL`/`ADMIN_PASSWORD`: ele não altera um
+O seed é idempotente e usa `ADMIN_EMAIL`/`ADMIN_PASSWORD`: ele normaliza e valida
+o e-mail e aplica à senha as mesmas regras do login, mas não altera um
 administrador que já exista. Senhas nunca são persistidas em texto puro; apenas
-o hash bcrypt é armazenado.
+o hash bcrypt é armazenado. Essas duas variáveis são entregues somente ao
+container temporário `seed`, não ao processo de longa duração da API.
+
+> Esta alteração não rotaciona credenciais de uma instalação existente. Antes
+> do próximo deploy, o operador deve gerar dois novos secrets JWT, gravá-los no
+> gerenciador de secrets ou `.env` e recriar o container da aplicação; tokens já
+> emitidos deixarão de ser válidos. Se a senha conhecida do Postgres já foi
+> usada, altere a senha do usuário dentro do banco e `POSTGRES_PASSWORD` de forma
+> coordenada — editar apenas o `.env` não muda o volume existente. O seed também
+> não redefine o e-mail ou a senha de um administrador existente; faça essa
+> redefinição por um procedimento operacional controlado. Em um ambiente local
+> descartável, remover o volume e executar o seed novamente é uma alternativa.
 
 ### Endpoints
 
@@ -94,7 +122,7 @@ o hash bcrypt é armazenado.
 ```json
 {
   "email": "admin@example.com",
-  "password": "change-me-admin-password"
+  "password": "senha-configurada-no-seed"
 }
 ```
 
@@ -186,8 +214,10 @@ npx prisma migrate dev       # aplica migrations e gera o Prisma Client
 npm run start:dev
 ```
 
-O `DATABASE_URL` do `.env.sample` já aponta para `localhost:5432`, que é o
-endereço correto quando a app roda no host.
+Para executar Prisma ou a aplicação no host, preencha também `DATABASE_URL` com
+o endereço local e a mesma senha configurada em `POSTGRES_PASSWORD`, por
+exemplo `postgres://postgres:SENHA@localhost:5432/oficina_fiap`. Dentro do
+Compose, a URL é montada e injetada automaticamente com o host `db`.
 
 ### Criando uma migration
 
