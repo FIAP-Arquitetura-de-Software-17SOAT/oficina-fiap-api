@@ -2,9 +2,9 @@ import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { createHash } from 'crypto';
 import { AuthService, AuthTokenPayload, readJwtSettings } from './auth.service';
-import { User } from '../../shared/identity/entities/user.entity';
-import { RefreshSession } from '../../shared/identity/entities/refresh-session.entity';
-import { PasswordHashService } from '../../shared/identity/services/password-hash.service';
+import { User } from '../../../shared/identity/entities/user.entity';
+import { RefreshSession } from '../../../shared/identity/entities/refresh-session.entity';
+import { PasswordHashService } from '../../../shared/identity/services/password-hash.service';
 
 const ACCESS_SECRET = 'access-secret-for-tests';
 const REFRESH_SECRET = 'refresh-secret-for-tests';
