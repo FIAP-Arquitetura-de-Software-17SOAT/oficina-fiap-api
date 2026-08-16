@@ -3,13 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
 import { createHash, randomUUID } from 'crypto';
-import { PrismaService } from '../../shared/database/prisma.service';
-import { RefreshSession } from '../../shared/identity/entities/refresh-session.entity';
-import { User, UserRole } from '../../shared/identity/entities/user.entity';
-import { RefreshSessionRepository } from '../../shared/identity/repositories/refresh-session.repository';
-import { UserRepository } from '../../shared/identity/repositories/user.repository';
-import { PasswordHashService } from '../../shared/identity/services/password-hash.service';
-import { LoginDto, TokenPairDto } from './dto/auth.dto';
+import { PrismaService } from '../../../shared/database/prisma.service';
+import { RefreshSession } from '../../../shared/identity/entities/refresh-session.entity';
+import { User, UserRole } from '../../../shared/identity/entities/user.entity';
+import { RefreshSessionRepository } from '../../../shared/identity/repositories/refresh-session.repository';
+import { UserRepository } from '../../../shared/identity/repositories/user.repository';
+import { PasswordHashService } from '../../../shared/identity/services/password-hash.service';
+import { LoginDto, TokenPairDto } from '../dto/auth.dto';
 
 type JwtTtl = Exclude<SignOptions['expiresIn'], number | undefined>;
 

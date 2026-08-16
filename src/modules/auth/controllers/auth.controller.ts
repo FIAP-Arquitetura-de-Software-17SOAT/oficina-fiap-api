@@ -7,8 +7,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { AuthService } from './auth.service';
-import { LoginDto, RefreshTokenDto, TokenPairDto } from './dto/auth.dto';
+import { AuthService } from '../services/auth.service';
+import { LoginDto, RefreshTokenDto, TokenPairDto } from '../dto/auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
