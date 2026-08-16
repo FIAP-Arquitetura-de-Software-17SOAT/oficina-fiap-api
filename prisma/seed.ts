@@ -1,4 +1,9 @@
 import { hash as bcryptHash } from 'bcrypt';
+import {
+  isValidLoginEmail,
+  isValidLoginPassword,
+  normalizeLoginEmail,
+} from '../src/shared/identity/login-credentials';
 
 type SeedEnvironment = Record<string, string | undefined>;
 
@@ -13,7 +18,10 @@ type SeedPrisma = {
 
 type PasswordHasher = (password: string) => Promise<string>;
 
-function requiredEnv(env: SeedEnvironment, name: 'ADMIN_EMAIL' | 'ADMIN_PASSWORD'): string {
+function requiredEnv(
+  env: SeedEnvironment,
+  name: 'ADMIN_EMAIL' | 'ADMIN_PASSWORD',
+): string {
   const value = env[name];
 
   if (!value?.trim()) {
@@ -37,14 +45,26 @@ export async function seedAdmin(
   env: SeedEnvironment,
   hash: PasswordHasher,
 ): Promise<void> {
-  const email = requiredEnv(env, 'ADMIN_EMAIL').trim().toLowerCase();
+  const email = normalizeLoginEmail(requiredEnv(env, 'ADMIN_EMAIL'));
+  const password = requiredEnv(env, 'ADMIN_PASSWORD');
+
+  if (!isValidLoginEmail(email)) {
+    throw new Error('ADMIN_EMAIL must be a valid email address');
+  }
+
+  if (!isValidLoginPassword(password)) {
+    throw new Error(
+      'ADMIN_PASSWORD must be 8 to 72 characters and at most 72 UTF-8 bytes',
+    );
+  }
+
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
     return;
   }
 
-  const passwordHash = await hash(requiredEnv(env, 'ADMIN_PASSWORD'));
+  const passwordHash = await hash(password);
 
   try {
     await prisma.user.create({
@@ -77,7 +97,9 @@ async function runSeed(): Promise<void> {
   });
 
   try {
-    await seedAdmin(prisma, process.env, (password) => bcryptHash(password, 12));
+    await seedAdmin(prisma, process.env, (password) =>
+      bcryptHash(password, 12),
+    );
   } finally {
     await prisma.$disconnect();
   }
