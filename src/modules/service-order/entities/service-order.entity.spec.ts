@@ -78,6 +78,15 @@ describe('ServiceOrder', () => {
   });
 
   describe('restore', () => {
+    it('recusa status desconhecido', () => {
+      expect(() =>
+        ServiceOrder.restore(
+          'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+          validProps({ status: 'NOT_A_REAL_STATUS' as ServiceOrderStatus }),
+        ),
+      ).toThrow(DomainException);
+    });
+
     it('preserva id, status e datas vindas do banco', () => {
       const createdAt = new Date('2026-01-01T10:00:00.000Z');
       const updatedAt = new Date('2026-02-01T10:00:00.000Z');

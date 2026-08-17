@@ -54,8 +54,8 @@ export class ServiceOrder {
     this.setClientId(props.clientId);
     this.setVehicleId(props.vehicleId);
     this.setDescription(props.description);
+    this.setStatus(props.status);
 
-    this.status = props.status ?? ServiceOrderStatus.RECEIVED;
     this.cancellationReason = props.cancellationReason ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
@@ -173,6 +173,21 @@ export class ServiceOrder {
     }
 
     this.description = trimmed;
+  }
+
+  private setStatus(status: ServiceOrderStatus | undefined): void {
+    if (status === undefined) {
+      this.status = ServiceOrderStatus.RECEIVED;
+      return;
+    }
+
+    if (!Object.values(ServiceOrderStatus).includes(status)) {
+      throw new DomainException(
+        `Status da ordem de serviço inválido: ${status}`,
+      );
+    }
+
+    this.status = status;
   }
 
   private touch(): void {
