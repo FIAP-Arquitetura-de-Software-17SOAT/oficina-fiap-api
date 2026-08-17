@@ -10,6 +10,7 @@ const row = {
   description: 'Barulho no motor',
   status: 'RECEIVED',
   cancellationReason: null as string | null,
+  completedAt: null as Date | null,
   createdAt: new Date('2026-01-01T10:00:00.000Z'),
   updatedAt: new Date('2026-01-01T10:00:00.000Z'),
 };
@@ -101,7 +102,7 @@ describe('ServiceOrderRepository', () => {
     expect(serviceOrders[0].getId()).toBe(row.id);
   });
 
-  it('update envia apenas status, motivo de cancelamento e updatedAt', async () => {
+  it('update envia status, motivo de cancelamento, completedAt e updatedAt', async () => {
     const cancelledRow = {
       ...row,
       status: 'CANCELLED',
@@ -129,7 +130,30 @@ describe('ServiceOrderRepository', () => {
     expect(call.data).toEqual({
       status: 'CANCELLED',
       cancellationReason: 'Cliente desistiu',
+      completedAt: null,
       updatedAt: serviceOrder.getUpdatedAt(),
     });
+  });
+
+  it('update envia completedAt quando a OS é finalizada', async () => {
+    const completedRow = { ...row, status: 'COMPLETED', completedAt: new Date() };
+    prisma.serviceOrder.update.mockResolvedValue(completedRow);
+
+    const serviceOrder = ServiceOrder.restore(row.id, {
+      clientId: row.clientId,
+      vehicleId: row.vehicleId,
+      description: row.description,
+      status: ServiceOrderStatus.IN_PROGRESS,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+    serviceOrder.complete();
+
+    await repository.update(serviceOrder);
+
+    const call = prisma.serviceOrder.update.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(call.data.completedAt).toBeInstanceOf(Date);
   });
 });

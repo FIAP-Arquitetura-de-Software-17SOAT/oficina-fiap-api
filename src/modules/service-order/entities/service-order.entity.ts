@@ -8,6 +8,7 @@ export interface ServiceOrderProps {
   description: string;
   status?: ServiceOrderStatus;
   cancellationReason?: string | null;
+  completedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -46,6 +47,7 @@ export class ServiceOrder {
   private description: string;
   private status: ServiceOrderStatus;
   private cancellationReason: string | null;
+  private completedAt: Date | null;
   private readonly createdAt: Date;
   private updatedAt: Date;
 
@@ -58,6 +60,7 @@ export class ServiceOrder {
     this.setStatus(props.status);
 
     this.cancellationReason = props.cancellationReason ?? null;
+    this.completedAt = props.completedAt ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }
@@ -94,6 +97,10 @@ export class ServiceOrder {
     return this.cancellationReason;
   }
 
+  getCompletedAt(): Date | null {
+    return this.completedAt;
+  }
+
   getCreatedAt(): Date {
     return this.createdAt;
   }
@@ -120,6 +127,7 @@ export class ServiceOrder {
 
   complete(): void {
     this.transitionTo(ServiceOrderStatus.COMPLETED);
+    this.completedAt = new Date();
   }
 
   deliver(): void {

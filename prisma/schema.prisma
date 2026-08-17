@@ -33,12 +33,13 @@ model Client {
 }
 
 model ServiceOrder {
-  id                 String   @id
+  id                 String    @id
   clientId           String
   vehicleId          String
   description        String
   status             String
   cancellationReason String?
+  completedAt        DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -10,6 +10,7 @@ interface ServiceOrderRow {
   description: string;
   status: string;
   cancellationReason: string | null;
+  completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +47,7 @@ export class ServiceOrderRepository {
       data: {
         status: serviceOrder.getStatus(),
         cancellationReason: serviceOrder.getCancellationReason(),
+        completedAt: serviceOrder.getCompletedAt(),
         updatedAt: serviceOrder.getUpdatedAt(),
       },
     });
@@ -61,6 +63,7 @@ export class ServiceOrderRepository {
       description: serviceOrder.getDescription(),
       status: serviceOrder.getStatus(),
       cancellationReason: serviceOrder.getCancellationReason(),
+      completedAt: serviceOrder.getCompletedAt(),
       createdAt: serviceOrder.getCreatedAt(),
       updatedAt: serviceOrder.getUpdatedAt(),
     };
@@ -73,6 +76,7 @@ export class ServiceOrderRepository {
       description: row.description,
       status: row.status as ServiceOrderStatus,
       cancellationReason: row.cancellationReason,
+      completedAt: row.completedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });

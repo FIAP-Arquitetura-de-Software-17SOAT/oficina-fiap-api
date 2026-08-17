@@ -47,6 +47,12 @@ describe('ServiceOrder', () => {
       expect(os.getCreatedAt()).toBeInstanceOf(Date);
       expect(os.getUpdatedAt()).toBeInstanceOf(Date);
     });
+
+    it('não tem data de finalização ao criar', () => {
+      const os = ServiceOrder.create(validProps());
+
+      expect(os.getCompletedAt()).toBeNull();
+    });
   });
 
   describe('invariantes', () => {
@@ -105,6 +111,17 @@ describe('ServiceOrder', () => {
       expect(os.getCreatedAt()).toBe(createdAt);
       expect(os.getUpdatedAt()).toBe(updatedAt);
     });
+
+    it('preserva completedAt vindo do banco', () => {
+      const completedAt = new Date('2026-03-01T10:00:00.000Z');
+
+      const os = ServiceOrder.restore(
+        'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        validProps({ status: ServiceOrderStatus.COMPLETED, completedAt }),
+      );
+
+      expect(os.getCompletedAt()).toBe(completedAt);
+    });
   });
 
   describe('transições de status', () => {
@@ -159,6 +176,14 @@ describe('ServiceOrder', () => {
 
       expect(os.getStatus()).toBe(expected);
       expect(os.getUpdatedAt().getTime()).toBeGreaterThan(oldDate.getTime());
+    });
+
+    it('complete() define completedAt', () => {
+      const os = restoredAt(ServiceOrderStatus.IN_PROGRESS);
+
+      os.complete();
+
+      expect(os.getCompletedAt()).toBeInstanceOf(Date);
     });
 
     it.each([
