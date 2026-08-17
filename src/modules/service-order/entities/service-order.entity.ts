@@ -34,7 +34,8 @@ const ALLOWED_TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
     ServiceOrderStatus.COMPLETED,
     ServiceOrderStatus.CANCELLED,
   ],
-  [ServiceOrderStatus.COMPLETED]: [],
+  [ServiceOrderStatus.COMPLETED]: [ServiceOrderStatus.DELIVERED],
+  [ServiceOrderStatus.DELIVERED]: [],
   [ServiceOrderStatus.CANCELLED]: [],
 };
 
@@ -119,6 +120,10 @@ export class ServiceOrder {
 
   complete(): void {
     this.transitionTo(ServiceOrderStatus.COMPLETED);
+  }
+
+  deliver(): void {
+    this.transitionTo(ServiceOrderStatus.DELIVERED);
   }
 
   cancel(reason: string): void {

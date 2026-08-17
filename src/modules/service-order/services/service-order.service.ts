@@ -80,6 +80,14 @@ export class ServiceOrderService {
     return this.serviceOrderRepository.update(serviceOrder);
   }
 
+  async deliver(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.deliver();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
   async cancel(id: string, dto: CancelServiceOrderDto): Promise<ServiceOrder> {
     const serviceOrder = await this.findById(id);
 

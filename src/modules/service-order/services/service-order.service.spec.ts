@@ -147,6 +147,11 @@ describe('ServiceOrderService', () => {
       ServiceOrderStatus.IN_PROGRESS,
     ],
     ['complete', ServiceOrderStatus.IN_PROGRESS, ServiceOrderStatus.COMPLETED],
+    [
+      'deliver',
+      ServiceOrderStatus.COMPLETED,
+      ServiceOrderStatus.DELIVERED,
+    ],
   ] as const)('%s', (method, from, expected) => {
     it(`transiciona de ${from} para ${expected} e persiste`, async () => {
       const serviceOrder = makeServiceOrder(from);

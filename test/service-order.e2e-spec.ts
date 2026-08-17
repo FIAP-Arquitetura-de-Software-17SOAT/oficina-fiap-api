@@ -147,16 +147,24 @@ describe('ServiceOrder (integração)', () => {
     ) =>
       request(http).patch(`/api/v1/service-order/${id}/${action}`).send(body);
 
-    it('percorre o fluxo feliz até COMPLETED', async () => {
+    it('percorre o fluxo feliz até DELIVERED', async () => {
       const clientId = await createClient();
       const { body: created } = await open(openPayload(clientId)).expect(201);
 
       await advance(created.id, 'start-diagnosis').expect(200);
       await advance(created.id, 'await-approval').expect(200);
       await advance(created.id, 'start-progress').expect(200);
-      const response = await advance(created.id, 'complete').expect(200);
+      await advance(created.id, 'complete').expect(200);
+      const response = await advance(created.id, 'deliver').expect(200);
 
-      expect(response.body.status).toBe('COMPLETED');
+      expect(response.body.status).toBe('DELIVERED');
+    });
+
+    it('devolve 400 ao entregar OS que ainda não foi finalizada', async () => {
+      const clientId = await createClient();
+      const { body: created } = await open(openPayload(clientId)).expect(201);
+
+      await advance(created.id, 'deliver').expect(400);
     });
 
     it('percorre o fluxo com peças até COMPLETED', async () => {

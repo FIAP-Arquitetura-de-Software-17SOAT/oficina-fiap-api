@@ -60,6 +60,7 @@ export class ServiceOrderResponseDto {
       'AWAITING_PARTS',
       'IN_PROGRESS',
       'COMPLETED',
+      'DELIVERED',
       'CANCELLED',
     ],
   })

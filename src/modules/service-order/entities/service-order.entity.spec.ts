@@ -147,6 +147,11 @@ describe('ServiceOrder', () => {
         (os: ServiceOrder) => os.complete(),
         ServiceOrderStatus.COMPLETED,
       ],
+      [
+        ServiceOrderStatus.COMPLETED,
+        (os: ServiceOrder) => os.deliver(),
+        ServiceOrderStatus.DELIVERED,
+      ],
     ])('permite transição válida a partir de %s', (from, act, expected) => {
       const os = restoredAt(from);
 
@@ -179,6 +184,10 @@ describe('ServiceOrder', () => {
       [ServiceOrderStatus.IN_PROGRESS, (os: ServiceOrder) => os.awaitParts()],
       [ServiceOrderStatus.COMPLETED, (os: ServiceOrder) => os.startDiagnosis()],
       [ServiceOrderStatus.COMPLETED, (os: ServiceOrder) => os.cancel('motivo')],
+      [ServiceOrderStatus.RECEIVED, (os: ServiceOrder) => os.deliver()],
+      [ServiceOrderStatus.IN_PROGRESS, (os: ServiceOrder) => os.deliver()],
+      [ServiceOrderStatus.DELIVERED, (os: ServiceOrder) => os.startDiagnosis()],
+      [ServiceOrderStatus.DELIVERED, (os: ServiceOrder) => os.cancel('motivo')],
       [ServiceOrderStatus.CANCELLED, (os: ServiceOrder) => os.startDiagnosis()],
     ])('recusa transição inválida a partir de %s', (from, act) => {
       const os = restoredAt(from);
@@ -213,6 +222,12 @@ describe('ServiceOrder', () => {
 
     it('cancel() recusa a partir de estado terminal', () => {
       const os = restoredAt(ServiceOrderStatus.COMPLETED);
+
+      expect(() => os.cancel('motivo')).toThrow(DomainException);
+    });
+
+    it('cancel() recusa a partir de DELIVERED', () => {
+      const os = restoredAt(ServiceOrderStatus.DELIVERED);
 
       expect(() => os.cancel('motivo')).toThrow(DomainException);
     });
