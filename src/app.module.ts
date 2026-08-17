@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ClientModule } from './modules/client/client.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { StockModule } from './modules/stock/stock.module';
 import { PrismaModule } from './shared/database/prisma.module';
 
 @Module({
@@ -33,6 +34,7 @@ import { PrismaModule } from './shared/database/prisma.module';
     PrismaModule,
     ClientModule,
     AuthModule,
+    StockModule,
   ],
   controllers: [AppController],
 })

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 
-export type UserRole = 'ADMIN';
+export type UserRole = 'ADMIN' | 'STOCK_MANAGER';
 
 export interface UserProps {
   email: string;

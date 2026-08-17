@@ -19,6 +19,18 @@ datasource db {
 
 enum Role {
   ADMIN
+  STOCK_MANAGER
+}
+
+enum PartType {
+  PART
+  SUPPLY
+}
+
+enum MeasurementUnit {
+  UNIT
+  LITER
+  KILOGRAM
 }
 
 model User {
@@ -59,4 +71,20 @@ model Client {
   updatedAt DateTime @updatedAt
 
   @@map("client")
+}
+
+model Part {
+  id              String          @id
+  code            String          @unique
+  name            String
+  description     String?
+  type            PartType
+  unit            MeasurementUnit
+  unitPrice       Decimal         @db.Decimal(12, 2)
+  quantity        Int
+  minimumQuantity Int
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("part")
 }
