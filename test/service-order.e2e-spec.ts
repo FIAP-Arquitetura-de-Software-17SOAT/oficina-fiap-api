@@ -77,9 +77,9 @@ describe('ServiceOrder (integração)', () => {
     });
 
     it('devolve 404 quando o cliente não existe', async () => {
-      await open(
-        openPayload('f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c'),
-      ).expect(404);
+      await open(openPayload('f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')).expect(
+        404,
+      );
     });
 
     it('devolve 400 quando a descrição está vazia', async () => {
@@ -135,9 +135,7 @@ describe('ServiceOrder (integração)', () => {
     });
 
     it('devolve 400 para id que não é uuid', async () => {
-      await request(http)
-        .get('/api/v1/service-order/nao-e-uuid')
-        .expect(400);
+      await request(http).get('/api/v1/service-order/nao-e-uuid').expect(400);
     });
   });
 
@@ -146,7 +144,8 @@ describe('ServiceOrder (integração)', () => {
       id: string,
       action: string,
       body: Record<string, unknown> = {},
-    ) => request(http).patch(`/api/v1/service-order/${id}/${action}`).send(body);
+    ) =>
+      request(http).patch(`/api/v1/service-order/${id}/${action}`).send(body);
 
     it('percorre o fluxo feliz até COMPLETED', async () => {
       const clientId = await createClient();

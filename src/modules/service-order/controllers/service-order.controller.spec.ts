@@ -75,15 +75,18 @@ describe('ServiceOrderController', () => {
     ['awaitParts', 'awaitParts'],
     ['startProgress', 'startProgress'],
     ['complete', 'complete'],
-  ] as const)('%s delega o id para o service', async (method, serviceMethod) => {
-    const serviceOrder = makeServiceOrder();
-    service[serviceMethod].mockResolvedValue(serviceOrder);
+  ] as const)(
+    '%s delega o id para o service',
+    async (method, serviceMethod) => {
+      const serviceOrder = makeServiceOrder();
+      service[serviceMethod].mockResolvedValue(serviceOrder);
 
-    const response = await controller[method](serviceOrder.getId());
+      const response = await controller[method](serviceOrder.getId());
 
-    expect(service[serviceMethod]).toHaveBeenCalledWith(serviceOrder.getId());
-    expect(response.id).toBe(serviceOrder.getId());
-  });
+      expect(service[serviceMethod]).toHaveBeenCalledWith(serviceOrder.getId());
+      expect(response.id).toBe(serviceOrder.getId());
+    },
+  );
 
   it('cancel repassa id e dto', async () => {
     const serviceOrder = makeServiceOrder();

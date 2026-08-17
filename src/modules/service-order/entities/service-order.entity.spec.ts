@@ -67,9 +67,7 @@ describe('ServiceOrder', () => {
         'Descrição da ordem de serviço é obrigatória',
       ],
     ])('recusa OS com %s', (_label, overrides, message) => {
-      expect(() => ServiceOrder.create(validProps(overrides))).toThrow(
-        message,
-      );
+      expect(() => ServiceOrder.create(validProps(overrides))).toThrow(message);
     });
 
     it('lança DomainException e não Error genérico', () => {
@@ -171,14 +169,8 @@ describe('ServiceOrder', () => {
       ],
       [ServiceOrderStatus.IN_PROGRESS, (os: ServiceOrder) => os.awaitParts()],
       [ServiceOrderStatus.COMPLETED, (os: ServiceOrder) => os.startDiagnosis()],
-      [
-        ServiceOrderStatus.COMPLETED,
-        (os: ServiceOrder) => os.cancel('motivo'),
-      ],
-      [
-        ServiceOrderStatus.CANCELLED,
-        (os: ServiceOrder) => os.startDiagnosis(),
-      ],
+      [ServiceOrderStatus.COMPLETED, (os: ServiceOrder) => os.cancel('motivo')],
+      [ServiceOrderStatus.CANCELLED, (os: ServiceOrder) => os.startDiagnosis()],
     ])('recusa transição inválida a partir de %s', (from, act) => {
       const os = restoredAt(from);
 

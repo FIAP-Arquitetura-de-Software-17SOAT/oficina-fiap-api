@@ -169,9 +169,7 @@ export class ServiceOrder {
     const trimmed = (description ?? '').trim();
 
     if (!trimmed) {
-      throw new DomainException(
-        'Descrição da ordem de serviço é obrigatória',
-      );
+      throw new DomainException('Descrição da ordem de serviço é obrigatória');
     }
 
     this.description = trimmed;
