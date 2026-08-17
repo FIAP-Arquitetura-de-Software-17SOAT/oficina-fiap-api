@@ -10,6 +10,7 @@ export class OpenServiceOrderDto {
     format: 'uuid',
     description: 'Id do cliente dono da ordem de serviço',
   })
+  @Transform(trim)
   @IsUUID()
   clientId: string;
 
