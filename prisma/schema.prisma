@@ -27,6 +27,8 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  serviceOrders ServiceOrder[]
+
   @@map("client")
 }
 
@@ -41,5 +43,8 @@ model ServiceOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
   @@map("service_order")
 }
