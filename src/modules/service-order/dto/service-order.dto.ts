@@ -75,3 +75,18 @@ export class ServiceOrderResponseDto {
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
 }
+
+export class AverageExecutionTimeResponseDto {
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'Tempo médio de execução em milissegundos (createdAt até completedAt) das OS finalizadas. Null se nenhuma OS foi finalizada ainda.',
+  })
+  averageExecutionTimeMs: number | null;
+
+  @ApiProperty({
+    description: 'Quantidade de OS finalizadas consideradas no cálculo',
+  })
+  sampleSize: number;
+}

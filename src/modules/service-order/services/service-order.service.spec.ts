@@ -125,6 +125,51 @@ describe('ServiceOrderService', () => {
     });
   });
 
+  describe('getAverageExecutionTime', () => {
+    it('retorna null e amostra 0 quando não há OS finalizada', async () => {
+      repository.findAll.mockResolvedValue([
+        makeServiceOrder(ServiceOrderStatus.RECEIVED),
+        makeServiceOrder(ServiceOrderStatus.IN_PROGRESS),
+      ]);
+
+      await expect(service.getAverageExecutionTime()).resolves.toEqual({
+        averageExecutionTimeMs: null,
+        sampleSize: 0,
+      });
+    });
+
+    it('calcula a média entre createdAt e completedAt das OS finalizadas', async () => {
+      const createdAt = new Date('2026-01-01T00:00:00.000Z');
+      const completedFast = ServiceOrder.restore('a', {
+        clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        description: 'x',
+        status: ServiceOrderStatus.COMPLETED,
+        createdAt,
+        completedAt: new Date('2026-01-01T01:00:00.000Z'), // 1h
+      });
+      const completedSlow = ServiceOrder.restore('b', {
+        clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        description: 'x',
+        status: ServiceOrderStatus.DELIVERED,
+        createdAt,
+        completedAt: new Date('2026-01-01T03:00:00.000Z'), // 3h
+      });
+      const notCompleted = makeServiceOrder(ServiceOrderStatus.IN_PROGRESS);
+      repository.findAll.mockResolvedValue([
+        completedFast,
+        completedSlow,
+        notCompleted,
+      ]);
+
+      const result = await service.getAverageExecutionTime();
+
+      expect(result.sampleSize).toBe(2);
+      expect(result.averageExecutionTimeMs).toBe(2 * 60 * 60 * 1000); // média de 1h e 3h
+    });
+  });
+
   describe.each([
     [
       'startDiagnosis',
@@ -147,11 +192,7 @@ describe('ServiceOrderService', () => {
       ServiceOrderStatus.IN_PROGRESS,
     ],
     ['complete', ServiceOrderStatus.IN_PROGRESS, ServiceOrderStatus.COMPLETED],
-    [
-      'deliver',
-      ServiceOrderStatus.COMPLETED,
-      ServiceOrderStatus.DELIVERED,
-    ],
+    ['deliver', ServiceOrderStatus.COMPLETED, ServiceOrderStatus.DELIVERED],
   ] as const)('%s', (method, from, expected) => {
     it(`transiciona de ${from} para ${expected} e persiste`, async () => {
       const serviceOrder = makeServiceOrder(from);

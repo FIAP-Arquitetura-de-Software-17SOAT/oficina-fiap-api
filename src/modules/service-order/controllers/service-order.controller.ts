@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import {
+  AverageExecutionTimeResponseDto,
   CancelServiceOrderDto,
   OpenServiceOrderDto,
   ServiceOrderResponseDto,
@@ -48,6 +49,15 @@ export class ServiceOrderController {
     return ServiceOrderMapper.toResponseList(
       await this.serviceOrderService.findAll(),
     );
+  }
+
+  @Get('metrics/average-execution-time')
+  @ApiOperation({
+    summary: 'Tempo médio de execução das ordens de serviço finalizadas',
+  })
+  @ApiOkResponse({ type: AverageExecutionTimeResponseDto })
+  async getAverageExecutionTime(): Promise<AverageExecutionTimeResponseDto> {
+    return this.serviceOrderService.getAverageExecutionTime();
   }
 
   @Get(':id')

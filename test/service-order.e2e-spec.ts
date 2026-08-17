@@ -62,6 +62,12 @@ describe('ServiceOrder (integração)', () => {
   const open = (body: Record<string, unknown>) =>
     request(http).post('/api/v1/service-order').send(body);
 
+  const advance = (
+    id: string,
+    action: string,
+    body: Record<string, unknown> = {},
+  ) => request(http).patch(`/api/v1/service-order/${id}/${action}`).send(body);
+
   describe('POST /api/v1/service-order', () => {
     it('abre a OS com status RECEIVED', async () => {
       const clientId = await createClient();
@@ -116,6 +122,36 @@ describe('ServiceOrder (integração)', () => {
     });
   });
 
+  describe('GET /api/v1/service-order/metrics/average-execution-time', () => {
+    it('devolve null e amostra 0 sem OS finalizada', async () => {
+      const response = await request(http)
+        .get('/api/v1/service-order/metrics/average-execution-time')
+        .expect(200);
+
+      expect(response.body).toEqual({
+        averageExecutionTimeMs: null,
+        sampleSize: 0,
+      });
+    });
+
+    it('calcula a média após finalizar uma OS', async () => {
+      const clientId = await createClient();
+      const { body: created } = await open(openPayload(clientId)).expect(201);
+
+      await advance(created.id, 'start-diagnosis').expect(200);
+      await advance(created.id, 'await-approval').expect(200);
+      await advance(created.id, 'start-progress').expect(200);
+      await advance(created.id, 'complete').expect(200);
+
+      const response = await request(http)
+        .get('/api/v1/service-order/metrics/average-execution-time')
+        .expect(200);
+
+      expect(response.body.sampleSize).toBe(1);
+      expect(response.body.averageExecutionTimeMs).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   describe('GET /api/v1/service-order/:id', () => {
     it('busca por id', async () => {
       const clientId = await createClient();
@@ -140,13 +176,6 @@ describe('ServiceOrder (integração)', () => {
   });
 
   describe('fluxo de transição de status', () => {
-    const advance = (
-      id: string,
-      action: string,
-      body: Record<string, unknown> = {},
-    ) =>
-      request(http).patch(`/api/v1/service-order/${id}/${action}`).send(body);
-
     it('percorre o fluxo feliz até DELIVERED', async () => {
       const clientId = await createClient();
       const { body: created } = await open(openPayload(clientId)).expect(201);

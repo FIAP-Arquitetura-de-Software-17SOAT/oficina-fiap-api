@@ -111,6 +111,7 @@ describe('Swagger', () => {
       expect.arrayContaining([
         '/api/v1/service-order',
         '/api/v1/service-order/{id}',
+        '/api/v1/service-order/metrics/average-execution-time',
         '/api/v1/service-order/{id}/start-diagnosis',
         '/api/v1/service-order/{id}/await-approval',
         '/api/v1/service-order/{id}/await-parts',
@@ -141,6 +142,12 @@ describe('Swagger', () => {
         Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
       ).toEqual(expect.arrayContaining(['patch']));
     }
+
+    expect(
+      Object.keys(
+        document.paths['/api/v1/service-order/metrics/average-execution-time'],
+      ),
+    ).toEqual(expect.arrayContaining(['get']));
   });
 
   it('expõe os schemas de request e response da ordem de serviço', () => {
@@ -149,6 +156,7 @@ describe('Swagger', () => {
         'OpenServiceOrderDto',
         'CancelServiceOrderDto',
         'ServiceOrderResponseDto',
+        'AverageExecutionTimeResponseDto',
       ]),
     );
   });

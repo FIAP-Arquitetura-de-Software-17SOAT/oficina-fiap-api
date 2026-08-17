@@ -19,6 +19,7 @@ describe('ServiceOrderController', () => {
       openServiceOrder: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      getAverageExecutionTime: jest.fn(),
       startDiagnosis: jest.fn(),
       awaitApproval: jest.fn(),
       awaitParts: jest.fn(),
@@ -58,6 +59,20 @@ describe('ServiceOrderController', () => {
     const response = await controller.findAll();
 
     expect(response).toHaveLength(2);
+  });
+
+  it('getAverageExecutionTime repassa o resultado do service', async () => {
+    service.getAverageExecutionTime.mockResolvedValue({
+      averageExecutionTimeMs: 3600000,
+      sampleSize: 2,
+    });
+
+    const response = await controller.getAverageExecutionTime();
+
+    expect(response).toEqual({
+      averageExecutionTimeMs: 3600000,
+      sampleSize: 2,
+    });
   });
 
   it('findById delega o id para o service', async () => {

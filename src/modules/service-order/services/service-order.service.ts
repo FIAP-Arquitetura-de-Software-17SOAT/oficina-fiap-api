@@ -95,4 +95,31 @@ export class ServiceOrderService {
 
     return this.serviceOrderRepository.update(serviceOrder);
   }
+
+  async getAverageExecutionTime(): Promise<{
+    averageExecutionTimeMs: number | null;
+    sampleSize: number;
+  }> {
+    const serviceOrders = await this.serviceOrderRepository.findAll();
+    const completed = serviceOrders.filter(
+      (serviceOrder) => serviceOrder.getCompletedAt() !== null,
+    );
+
+    if (completed.length === 0) {
+      return { averageExecutionTimeMs: null, sampleSize: 0 };
+    }
+
+    const totalMs = completed.reduce(
+      (sum, serviceOrder) =>
+        sum +
+        (serviceOrder.getCompletedAt()!.getTime() -
+          serviceOrder.getCreatedAt().getTime()),
+      0,
+    );
+
+    return {
+      averageExecutionTimeMs: Math.round(totalMs / completed.length),
+      sampleSize: completed.length,
+    };
+  }
 }
