@@ -1,10 +1,5 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
-import {
-  MeasurementUnit,
-  Part,
-  PartProps,
-  PartType,
-} from './part.entity';
+import { MeasurementUnit, Part, PartProps, PartType } from './part.entity';
 
 const validProps = (overrides: Partial<PartProps> = {}): PartProps => ({
   code: 'oil-filter-123',
@@ -91,12 +86,16 @@ describe('Part', () => {
   });
 
   it('requires reordering at the minimum quantity or below', () => {
-    expect(Part.create(validProps({ quantity: 3, minimumQuantity: 3 })).needsReorder()).toBe(
-      true,
-    );
-    expect(Part.create(validProps({ quantity: 4, minimumQuantity: 3 })).needsReorder()).toBe(
-      false,
-    );
+    expect(
+      Part.create(
+        validProps({ quantity: 3, minimumQuantity: 3 }),
+      ).needsReorder(),
+    ).toBe(true);
+    expect(
+      Part.create(
+        validProps({ quantity: 4, minimumQuantity: 3 }),
+      ).needsReorder(),
+    ).toBe(false);
   });
 
   it.each([
@@ -110,7 +109,10 @@ describe('Part', () => {
   it.each([
     ['an invalid part type', { type: 'INVALID' as PartType }],
     ['an invalid measurement unit', { unit: 'INVALID' as MeasurementUnit }],
-  ])('rejects a part with %s received outside TypeScript', (_label, overrides) => {
-    expect(() => Part.create(validProps(overrides))).toThrow(DomainException);
-  });
+  ])(
+    'rejects a part with %s received outside TypeScript',
+    (_label, overrides) => {
+      expect(() => Part.create(validProps(overrides))).toThrow(DomainException);
+    },
+  );
 });

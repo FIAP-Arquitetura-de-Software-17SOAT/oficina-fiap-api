@@ -33,16 +33,17 @@ describe('PartMapper', () => {
   });
 
   it('serializes the unit price as a string', () => {
-    const json = JSON.parse(JSON.stringify(PartMapper.toResponse(makePart()))) as Record<
-      string,
-      unknown
-    >;
+    const json = JSON.parse(
+      JSON.stringify(PartMapper.toResponse(makePart())),
+    ) as Record<string, unknown>;
 
     expect(typeof json.unitPrice).toBe('string');
   });
 
   it('maps lists while preserving order', () => {
-    expect(PartMapper.toResponseList([makePart('FIRST'), makePart('SECOND')])).toEqual(
+    expect(
+      PartMapper.toResponseList([makePart('FIRST'), makePart('SECOND')]),
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 'FIRST' }) as object,
         expect.objectContaining({ code: 'SECOND' }) as object,

@@ -119,7 +119,9 @@ export class Part {
     const requestedQuantity = Quantity.create(quantity);
 
     if (!this.hasAvailability(requestedQuantity.getValue())) {
-      throw new DomainException('Quantidade solicitada indisponível em estoque');
+      throw new DomainException(
+        'Quantidade solicitada indisponível em estoque',
+      );
     }
 
     this.quantity = Quantity.create(
@@ -187,7 +189,9 @@ export class Part {
     return value;
   }
 
-  private static normalizeDescription(description?: string): string | undefined {
+  private static normalizeDescription(
+    description?: string,
+  ): string | undefined {
     const value = description?.trim();
 
     return value || undefined;

@@ -8,6 +8,15 @@ import { Part } from '../entities/part.entity';
 import { PartRepository } from '../repositories/part.repository';
 import { PartCode } from '../value-objects/part-code';
 
+function isUniqueConstraintViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
+}
+
 @Injectable()
 export class PartService {
   constructor(private readonly partRepository: PartRepository) {}
@@ -16,7 +25,11 @@ export class PartService {
     const part = Part.create(dto);
     await this.assertCodeIsAvailable(part.getCode());
 
-    return this.partRepository.create(part);
+    try {
+      return await this.partRepository.create(part);
+    } catch (error: unknown) {
+      this.rethrowUniqueCodeViolation(error);
+    }
   }
 
   async findById(id: string): Promise<Part> {
@@ -44,7 +57,11 @@ export class PartService {
 
     part.update(dto);
 
-    return this.partRepository.update(part);
+    try {
+      return await this.partRepository.update(part);
+    } catch (error: unknown) {
+      this.rethrowUniqueCodeViolation(error);
+    }
   }
 
   async delete(id: string): Promise<void> {
@@ -61,5 +78,13 @@ export class PartService {
     if (existing && existing.getId() !== allowedPartId) {
       throw new ConflictException('Part code already in use');
     }
+  }
+
+  private rethrowUniqueCodeViolation(error: unknown): never {
+    if (isUniqueConstraintViolation(error)) {
+      throw new ConflictException('Part code already in use');
+    }
+
+    throw error;
   }
 }

@@ -5,9 +5,7 @@ import { MeasurementUnit, Part, PartType } from '../entities/part.entity';
 import { PartRepository } from '../repositories/part.repository';
 import { PartService } from './part.service';
 
-const makePart = (
-  overrides: Partial<Parameters<typeof Part.create>[0]> = {},
-) =>
+const makePart = (overrides: Partial<Parameters<typeof Part.create>[0]> = {}) =>
   Part.create({
     code: 'OIL-FILTER-123',
     name: 'Oil filter',
@@ -39,7 +37,10 @@ describe('PartService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PartService, { provide: PartRepository, useValue: repository }],
+      providers: [
+        PartService,
+        { provide: PartRepository, useValue: repository },
+      ],
     }).compile();
 
     service = module.get<PartService>(PartService);
@@ -75,10 +76,19 @@ describe('PartService', () => {
       expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it('rejects invalid domain input before querying the repository', async () => {
-      await expect(service.create({ ...dto, unitPrice: '-1.00' })).rejects.toThrow(
-        DomainException,
+    it('maps a concurrent unique code violation to ConflictException', async () => {
+      repository.findByCode.mockResolvedValue(null);
+      repository.create.mockRejectedValue({ code: 'P2002' });
+
+      await expect(service.create(dto)).rejects.toThrow(
+        'Part code already in use',
       );
+    });
+
+    it('rejects invalid domain input before querying the repository', async () => {
+      await expect(
+        service.create({ ...dto, unitPrice: '-1.00' }),
+      ).rejects.toThrow(DomainException);
 
       expect(repository.findByCode).not.toHaveBeenCalled();
     });
@@ -95,7 +105,9 @@ describe('PartService', () => {
     it('throws NotFoundException for an unknown part', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -127,18 +139,29 @@ describe('PartService', () => {
       repository.findById.mockResolvedValue(part);
       repository.findByCode.mockResolvedValue(makePart({ code: 'OTHER-PART' }));
 
-      await expect(service.update(part.getId(), { code: 'OTHER-PART' })).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.update(part.getId(), { code: 'OTHER-PART' }),
+      ).rejects.toThrow(ConflictException);
       expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('maps a concurrent code update violation to ConflictException', async () => {
+      const part = makePart();
+      repository.findById.mockResolvedValue(part);
+      repository.findByCode.mockResolvedValue(null);
+      repository.update.mockRejectedValue({ code: 'P2002' });
+
+      await expect(
+        service.update(part.getId(), { code: 'OTHER-PART' }),
+      ).rejects.toThrow('Part code already in use');
     });
 
     it('does not update a missing part', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.update('missing', { name: 'Filter' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('missing', { name: 'Filter' }),
+      ).rejects.toThrow(NotFoundException);
       expect(repository.update).not.toHaveBeenCalled();
     });
   });
@@ -156,7 +179,9 @@ describe('PartService', () => {
     it('does not delete a missing part', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.delete('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('missing')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(repository.delete).not.toHaveBeenCalled();
     });
   });
