@@ -82,4 +82,11 @@ describe('Part', () => {
   ])('rejects a part with %s', (_label, overrides) => {
     expect(() => Part.create(validProps(overrides))).toThrow(DomainException);
   });
+
+  it.each([
+    ['an invalid part type', { type: 'INVALID' as PartType }],
+    ['an invalid measurement unit', { unit: 'INVALID' as MeasurementUnit }],
+  ])('rejects a part with %s received outside TypeScript', (_label, overrides) => {
+    expect(() => Part.create(validProps(overrides))).toThrow(DomainException);
+  });
 });
