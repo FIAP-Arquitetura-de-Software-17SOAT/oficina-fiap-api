@@ -8,12 +8,12 @@ import { Part } from '../entities/part.entity';
 import { PartRepository } from '../repositories/part.repository';
 import { PartCode } from '../value-objects/part-code';
 
-function isUniqueConstraintViolation(error: unknown): boolean {
+function hasPrismaErrorCode(error: unknown, code: string): boolean {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    error.code === 'P2002'
+    error.code === code
   );
 }
 
@@ -28,7 +28,7 @@ export class PartService {
     try {
       return await this.partRepository.create(part);
     } catch (error: unknown) {
-      this.rethrowUniqueCodeViolation(error);
+      this.rethrowWriteError(error);
     }
   }
 
@@ -60,13 +60,18 @@ export class PartService {
     try {
       return await this.partRepository.update(part);
     } catch (error: unknown) {
-      this.rethrowUniqueCodeViolation(error);
+      this.rethrowWriteError(error);
     }
   }
 
   async delete(id: string): Promise<void> {
     await this.findById(id);
-    await this.partRepository.delete(id);
+
+    try {
+      await this.partRepository.delete(id);
+    } catch (error: unknown) {
+      this.rethrowWriteError(error);
+    }
   }
 
   private async assertCodeIsAvailable(
@@ -80,9 +85,13 @@ export class PartService {
     }
   }
 
-  private rethrowUniqueCodeViolation(error: unknown): never {
-    if (isUniqueConstraintViolation(error)) {
+  private rethrowWriteError(error: unknown): never {
+    if (hasPrismaErrorCode(error, 'P2002')) {
       throw new ConflictException('Part code already in use');
+    }
+
+    if (hasPrismaErrorCode(error, 'P2025')) {
+      throw new NotFoundException('Part not found');
     }
 
     throw error;

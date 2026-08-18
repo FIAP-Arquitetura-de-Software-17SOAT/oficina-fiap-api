@@ -164,6 +164,16 @@ describe('PartService', () => {
       ).rejects.toThrow(NotFoundException);
       expect(repository.update).not.toHaveBeenCalled();
     });
+
+    it('maps a concurrent deletion during update to NotFoundException', async () => {
+      const part = makePart();
+      repository.findById.mockResolvedValue(part);
+      repository.update.mockRejectedValue({ code: 'P2025' });
+
+      await expect(
+        service.update(part.getId(), { name: 'Filter' }),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 
   describe('delete', () => {
@@ -183,6 +193,16 @@ describe('PartService', () => {
         NotFoundException,
       );
       expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it('maps a concurrent deletion to NotFoundException', async () => {
+      const part = makePart();
+      repository.findById.mockResolvedValue(part);
+      repository.delete.mockRejectedValue({ code: 'P2025' });
+
+      await expect(service.delete(part.getId())).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
