@@ -19,7 +19,7 @@ datasource db {
 
 enum Role {
   ADMIN
-  STOCK_MANAGER
+  EMPLOYEE
 }
 
 enum PartType {

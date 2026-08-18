@@ -1,5 +1,5 @@
 -- AlterEnum
-ALTER TYPE "Role" ADD VALUE 'STOCK_MANAGER';
+ALTER TYPE "Role" ADD VALUE 'EMPLOYEE';
 
 -- CreateEnum
 CREATE TYPE "PartType" AS ENUM ('PART', 'SUPPLY');
