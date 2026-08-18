@@ -66,6 +66,30 @@ describe('Part', () => {
     expect(part.getQuantity().getValue()).toBe(7);
   });
 
+  it('updates the editable data and normalizes its value objects', () => {
+    const part = Part.create(validProps());
+
+    part.update({
+      code: ' cabin-filter-456 ',
+      name: ' Cabin filter ',
+      description: '  Air conditioning filter  ',
+      type: PartType.SUPPLY,
+      unit: MeasurementUnit.KILOGRAM,
+      unitPrice: '25.5',
+      quantity: 4,
+      minimumQuantity: 2,
+    });
+
+    expect(part.getCode().getValue()).toBe('CABIN-FILTER-456');
+    expect(part.getName()).toBe('Cabin filter');
+    expect(part.getDescription()).toBe('Air conditioning filter');
+    expect(part.getType()).toBe(PartType.SUPPLY);
+    expect(part.getUnit()).toBe(MeasurementUnit.KILOGRAM);
+    expect(part.getUnitPrice().getValue()).toBe('25.50');
+    expect(part.getQuantity().getValue()).toBe(4);
+    expect(part.getMinimumQuantity().getValue()).toBe(2);
+  });
+
   it('requires reordering at the minimum quantity or below', () => {
     expect(Part.create(validProps({ quantity: 3, minimumQuantity: 3 })).needsReorder()).toBe(
       true,

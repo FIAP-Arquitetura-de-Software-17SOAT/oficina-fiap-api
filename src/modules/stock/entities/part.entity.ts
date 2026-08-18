@@ -28,6 +28,10 @@ export interface PartProps {
   updatedAt?: Date;
 }
 
+export type PartUpdateProps = Partial<
+  Omit<PartProps, 'createdAt' | 'updatedAt'>
+>;
+
 export class Part {
   private readonly id: string;
   private code: PartCode;
@@ -130,6 +134,42 @@ export class Part {
     );
 
     this.quantity = increasedQuantity;
+    this.touch();
+  }
+
+  update(props: PartUpdateProps): void {
+    if (props.code !== undefined) {
+      this.code = PartCode.create(props.code);
+    }
+
+    if (props.name !== undefined) {
+      this.name = Part.normalizeName(props.name);
+    }
+
+    if (props.description !== undefined) {
+      this.description = Part.normalizeDescription(props.description);
+    }
+
+    if (props.type !== undefined) {
+      this.type = Part.validateType(props.type);
+    }
+
+    if (props.unit !== undefined) {
+      this.unit = Part.validateUnit(props.unit);
+    }
+
+    if (props.unitPrice !== undefined) {
+      this.unitPrice = Money.create(props.unitPrice);
+    }
+
+    if (props.quantity !== undefined) {
+      this.quantity = Quantity.create(props.quantity);
+    }
+
+    if (props.minimumQuantity !== undefined) {
+      this.minimumQuantity = Quantity.create(props.minimumQuantity);
+    }
+
     this.touch();
   }
 
