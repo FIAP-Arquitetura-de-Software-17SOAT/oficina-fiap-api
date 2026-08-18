@@ -136,7 +136,11 @@ describe('ServiceOrderRepository', () => {
   });
 
   it('update envia completedAt quando a OS é finalizada', async () => {
-    const completedRow = { ...row, status: 'COMPLETED', completedAt: new Date() };
+    const completedRow = {
+      ...row,
+      status: 'COMPLETED',
+      completedAt: new Date(),
+    };
     prisma.serviceOrder.update.mockResolvedValue(completedRow);
 
     const serviceOrder = ServiceOrder.restore(row.id, {

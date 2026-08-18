@@ -142,6 +142,7 @@ describe('ServiceOrder (integração)', () => {
       await advance(created.id, 'await-approval').expect(200);
       await advance(created.id, 'start-progress').expect(200);
       await advance(created.id, 'complete').expect(200);
+      await advance(created.id, 'deliver').expect(200);
 
       const response = await request(http)
         .get('/api/v1/service-order/metrics/average-execution-time')
