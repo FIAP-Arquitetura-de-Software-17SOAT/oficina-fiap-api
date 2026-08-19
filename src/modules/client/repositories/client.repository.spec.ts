@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { Client } from '../entities/client.entity';
 import { ClientRepository } from './client.repository';
@@ -147,5 +148,17 @@ describe('ClientRepository', () => {
     expect(prisma.client.delete).toHaveBeenCalledWith({
       where: { id: row.id },
     });
+  });
+
+  it('delete traduz violação de chave estrangeira em conflito, não em 500', async () => {
+    prisma.client.delete.mockRejectedValue({ code: 'P2003' });
+
+    await expect(repository.delete(row.id)).rejects.toThrow(ConflictException);
+  });
+
+  it('delete propaga qualquer outro erro do banco', async () => {
+    prisma.client.delete.mockRejectedValue(new Error('conexão caiu'));
+
+    await expect(repository.delete(row.id)).rejects.toThrow('conexão caiu');
   });
 });

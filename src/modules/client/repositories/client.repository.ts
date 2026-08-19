@@ -1,6 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { Client } from '../entities/client.entity';
+
+function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: string }).code === 'P2003'
+  );
+}
 
 interface ClientRow {
   id: string;
@@ -65,7 +73,17 @@ export class ClientRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.client.delete({ where: { id } });
+    try {
+      await this.prisma.client.delete({ where: { id } });
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw new ConflictException(
+          'Client has vehicles and cannot be removed',
+        );
+      }
+
+      throw error;
+    }
   }
 
   private toPersistence(client: Client) {
