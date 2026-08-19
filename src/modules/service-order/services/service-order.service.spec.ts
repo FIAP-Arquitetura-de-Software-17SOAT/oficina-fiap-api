@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Client } from '../../client/entities/client.entity';
-import { ClientService } from '../../client/services/client.service';
+import { ClientRepository } from '../../client/repositories/client.repository';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
@@ -25,23 +25,26 @@ const makeClient = () =>
   });
 
 type MockedRepository = { [K in keyof ServiceOrderRepository]: jest.Mock };
-type MockedClientService = { [K in keyof ClientService]: jest.Mock };
+type MockedClientRepository = { [K in keyof ClientRepository]: jest.Mock };
 
 describe('ServiceOrderService', () => {
   let service: ServiceOrderService;
   let repository: MockedRepository;
-  let clientService: MockedClientService;
+  let clientRepository: MockedClientRepository;
 
   beforeEach(async () => {
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findCompleted: jest.fn(),
       update: jest.fn(),
     };
-    clientService = {
+    clientRepository = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByDocument: jest.fn(),
+      findByEmail: jest.fn(),
       findAll: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -51,7 +54,7 @@ describe('ServiceOrderService', () => {
       providers: [
         ServiceOrderService,
         { provide: ServiceOrderRepository, useValue: repository },
-        { provide: ClientService, useValue: clientService },
+        { provide: ClientRepository, useValue: clientRepository },
       ],
     }).compile();
 
@@ -66,20 +69,18 @@ describe('ServiceOrderService', () => {
     };
 
     it('abre a OS quando o cliente existe', async () => {
-      clientService.findById.mockResolvedValue(makeClient());
+      clientRepository.findById.mockResolvedValue(makeClient());
       repository.create.mockImplementation((so: ServiceOrder) => so);
 
       const created = await service.openServiceOrder(dto);
 
       expect(created.getStatus()).toBe(ServiceOrderStatus.RECEIVED);
-      expect(clientService.findById).toHaveBeenCalledWith(dto.clientId);
+      expect(clientRepository.findById).toHaveBeenCalledWith(dto.clientId);
       expect(repository.create).toHaveBeenCalledTimes(1);
     });
 
     it('propaga NotFound quando o cliente não existe', async () => {
-      clientService.findById.mockRejectedValue(
-        new NotFoundException('Client not found'),
-      );
+      clientRepository.findById.mockResolvedValue(null);
 
       await expect(service.openServiceOrder(dto)).rejects.toThrow(
         NotFoundException,
@@ -88,7 +89,7 @@ describe('ServiceOrderService', () => {
     });
 
     it('propaga erro de domínio quando a descrição é vazia', async () => {
-      clientService.findById.mockResolvedValue(makeClient());
+      clientRepository.findById.mockResolvedValue(makeClient());
 
       await expect(
         service.openServiceOrder({ ...dto, description: '' }),
@@ -127,10 +128,7 @@ describe('ServiceOrderService', () => {
 
   describe('getAverageExecutionTime', () => {
     it('retorna null e amostra 0 quando não há OS finalizada', async () => {
-      repository.findAll.mockResolvedValue([
-        makeServiceOrder(ServiceOrderStatus.RECEIVED),
-        makeServiceOrder(ServiceOrderStatus.IN_PROGRESS),
-      ]);
+      repository.findCompleted.mockResolvedValue([]);
 
       await expect(service.getAverageExecutionTime()).resolves.toEqual({
         averageExecutionTimeMs: null,
@@ -156,11 +154,9 @@ describe('ServiceOrderService', () => {
         createdAt,
         completedAt: new Date('2026-01-01T03:00:00.000Z'), // 3h
       });
-      const notCompleted = makeServiceOrder(ServiceOrderStatus.IN_PROGRESS);
-      repository.findAll.mockResolvedValue([
+      repository.findCompleted.mockResolvedValue([
         completedFast,
         completedSlow,
-        notCompleted,
       ]);
 
       const result = await service.getAverageExecutionTime();

@@ -102,6 +102,20 @@ describe('ServiceOrderRepository', () => {
     expect(serviceOrders[0].getId()).toBe(row.id);
   });
 
+  it('findCompleted filtra pela consulta apenas OS com completedAt preenchido', async () => {
+    const completedRow = { ...row, completedAt: new Date() };
+    prisma.serviceOrder.findMany.mockResolvedValue([completedRow]);
+
+    const serviceOrders = await repository.findCompleted();
+
+    expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith({
+      where: { completedAt: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(serviceOrders).toHaveLength(1);
+    expect(serviceOrders[0].getId()).toBe(row.id);
+  });
+
   it('update envia status, motivo de cancelamento, completedAt e updatedAt', async () => {
     const cancelledRow = {
       ...row,

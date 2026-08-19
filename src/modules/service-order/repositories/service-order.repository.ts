@@ -41,6 +41,15 @@ export class ServiceOrderRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async findCompleted(): Promise<ServiceOrder[]> {
+    const rows = await this.prisma.serviceOrder.findMany({
+      where: { completedAt: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return rows.map((row) => this.toDomain(row));
+  }
+
   async update(serviceOrder: ServiceOrder): Promise<ServiceOrder> {
     const row = await this.prisma.serviceOrder.update({
       where: { id: serviceOrder.getId() },

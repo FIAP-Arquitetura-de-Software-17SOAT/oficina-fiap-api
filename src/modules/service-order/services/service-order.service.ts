@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ClientService } from '../../client/services/client.service';
+import { ClientRepository } from '../../client/repositories/client.repository';
 import {
   CancelServiceOrderDto,
   OpenServiceOrderDto,
@@ -11,11 +11,15 @@ import { ServiceOrderRepository } from '../repositories/service-order.repository
 export class ServiceOrderService {
   constructor(
     private readonly serviceOrderRepository: ServiceOrderRepository,
-    private readonly clientService: ClientService,
+    private readonly clientRepository: ClientRepository,
   ) {}
 
   async openServiceOrder(dto: OpenServiceOrderDto): Promise<ServiceOrder> {
-    await this.clientService.findById(dto.clientId);
+    const client = await this.clientRepository.findById(dto.clientId);
+
+    if (!client) {
+      throw new NotFoundException('Client not found');
+    }
 
     const serviceOrder = ServiceOrder.create({
       clientId: dto.clientId,
@@ -100,10 +104,7 @@ export class ServiceOrderService {
     averageExecutionTimeMs: number | null;
     sampleSize: number;
   }> {
-    const serviceOrders = await this.serviceOrderRepository.findAll();
-    const completed = serviceOrders.filter(
-      (serviceOrder) => serviceOrder.getCompletedAt() !== null,
-    );
+    const completed = await this.serviceOrderRepository.findCompleted();
 
     if (completed.length === 0) {
       return { averageExecutionTimeMs: null, sampleSize: 0 };
