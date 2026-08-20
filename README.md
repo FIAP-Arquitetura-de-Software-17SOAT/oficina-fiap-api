@@ -8,15 +8,15 @@ domínio.
 
 ## Stack
 
-| Camada | Escolha |
-|---|---|
-| Runtime | Node.js LTS + TypeScript |
-| Framework | NestJS 11 |
-| Banco | PostgreSQL 16 |
-| ORM | Prisma 7 (driver adapter `@prisma/adapter-pg`) |
-| Documentação | Swagger / OpenAPI |
-| Logs | Pino (`nestjs-pino`) |
-| Testes | Jest + Supertest |
+| Camada       | Escolha                                        |
+| ------------ | ---------------------------------------------- |
+| Runtime      | Node.js LTS + TypeScript                       |
+| Framework    | NestJS 11                                      |
+| Banco        | PostgreSQL 16                                  |
+| ORM          | Prisma 7 (driver adapter `@prisma/adapter-pg`) |
+| Documentação | Swagger / OpenAPI                              |
+| Logs         | Pino (`nestjs-pino`)                           |
+| Testes       | Jest + Supertest                               |
 
 ### Por que PostgreSQL
 
@@ -35,28 +35,153 @@ Pré-requisitos: Docker e Docker Compose.
 
 ```bash
 cp .env.sample .env
+# preencha os valores vazios do .env
 docker compose up --build
 ```
 
-Só isso. O compose orquestra três serviços em ordem:
+Antes do `up`, defina `POSTGRES_PASSWORD`, `JWT_ACCESS_SECRET`,
+`JWT_REFRESH_SECRET`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`. O Compose interrompe a
+configuração se qualquer um deles estiver vazio. Gere valores aleatórios
+independentes para os dois secrets JWT; por exemplo, execute duas vezes:
+
+```bash
+openssl rand -base64 48
+```
+
+Para a senha do Postgres, `openssl rand -hex 24` produz um valor forte que pode
+ser usado diretamente na URL. O compose então orquestra quatro serviços em
+ordem:
 
 1. **`db`** — Postgres sobe e espera ficar `healthy`
 2. **`migrate`** — roda `prisma migrate deploy` e encerra
-3. **`app`** — só inicia depois que a migration termina com sucesso
+3. **`seed`** — cria o administrador inicial, se ele ainda não existir
+4. **`app`** — só inicia depois que migration e seed terminam com sucesso
 
 O serviço `migrate` roda a **cada `docker compose up`**. Se não houver migration
 pendente ele sai imediatamente, então é seguro e ninguém precisa rodar Prisma na
 mão.
 
-| Recurso | URL |
-|---|---|
-| API | http://localhost:3000/api/v1 |
-| Swagger UI | http://localhost:3000/api/v1/docs |
+| Recurso      | URL                                    |
+| ------------ | -------------------------------------- |
+| API          | http://localhost:3000/api/v1           |
+| Swagger UI   | http://localhost:3000/api/v1/docs      |
 | OpenAPI JSON | http://localhost:3000/api/v1/docs-json |
-| Health check | http://localhost:3000/api/v1/health |
+| Health check | http://localhost:3000/api/v1/health    |
 
 > A porta do host vem de `PORT` no `.env`. Se você mudar para `8080`, a API
 > responde em `http://localhost:8080`.
+
+## Autenticação administrativa
+
+Configure as credenciais e os JWTs no `.env` antes de subir a aplicação. Os
+campos de segredo e senha ficam deliberadamente vazios no `.env.sample`:
+
+| Variável             | Finalidade                      | Regra                          |
+| -------------------- | ------------------------------- | ------------------------------ |
+| `JWT_ACCESS_SECRET`  | Assina access tokens            | aleatório, distinto do refresh |
+| `JWT_ACCESS_TTL`     | Validade do access token        | duração JWT; padrão `15m`      |
+| `JWT_REFRESH_SECRET` | Assina refresh tokens           | aleatório, distinto do access  |
+| `JWT_REFRESH_TTL`    | Validade do refresh token       | duração JWT; padrão `7d`       |
+| `ADMIN_EMAIL`        | E-mail do administrador inicial | e-mail válido                  |
+| `ADMIN_PASSWORD`     | Senha do administrador inicial  | 8–72 caracteres, até 72 bytes  |
+
+Em `NODE_ENV=production`, cada secret JWT deve ter pelo menos 32 bytes UTF-8;
+os placeholders conhecidos de versões anteriores são rejeitados. Tamanho
+mínimo não substitui aleatoriedade: gere os valores com uma fonte
+criptograficamente segura. Os TTLs aceitam durações JWT inteiras como `15m`,
+`1h` ou `7d`. O limite de 72 bytes da senha evita o truncamento silencioso do
+bcrypt para caracteres UTF-8 multibyte.
+
+O Docker Compose executa o seed automaticamente. No desenvolvimento local, após
+aplicar as migrations, rode:
+
+```bash
+npx prisma db seed
+```
+
+O seed é idempotente e usa `ADMIN_EMAIL`/`ADMIN_PASSWORD`: ele normaliza e valida
+o e-mail e aplica à senha as mesmas regras do login, mas não altera um
+administrador que já exista. Senhas nunca são persistidas em texto puro; apenas
+o hash bcrypt é armazenado. Essas duas variáveis são entregues somente ao
+container temporário `seed`, não ao processo de longa duração da API.
+
+> Esta alteração não rotaciona credenciais de uma instalação existente. Antes
+> do próximo deploy, o operador deve gerar dois novos secrets JWT, gravá-los no
+> gerenciador de secrets ou `.env` e recriar o container da aplicação; tokens já
+> emitidos deixarão de ser válidos. Se a senha conhecida do Postgres já foi
+> usada, altere a senha do usuário dentro do banco e `POSTGRES_PASSWORD` de forma
+> coordenada — editar apenas o `.env` não muda o volume existente. O seed também
+> não redefine o e-mail ou a senha de um administrador existente; faça essa
+> redefinição por um procedimento operacional controlado. Em um ambiente local
+> descartável, remover o volume e executar o seed novamente é uma alternativa.
+
+### Endpoints
+
+`POST /api/v1/auth/login` recebe credenciais e retorna o par de tokens:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "senha-configurada-no-seed"
+}
+```
+
+```json
+{
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ..."
+}
+```
+
+Use o access token nas rotas protegidas com o header
+`Authorization: Bearer <accessToken>`. Access e refresh tokens usam secrets e
+tempos de expiração distintos; um refresh token não é aceito como access token.
+
+`POST /api/v1/auth/refresh` recebe:
+
+```json
+{ "refreshToken": "eyJ..." }
+```
+
+Cada refresh bem-sucedido devolve um novo par e revoga o refresh token consumido
+atomicamente. Reutilizar o token antigo é replay e retorna `401`. O banco guarda
+somente um hash bcrypt irreversível do digest do refresh token, nunca o token em
+texto puro.
+
+`POST /api/v1/auth/logout` recebe o mesmo payload de refresh e responde `204`
+após revogar a sessão. Login inválido, refresh inválido/expirado/revogado e
+replay retornam `401`.
+
+### Protegendo futuros controllers administrativos
+
+As rotas de cliente existentes continuam públicas. Em futuros controllers
+administrativos, aplique autenticação, autorização e documentação Swagger em
+conjunto:
+
+```typescript
+import { Controller, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import { Role } from '../generated/prisma/enums';
+import { JwtAuthGuard } from './shared/http/auth/jwt-auth.guard';
+import { Roles } from './shared/http/auth/roles.decorator';
+import { RolesGuard } from './shared/http/auth/roles.guard';
+
+@Controller('admin/example')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@ApiForbiddenResponse({ description: 'Authenticated role is not allowed' })
+export class AdminController {}
+```
+
+Use `@CurrentUser()` quando o handler precisar do usuário autenticado; o valor
+exposto contém apenas `{ id, role }`. Não aplique `@ApiBearerAuth()` em endpoints
+públicos.
 
 ### Problemas comuns
 
@@ -89,8 +214,10 @@ npx prisma migrate dev       # aplica migrations e gera o Prisma Client
 npm run start:dev
 ```
 
-O `DATABASE_URL` do `.env.sample` já aponta para `localhost:5432`, que é o
-endereço correto quando a app roda no host.
+Para executar Prisma ou a aplicação no host, preencha também `DATABASE_URL` com
+o endereço local e a mesma senha configurada em `POSTGRES_PASSWORD`, por
+exemplo `postgres://postgres:SENHA@localhost:5432/oficina_fiap`. Dentro do
+Compose, a URL é montada e injetada automaticamente com o host `db`.
 
 ### Criando uma migration
 
@@ -136,7 +263,7 @@ src/
 └── shared/
     ├── database/             # PrismaModule global (uma conexão para todos)
     ├── domain/               # DomainException
-    └── http/filters/         # tradução de erro de domínio para HTTP
+    └── http/                 # guards JWT/RBAC e filtros de erro
 ```
 
 ### Convenções para novos módulos
@@ -164,13 +291,13 @@ Status da Ordem de Serviço: `Recebida` → `Em diagnóstico` →
 
 ### Cliente (implementado)
 
-| Verbo | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/client` | Cadastra |
-| GET | `/api/v1/client` | Lista |
-| GET | `/api/v1/client/:id` | Busca por id |
-| PATCH | `/api/v1/client/:id` | Atualiza |
-| DELETE | `/api/v1/client/:id` | Remove |
+| Verbo  | Rota                 | Descrição    |
+| ------ | -------------------- | ------------ |
+| POST   | `/api/v1/client`     | Cadastra     |
+| GET    | `/api/v1/client`     | Lista        |
+| GET    | `/api/v1/client/:id` | Busca por id |
+| PATCH  | `/api/v1/client/:id` | Atualiza     |
+| DELETE | `/api/v1/client/:id` | Remove       |
 
 Regras aplicadas:
 
@@ -180,3 +307,22 @@ Regras aplicadas:
 - Telefone exige DDD, aceita 8 ou 9 dígitos, persiste apenas dígitos
 - Documento é **imutável** após o cadastro — não existe no `UpdateClientDto`
 - Documento e e-mail duplicados retornam `409`; dado inválido retorna `400`
+- Cliente que ainda tem veículo não pode ser removido (`409`)
+
+### Veículo (implementado)
+
+| Verbo | Rota | Descrição |
+|---|---|---|
+| POST | `/api/v1/vehicle` | Cadastra |
+| GET | `/api/v1/vehicle` | Lista, com filtro opcional `?clientId=` |
+| GET | `/api/v1/vehicle/:id` | Busca por id |
+| PATCH | `/api/v1/vehicle/:id` | Atualiza marca, modelo ou ano |
+| DELETE | `/api/v1/vehicle/:id` | Remove |
+
+Regras aplicadas:
+
+- Placa validada nos dois formatos, antigo (`ABC1234`) e Mercosul (`ABC1D23`); aceita com
+  hífen ou minúsculas e persiste normalizada
+- Ano entre 1900 e o ano seguinte ao atual — a montadora antecipa o modelo
+- Placa e dono são **imutáveis** após o cadastro; não existem no `UpdateVehicleDto`
+- Cadastro com cliente inexistente retorna `404`; placa duplicada retorna `409`

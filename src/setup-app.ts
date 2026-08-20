@@ -25,6 +25,12 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('Oficina FIAP API')
     .setDescription('API de gestão da oficina')
     .setVersion('1.0')
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      description: 'Access token returned by POST /api/v1/auth/login',
+    })
     .build();
 
   SwaggerModule.setup(`${API_PREFIX}/docs`, app, () =>
