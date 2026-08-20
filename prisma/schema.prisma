@@ -58,5 +58,26 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  vehicles Vehicle[]
+
   @@map("client")
+}
+
+model Vehicle {
+  id       String @id
+  clientId String
+  plate    String @unique
+  brand    String
+  model    String
+  year     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Restrict (padrão) de propósito: apagar um cliente que ainda tem veículo
+  // deve falhar, não levar o histórico junto. O erro é traduzido em 409.
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@map("vehicle")
 }

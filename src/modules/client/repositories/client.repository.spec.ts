@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { Client } from '../entities/client.entity';
 import { ClientRepository } from './client.repository';
@@ -13,6 +14,14 @@ const row = {
   createdAt: new Date('2026-01-01T10:00:00.000Z'),
   updatedAt: new Date('2026-01-01T10:00:00.000Z'),
 };
+
+const makeClient = () =>
+  Client.create({
+    name: 'Maria Silva',
+    document: '529.982.247-25',
+    email: 'MARIA@example.com',
+    phone: '(11) 99999-8888',
+  });
 
 describe('ClientRepository', () => {
   let repository: ClientRepository;
@@ -58,6 +67,29 @@ describe('ClientRepository', () => {
         phone: '11999998888',
       }) as unknown,
     });
+  });
+
+  it.each([
+    [['document'], 'Client already exists'],
+    [['email'], 'E-mail already in use'],
+  ])(
+    'traduz P2002 em %s em conflito, e não em 500',
+    async (target, message) => {
+      prisma.client.create.mockRejectedValue({
+        code: 'P2002',
+        meta: { target },
+      });
+
+      await expect(repository.create(makeClient())).rejects.toThrow(message);
+    },
+  );
+
+  it('propaga qualquer outro erro do banco no create', async () => {
+    prisma.client.create.mockRejectedValue(new Error('conexão caiu'));
+
+    await expect(repository.create(makeClient())).rejects.toThrow(
+      'conexão caiu',
+    );
   });
 
   it('reconstrói a entidade a partir da linha do banco', async () => {
@@ -147,5 +179,17 @@ describe('ClientRepository', () => {
     expect(prisma.client.delete).toHaveBeenCalledWith({
       where: { id: row.id },
     });
+  });
+
+  it('delete traduz violação de chave estrangeira em conflito, não em 500', async () => {
+    prisma.client.delete.mockRejectedValue({ code: 'P2003' });
+
+    await expect(repository.delete(row.id)).rejects.toThrow(ConflictException);
+  });
+
+  it('delete propaga qualquer outro erro do banco', async () => {
+    prisma.client.delete.mockRejectedValue(new Error('conexão caiu'));
+
+    await expect(repository.delete(row.id)).rejects.toThrow('conexão caiu');
   });
 });

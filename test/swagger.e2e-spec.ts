@@ -40,20 +40,28 @@ describe('Swagger', () => {
     await app.close();
   });
 
-  it('documenta as rotas de cliente sob o prefixo da API', () => {
+  it('documenta as rotas de cliente e veículo sob o prefixo da API', () => {
     expect(Object.keys(document.paths)).toEqual(
-      expect.arrayContaining(['/api/v1/client', '/api/v1/client/{id}']),
+      expect.arrayContaining([
+        '/api/v1/client',
+        '/api/v1/client/{id}',
+        '/api/v1/vehicle',
+        '/api/v1/vehicle/{id}',
+      ]),
     );
   });
 
-  it('documenta todos os verbos do CRUD', () => {
-    expect(Object.keys(document.paths['/api/v1/client'])).toEqual(
-      expect.arrayContaining(['post', 'get']),
-    );
-    expect(Object.keys(document.paths['/api/v1/client/{id}'])).toEqual(
-      expect.arrayContaining(['get', 'patch', 'delete']),
-    );
-  });
+  it.each([['client'], ['vehicle']])(
+    'documenta todos os verbos do CRUD de %s',
+    (recurso) => {
+      expect(Object.keys(document.paths[`/api/v1/${recurso}`])).toEqual(
+        expect.arrayContaining(['post', 'get']),
+      );
+      expect(Object.keys(document.paths[`/api/v1/${recurso}/{id}`])).toEqual(
+        expect.arrayContaining(['get', 'patch', 'delete']),
+      );
+    },
+  );
 
   it('expõe os schemas de request e response', () => {
     expect(Object.keys(document.components?.schemas ?? {})).toEqual(
@@ -61,10 +69,42 @@ describe('Swagger', () => {
         'CreateClientDto',
         'UpdateClientDto',
         'ClientResponseDto',
+        'CreateVehicleDto',
+        'UpdateVehicleDto',
+        'VehicleResponseDto',
         'LoginDto',
         'RefreshTokenDto',
         'TokenPairDto',
       ]),
+    );
+  });
+
+  it('VehicleResponseDto declara os Value Objects como primitivos', () => {
+    const schema = document.components?.schemas?.['VehicleResponseDto'] as {
+      properties: Record<string, { type?: string; format?: string }>;
+    };
+
+    expect(schema.properties.plate.type).toBe('string');
+    expect(schema.properties.year.type).toBe('number');
+    expect(schema.properties.clientId.format).toBe('uuid');
+  });
+
+  it.each([
+    ['UpdateVehicleDto', 'plate'],
+    ['UpdateVehicleDto', 'clientId'],
+  ])('%s não permite alterar %s', (schemaName, prop) => {
+    const schema = document.components?.schemas?.[schemaName] as {
+      properties: Record<string, unknown>;
+    };
+
+    expect(schema.properties).not.toHaveProperty(prop);
+  });
+
+  it('a listagem de veículos documenta o filtro por cliente', () => {
+    const parameters = document.paths['/api/v1/vehicle'].get?.parameters ?? [];
+
+    expect(parameters.map((p) => (p as { name: string }).name)).toContain(
+      'clientId',
     );
   });
 
