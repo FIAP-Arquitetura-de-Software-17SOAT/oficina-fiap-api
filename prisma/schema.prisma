@@ -58,7 +58,8 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  vehicles Vehicle[]
+  serviceOrders ServiceOrder[]
+  vehicles      Vehicle[]
 
   @@map("client")
 }
@@ -108,6 +109,24 @@ model BudgetItem {
   budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
 
   @@map("budget_item")
+model ServiceOrder {
+  id                 String    @id
+  clientId           String
+  vehicleId          String
+  description        String
+  status             String
+  cancellationReason String?
+  completedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@map("service_order")
+}
+
 model Vehicle {
   id       String @id
   clientId String
