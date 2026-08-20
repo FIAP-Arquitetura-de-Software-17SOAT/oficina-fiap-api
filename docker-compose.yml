@@ -4,24 +4,30 @@ services:
     container_name: oficina-fiap-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-oficina_fiap}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # Consulta o banco de verdade em vez de usar pg_isready: o pg_isready
-      # ignora o -d e responde "pronto" mesmo quando o banco alvo não existe,
-      # o que liberava o migrate para rodar e falhar com um erro confuso.
+      # Duas verificações, porque cada uma cobre uma falha real:
+      # 1. pg_isready -h 127.0.0.1 força TCP. Sem o -h, tanto o pg_isready
+      #    quanto o psql usam o socket Unix e reportam "healthy" enquanto o
+      #    Postgres ainda não aceita conexão vinda de outro container — é o
+      #    P1001 que derrubava o migrate. Na criação do volume o entrypoint
+      #    sobe um servidor temporário só no socket: exatamente essa janela.
+      # 2. o psql confirma que o banco alvo existe. POSTGRES_DB só tem efeito
+      #    na primeira criação do volume; se ela foi interrompida, o banco
+      #    nunca é criado e nenhum `up` posterior conserta.
       test:
         [
           "CMD-SHELL",
-          "psql -U postgres -d ${POSTGRES_DB:-oficina_fiap} -c 'SELECT 1' > /dev/null 2>&1 || exit 1",
+          "pg_isready -h 127.0.0.1 -U postgres > /dev/null 2>&1 && psql -U postgres -d ${POSTGRES_DB:-oficina_fiap} -c 'SELECT 1' > /dev/null 2>&1",
         ]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 10s
     restart: unless-stopped
 
@@ -31,10 +37,25 @@ services:
       target: migrator
     container_name: oficina-fiap-migrate
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oficina_fiap}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-oficina_fiap}
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: .
+      target: prisma
+    container_name: oficina-fiap-seed
+    command: ["npx", "prisma", "db", "seed"]
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-oficina_fiap}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   app:
@@ -48,11 +69,17 @@ services:
       NODE_ENV: production
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oficina_fiap}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-oficina_fiap}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
     depends_on:
       db:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      seed:
         condition: service_completed_successfully
     healthcheck:
       test:

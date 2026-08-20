@@ -4,9 +4,9 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../generated/prisma"
-  moduleFormat = "cjs"
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "cjs"
   // Sem isso o gerador escolhe a extensão dos imports conforme o tsconfig que
   // encontra no ambiente: gera ".js" na máquina do dev e ".ts" dentro do
   // Docker (onde o tsconfig não está presente no estágio), quebrando o build.
@@ -15,6 +15,37 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  passwordHash    String
+  role            Role             @default(ADMIN)
+  refreshSessions RefreshSession[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("user")
+}
+
+model RefreshSession {
+  id        String    @id @default(cuid())
+  jti       String    @unique
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("refresh_session")
 }
 
 model Client {
@@ -28,6 +59,7 @@ model Client {
   updatedAt DateTime @updatedAt
 
   serviceOrders ServiceOrder[]
+  vehicles      Vehicle[]
 
   @@map("client")
 }
@@ -48,4 +80,23 @@ model ServiceOrder {
 
   @@index([clientId])
   @@map("service_order")
+}
+
+model Vehicle {
+  id       String @id
+  clientId String
+  plate    String @unique
+  brand    String
+  model    String
+  year     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Restrict (padrão) de propósito: apagar um cliente que ainda tem veículo
+  // deve falhar, não levar o histórico junto. O erro é traduzido em 409.
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@map("vehicle")
 }
