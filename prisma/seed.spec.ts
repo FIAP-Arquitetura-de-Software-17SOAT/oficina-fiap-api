@@ -3,7 +3,7 @@ import { seedAdmin } from './seed';
 describe('seedAdmin', () => {
   const env = {
     ADMIN_EMAIL: 'Admin@Example.com',
-    ADMIN_PASSWORD: 'secret',
+    ADMIN_PASSWORD: 'correct-password',
   };
 
   const hash = jest.fn().mockResolvedValue('$2b$12$hashed-password');
@@ -26,7 +26,7 @@ describe('seedAdmin', () => {
     expect(prisma.user.findUnique).toHaveBeenCalledWith({
       where: { email: 'admin@example.com' },
     });
-    expect(hash).toHaveBeenCalledWith('secret');
+    expect(hash).toHaveBeenCalledWith('correct-password');
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
         email: 'admin@example.com',
@@ -61,5 +61,42 @@ describe('seedAdmin', () => {
     );
 
     expect(hash).toHaveBeenCalledWith(' secret with spaces ');
+  });
+
+  it('rejects an invalid normalized administrator email before querying', async () => {
+    await expect(
+      seedAdmin(prisma, { ...env, ADMIN_EMAIL: ' Not an email ' }, hash),
+    ).rejects.toThrow('ADMIN_EMAIL must be a valid email address');
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['fewer than 8 characters', 'short'],
+    ['more than 72 characters', 'a'.repeat(73)],
+    ['more than 72 UTF-8 bytes', `${'é'.repeat(32)}123456789`],
+  ])('rejects a password with %s before querying', async (_case, password) => {
+    await expect(
+      seedAdmin(prisma, { ...env, ADMIN_PASSWORD: password }, hash),
+    ).rejects.toThrow(
+      'ADMIN_PASSWORD must be 8 to 72 characters and at most 72 UTF-8 bytes',
+    );
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts a password at the 72-byte UTF-8 bcrypt boundary', async () => {
+    const password = `${'é'.repeat(32)}12345678`;
+
+    expect(Buffer.byteLength(password, 'utf8')).toBe(72);
+
+    await seedAdmin(prisma, { ...env, ADMIN_PASSWORD: password }, hash);
+
+    expect(hash).toHaveBeenCalledWith(password);
+    expect(prisma.user.create).toHaveBeenCalledTimes(1);
   });
 });

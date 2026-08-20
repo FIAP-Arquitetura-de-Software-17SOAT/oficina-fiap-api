@@ -10,9 +10,12 @@ COPY package*.json ./
 RUN npm ci
 
 FROM deps AS prisma
+COPY tsconfig.json ./
 COPY prisma.config.ts ./
 COPY prisma ./prisma
+COPY src/shared/identity/login-credentials.ts ./src/shared/identity/login-credentials.ts
 RUN npx prisma generate
+RUN npx ts-node --transpile-only -e "require('./prisma/seed')"
 
 FROM prisma AS build
 COPY tsconfig*.json nest-cli.json ./
