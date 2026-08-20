@@ -85,7 +85,6 @@ export class PartRepository {
       type: part.getType(),
       unit: part.getUnit(),
       unitPrice: part.getUnitPrice().getValue(),
-      quantity: part.getQuantity().getValue(),
       minimumQuantity: part.getMinimumQuantity().getValue(),
       updatedAt: part.getUpdatedAt(),
     };

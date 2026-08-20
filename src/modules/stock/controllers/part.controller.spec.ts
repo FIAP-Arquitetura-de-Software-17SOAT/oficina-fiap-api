@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Part, MeasurementUnit, PartType } from '../entities/part.entity';
 import { PartService } from '../services/part.service';
+import { StockMovementService } from '../services/stock-movement.service';
 import { PartController } from './part.controller';
 
 const makePart = (code = 'OIL-FILTER-123') =>
@@ -24,6 +25,7 @@ describe('PartController', () => {
     update: jest.Mock;
     delete: jest.Mock;
   };
+  let stockMovementService: { increase: jest.Mock; decrease: jest.Mock };
 
   beforeEach(async () => {
     service = {
@@ -33,10 +35,14 @@ describe('PartController', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
+    stockMovementService = { increase: jest.fn(), decrease: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PartController],
-      providers: [{ provide: PartService, useValue: service }],
+      providers: [
+        { provide: PartService, useValue: service },
+        { provide: StockMovementService, useValue: stockMovementService },
+      ],
     }).compile();
 
     controller = module.get<PartController>(PartController);
@@ -98,5 +104,29 @@ describe('PartController', () => {
     service.delete.mockResolvedValue(undefined);
 
     await expect(controller.delete('part-id')).resolves.toBeUndefined();
+  });
+
+  it('records an inbound movement through the movement service', async () => {
+    const part = makePart();
+    stockMovementService.increase.mockResolvedValue({
+      part,
+      movement: {
+        id: 'movement-1',
+        idempotencyKey: 'request-1',
+        type: 'IN',
+        quantity: 2,
+        partId: part.getId(),
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+      },
+      replayed: false,
+    });
+
+    const response = await controller.increaseStock(part.getId(), {
+      quantity: 2,
+      idempotencyKey: 'request-1',
+    });
+
+    expect(response.movement.type).toBe('IN');
+    expect(response.part.id).toBe(part.getId());
   });
 });

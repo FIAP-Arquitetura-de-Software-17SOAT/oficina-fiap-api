@@ -113,7 +113,7 @@ describe('PartRepository', () => {
     expect(parts[0].getCode().getValue()).toBe(row.code);
   });
 
-  it('persists all editable fields when updating a part', async () => {
+  it('persists catalogue fields without overwriting stock on update', async () => {
     prisma.part.update.mockResolvedValue(row);
 
     await repository.update(makePart());
@@ -123,7 +123,6 @@ describe('PartRepository', () => {
       data: expect.objectContaining({
         code: row.code,
         unitPrice: '149.90',
-        quantity: 10,
       }) as unknown,
     });
 
@@ -132,6 +131,7 @@ describe('PartRepository', () => {
     };
     expect(call.data).not.toHaveProperty('id');
     expect(call.data).not.toHaveProperty('createdAt');
+    expect(call.data).not.toHaveProperty('quantity');
   });
 
   it('deletes a part by its id', async () => {

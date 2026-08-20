@@ -29,8 +29,13 @@ import { JwtAuthGuard } from '../../../shared/http/auth/jwt-auth.guard';
 import { Roles } from '../../../shared/http/auth/roles.decorator';
 import { RolesGuard } from '../../../shared/http/auth/roles.guard';
 import { CreatePartDto, PartResponseDto, UpdatePartDto } from '../dto/part.dto';
+import {
+  CreateStockMovementDto,
+  StockMovementResponseDto,
+} from '../dto/stock-movement.dto';
 import { PartMapper } from '../mappers/part.mapper';
 import { PartService } from '../services/part.service';
+import { StockMovementService } from '../services/stock-movement.service';
 
 @ApiTags('stock')
 @ApiBearerAuth()
@@ -40,7 +45,10 @@ import { PartService } from '../services/part.service';
 @Roles(Role.ADMIN, Role.EMPLOYEE)
 @Controller('stock')
 export class PartController {
-  constructor(private readonly partService: PartService) {}
+  constructor(
+    private readonly partService: PartService,
+    private readonly stockMovementService: StockMovementService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Creates a stock part' })
@@ -80,6 +88,43 @@ export class PartController {
     @Body() dto: UpdatePartDto,
   ): Promise<PartResponseDto> {
     return PartMapper.toResponse(await this.partService.update(id, dto));
+  }
+
+  @Post(':id/stock/in')
+  @ApiOperation({ summary: 'Records an inbound stock movement' })
+  @ApiOkResponse({ type: StockMovementResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid part id or movement data' })
+  @ApiNotFoundResponse({ description: 'Part not found' })
+  async increaseStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateStockMovementDto,
+  ): Promise<{
+    part: PartResponseDto;
+    movement: StockMovementResponseDto;
+    replayed: boolean;
+  }> {
+    const result = await this.stockMovementService.increase(id, dto);
+    return { ...result, part: PartMapper.toResponse(result.part) };
+  }
+
+  @Post(':id/stock/out')
+  @ApiOperation({ summary: 'Records an outbound stock movement' })
+  @ApiOkResponse({ type: StockMovementResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid part id or movement data' })
+  @ApiNotFoundResponse({ description: 'Part not found' })
+  @ApiConflictResponse({
+    description: 'Insufficient stock or idempotency key conflict',
+  })
+  async decreaseStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateStockMovementDto,
+  ): Promise<{
+    part: PartResponseDto;
+    movement: StockMovementResponseDto;
+    replayed: boolean;
+  }> {
+    const result = await this.stockMovementService.decrease(id, dto);
+    return { ...result, part: PartMapper.toResponse(result.part) };
   }
 
   @Delete(':id')

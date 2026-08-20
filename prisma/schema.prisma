@@ -33,6 +33,11 @@ enum MeasurementUnit {
   KILOGRAM
 }
 
+enum StockMovementType {
+  IN
+  OUT
+}
+
 model User {
   id              String           @id @default(cuid())
   email           String           @unique
@@ -85,6 +90,20 @@ model Part {
   minimumQuantity Int
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  stockMovements  StockMovement[]
 
   @@map("part")
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  idempotencyKey String            @unique
+  type           StockMovementType
+  quantity       Int
+  partId         String
+  part           Part              @relation(fields: [partId], references: [id], onDelete: Restrict)
+  createdAt      DateTime          @default(now())
+
+  @@index([partId])
+  @@map("stock_movement")
 }

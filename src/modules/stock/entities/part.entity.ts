@@ -29,7 +29,7 @@ export interface PartProps {
 }
 
 export type PartUpdateProps = Partial<
-  Omit<PartProps, 'createdAt' | 'updatedAt'>
+  Omit<PartProps, 'createdAt' | 'updatedAt' | 'quantity'>
 >;
 
 export class Part {
@@ -162,10 +162,6 @@ export class Part {
 
     if (props.unitPrice !== undefined) {
       this.unitPrice = Money.create(props.unitPrice);
-    }
-
-    if (props.quantity !== undefined) {
-      this.quantity = Quantity.create(props.quantity);
     }
 
     if (props.minimumQuantity !== undefined) {
