@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 
 import { Money } from '../value-objects/money.vo';
 import { Quantity } from '../value-objects/quantity.vo';
+import { DomainException } from '../../../shared/domain/domain.exception';
 
 export interface PurchaseOrderItemProps {
   id?: string;
@@ -20,7 +21,7 @@ export class PurchaseOrderItem {
     props: PurchaseOrderItemProps,
   ) {
     if (!props.pecaId?.trim()) {
-      throw new Error(
+      throw new DomainException(
         'A peça deve ser informada',
       );
     }

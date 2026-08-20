@@ -1,3 +1,5 @@
+import { DomainException } from '../../../shared/domain/domain.exception';
+
 export class PurchaseOrderNumber {
   private constructor(
     private readonly number: string,
@@ -7,7 +9,7 @@ export class PurchaseOrderNumber {
     value: string,
   ): PurchaseOrderNumber {
     if (!value?.trim()) {
-      throw new Error(
+      throw new DomainException(
         'O número do pedido deve ser informado',
       );
     }
@@ -19,7 +21,7 @@ export class PurchaseOrderNumber {
       /^PC-\d{4}-\d{4}$/;
 
     if (!pattern.test(normalized)) {
-      throw new Error(
+      throw new DomainException(
         'Número do pedido deve seguir o formato PC-AAAA-NNNN',
       );
     }

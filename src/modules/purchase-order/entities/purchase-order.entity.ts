@@ -14,6 +14,8 @@ import {
   Money,
 } from '../value-objects/money.vo';
 
+import { DomainException } from '../../../shared/domain/domain.exception';
+
 export interface PurchaseOrderProps {
   id?: string;
 
@@ -53,7 +55,7 @@ export class PurchaseOrder {
     props: PurchaseOrderProps,
   ) {
     if (!props.supplier?.trim()) {
-      throw new Error(
+      throw new DomainException(
         'O fornecedor deve ser informado',
       );
     }
@@ -106,7 +108,7 @@ export class PurchaseOrder {
       );
 
     if (index === -1) {
-      throw new Error(
+      throw new DomainException(
         'Item não encontrado no pedido',
       );
     }
@@ -121,13 +123,13 @@ export class PurchaseOrder {
       this.status !==
       PurchaseOrderStatus.NECESSITA_COMPRA
     ) {
-      throw new Error(
+      throw new DomainException(
         'Somente pedidos em NECESSITA_COMPRA podem registrar a compra',
       );
     }
 
     if (this.items.length === 0) {
-      throw new Error(
+      throw new DomainException(
         'Não é possível registrar uma compra sem itens',
       );
     }
@@ -145,7 +147,7 @@ export class PurchaseOrder {
       PurchaseOrderStatus
         .AGUARDANDO_ENTREGA
     ) {
-      throw new Error(
+      throw new DomainException(
         'Somente pedidos aguardando entrega podem ser marcados como entregues',
       );
     }
@@ -175,7 +177,7 @@ export class PurchaseOrder {
       PurchaseOrderStatus
         .NECESSITA_COMPRA
     ) {
-      throw new Error(
+      throw new DomainException(
         'Não é possível alterar os itens após o registro da compra',
       );
     }

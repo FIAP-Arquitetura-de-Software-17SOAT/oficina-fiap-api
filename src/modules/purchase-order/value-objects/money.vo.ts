@@ -1,15 +1,17 @@
+import { DomainException } from '../../../shared/domain/domain.exception';
+
 export class Money {
   private constructor(
     private readonly cents: number,
   ) {
     if (!Number.isInteger(cents)) {
-      throw new Error(
+      throw new DomainException(
         'O valor monetário deve ser representado em centavos inteiros',
       );
     }
 
     if (cents < 0) {
-      throw new Error(
+      throw new DomainException(
         'O valor monetário não pode ser negativo',
       );
     }
@@ -21,7 +23,7 @@ export class Money {
 
   static fromDecimal(value: number): Money {
     if (!Number.isFinite(value)) {
-      throw new Error(
+      throw new DomainException(
         'O valor monetário informado é inválido',
       );
     }
@@ -39,7 +41,7 @@ export class Money {
 
   multiply(quantity: number): Money {
     if (!Number.isInteger(quantity)) {
-      throw new Error(
+      throw new DomainException(
         'A quantidade utilizada no cálculo deve ser inteira',
       );
     }
