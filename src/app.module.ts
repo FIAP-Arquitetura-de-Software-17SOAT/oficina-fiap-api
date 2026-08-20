@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ClientModule } from './modules/client/client.module';
+import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './shared/database/prisma.module';
@@ -34,6 +35,7 @@ import { PrismaModule } from './shared/database/prisma.module';
     PrismaModule,
     AuthModule,
     ClientModule,
+    ServiceOrderModule,
     VehicleModule,
   ],
   controllers: [AppController],

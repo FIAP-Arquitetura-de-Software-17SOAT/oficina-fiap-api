@@ -198,4 +198,61 @@ describe('Swagger', () => {
       .expect(200);
     expect(document.paths['/api/v1/health']).toBeDefined();
   });
+
+  it('documenta as rotas de ordem de serviço sob o prefixo da API', () => {
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining([
+        '/api/v1/service-order',
+        '/api/v1/service-order/{id}',
+        '/api/v1/service-order/metrics/average-execution-time',
+        '/api/v1/service-order/{id}/start-diagnosis',
+        '/api/v1/service-order/{id}/await-approval',
+        '/api/v1/service-order/{id}/await-parts',
+        '/api/v1/service-order/{id}/start-progress',
+        '/api/v1/service-order/{id}/complete',
+        '/api/v1/service-order/{id}/deliver',
+        '/api/v1/service-order/{id}/cancel',
+      ]),
+    );
+  });
+
+  it('documenta todos os verbos das rotas de ordem de serviço', () => {
+    expect(Object.keys(document.paths['/api/v1/service-order'])).toEqual(
+      expect.arrayContaining(['post', 'get']),
+    );
+    expect(Object.keys(document.paths['/api/v1/service-order/{id}'])).toEqual(
+      expect.arrayContaining(['get']),
+    );
+
+    for (const action of [
+      'start-diagnosis',
+      'await-approval',
+      'await-parts',
+      'start-progress',
+      'complete',
+      'deliver',
+      'cancel',
+    ]) {
+      expect(
+        Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
+      ).toEqual(expect.arrayContaining(['patch']));
+    }
+
+    expect(
+      Object.keys(
+        document.paths['/api/v1/service-order/metrics/average-execution-time'],
+      ),
+    ).toEqual(expect.arrayContaining(['get']));
+  });
+
+  it('expõe os schemas de request e response da ordem de serviço', () => {
+    expect(Object.keys(document.components?.schemas ?? {})).toEqual(
+      expect.arrayContaining([
+        'OpenServiceOrderDto',
+        'CancelServiceOrderDto',
+        'ServiceOrderResponseDto',
+        'AverageExecutionTimeResponseDto',
+      ]),
+    );
+  });
 });
