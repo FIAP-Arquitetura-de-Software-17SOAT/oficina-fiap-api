@@ -17,6 +17,37 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  ADMIN
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  passwordHash    String
+  role            Role             @default(ADMIN)
+  refreshSessions RefreshSession[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("user")
+}
+
+model RefreshSession {
+  id        String    @id @default(cuid())
+  jti       String    @unique
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("refresh_session")
+}
+
 model Client {
   id       String @id
   name     String
@@ -26,6 +57,9 @@ model Client {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  serviceOrders ServiceOrder[]
+  vehicles      Vehicle[]
 
   @@map("client")
 }
@@ -58,4 +92,88 @@ model PurchaseOrderItem {
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   @@map("purchase_order_item")
+}
+
+enum BudgetStatus {
+  GENERATED
+  WAITING_APPROVAL
+  ACCEPTED
+  REFUSED
+}
+
+enum BudgetItemType {
+  SERVICE
+  PART
+}
+
+model Budget {
+  id              String       @id
+  serviceOrderId  String
+  version         Int
+  status          BudgetStatus
+  totalAmount     Decimal      @db.Decimal(10, 2)
+  refusalReason   String?
+  sentAt          DateTime?
+  answeredAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  items BudgetItem[]
+
+  // TODO(service-order-integration): replace simple serviceOrderId with a relationship/validation
+  // with the ServiceOrder or Service module when it exists in the domain.
+  @@unique([serviceOrderId, version])
+  @@index([serviceOrderId])
+  @@map("budget")
+}
+
+model BudgetItem {
+  id          String         @id
+  budgetId    String
+  description String
+  type        BudgetItemType
+  quantity    Decimal        @db.Decimal(10, 2)
+  unitPrice   Decimal        @db.Decimal(10, 2)
+  subtotal    Decimal        @db.Decimal(10, 2)
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@map("budget_item")
+}
+
+model ServiceOrder {
+  id                 String    @id
+  clientId           String
+  vehicleId          String
+  description        String
+  status             String
+  cancellationReason String?
+  completedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@map("service_order")
+}
+
+model Vehicle {
+  id       String @id
+  clientId String
+  plate    String @unique
+  brand    String
+  model    String
+  year     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Restrict (padrão) de propósito: apagar um cliente que ainda tem veículo
+  // deve falhar, não levar o histórico junto. O erro é traduzido em 409.
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@map("vehicle")
 }

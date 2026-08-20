@@ -1,0 +1,126 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import {
+  CancelServiceOrderDto,
+  OpenServiceOrderDto,
+} from '../dto/service-order.dto';
+import { ServiceOrder } from '../entities/service-order.entity';
+import { ServiceOrderRepository } from '../repositories/service-order.repository';
+
+@Injectable()
+export class ServiceOrderService {
+  constructor(
+    private readonly serviceOrderRepository: ServiceOrderRepository,
+    private readonly clientRepository: ClientRepository,
+  ) {}
+
+  async openServiceOrder(dto: OpenServiceOrderDto): Promise<ServiceOrder> {
+    const client = await this.clientRepository.findById(dto.clientId);
+
+    if (!client) {
+      throw new NotFoundException('Client not found');
+    }
+
+    const serviceOrder = ServiceOrder.create({
+      clientId: dto.clientId,
+      vehicleId: dto.vehicleId,
+      description: dto.description,
+    });
+
+    return this.serviceOrderRepository.create(serviceOrder);
+  }
+
+  async findById(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.serviceOrderRepository.findById(id);
+
+    if (!serviceOrder) {
+      throw new NotFoundException('Service order not found');
+    }
+
+    return serviceOrder;
+  }
+
+  async findAll(): Promise<ServiceOrder[]> {
+    return this.serviceOrderRepository.findAll();
+  }
+
+  async startDiagnosis(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.startDiagnosis();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async awaitApproval(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.awaitApproval();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async awaitParts(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.awaitParts();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async startProgress(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.startProgress();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async complete(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.complete();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async deliver(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.deliver();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async cancel(id: string, dto: CancelServiceOrderDto): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.cancel(dto.reason);
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
+  async getAverageExecutionTime(): Promise<{
+    averageExecutionTimeMs: number | null;
+    sampleSize: number;
+  }> {
+    const completed = await this.serviceOrderRepository.findCompleted();
+
+    if (completed.length === 0) {
+      return { averageExecutionTimeMs: null, sampleSize: 0 };
+    }
+
+    const totalMs = completed.reduce(
+      (sum, serviceOrder) =>
+        sum +
+        (serviceOrder.getCompletedAt()!.getTime() -
+          serviceOrder.getCreatedAt().getTime()),
+      0,
+    );
+
+    return {
+      averageExecutionTimeMs: Math.round(totalMs / completed.length),
+      sampleSize: completed.length,
+    };
+  }
+}
