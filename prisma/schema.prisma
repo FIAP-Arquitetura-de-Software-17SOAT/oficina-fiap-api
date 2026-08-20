@@ -64,6 +64,36 @@ model Client {
   @@map("client")
 }
 
+model PurchaseOrder {
+  id       String @id @default(uuid())
+  number   String @unique
+  supplier String
+  status   String
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deliveredAt DateTime?
+
+  items PurchaseOrderItem[]
+
+  @@map("purchase_order")
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(uuid())
+  purchaseOrderId String
+
+  pecaId String
+
+  quantity Int
+
+  unitPriceCents Int
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_order_item")
+}
+
 enum BudgetStatus {
   GENERATED
   WAITING_APPROVAL
@@ -109,6 +139,8 @@ model BudgetItem {
   budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
 
   @@map("budget_item")
+}
+
 model ServiceOrder {
   id                 String    @id
   clientId           String

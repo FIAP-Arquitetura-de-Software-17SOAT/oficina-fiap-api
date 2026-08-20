@@ -3,12 +3,12 @@ import { AppController } from './app.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ClientModule } from './modules/client/client.module';
+import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { BudgetModule } from './modules/budget/budget.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './shared/database/prisma.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -36,6 +36,7 @@ import { PrismaModule } from './shared/database/prisma.module';
     PrismaModule,
     AuthModule,
     ClientModule,
+    PurchaseOrderModule,
     BudgetModule,
     ServiceOrderModule,
     VehicleModule,
