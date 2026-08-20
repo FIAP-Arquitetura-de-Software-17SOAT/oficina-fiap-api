@@ -1,14 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+  uniqueViolationFields,
+} from '../../../shared/database/prisma-errors';
 import { Client } from '../entities/client.entity';
-
-function isForeignKeyViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { code?: string }).code === 'P2003'
-  );
-}
 
 interface ClientRow {
   id: string;
@@ -25,11 +22,27 @@ export class ClientRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(client: Client): Promise<Client> {
-    const row = await this.prisma.client.create({
-      data: this.toPersistence(client),
-    });
+    try {
+      const row = await this.prisma.client.create({
+        data: this.toPersistence(client),
+      });
 
-    return this.toDomain(row);
+      return this.toDomain(row);
+    } catch (error) {
+      // As checagens no service existem pela mensagem melhor, mas há janela
+      // entre consultar e inserir: duas requisições simultâneas passam as duas
+      // pela consulta e uma recebe P2002. Sem esta tradução, essa perde a
+      // corrida e leva 500 em vez de 409.
+      if (isUniqueViolation(error)) {
+        throw new ConflictException(
+          uniqueViolationFields(error).includes('email')
+            ? 'E-mail already in use'
+            : 'Client already exists',
+        );
+      }
+
+      throw error;
+    }
   }
 
   async findById(id: string): Promise<Client | null> {

@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { Vehicle } from '../entities/vehicle.entity';
 import { VehicleRepository } from './vehicle.repository';
@@ -63,6 +64,25 @@ describe('VehicleRepository', () => {
         year: 2022,
       }) as unknown,
     });
+  });
+
+  it('traduz P2002 em conflito quando duas requisições correm pela mesma placa', async () => {
+    prisma.vehicle.create.mockRejectedValue({
+      code: 'P2002',
+      meta: { target: ['plate'] },
+    });
+
+    await expect(repository.create(makeVehicle())).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  it('propaga qualquer outro erro do banco no create', async () => {
+    prisma.vehicle.create.mockRejectedValue(new Error('conexão caiu'));
+
+    await expect(repository.create(makeVehicle())).rejects.toThrow(
+      'conexão caiu',
+    );
   });
 
   it('reconstrói a entidade a partir da linha do banco', async () => {

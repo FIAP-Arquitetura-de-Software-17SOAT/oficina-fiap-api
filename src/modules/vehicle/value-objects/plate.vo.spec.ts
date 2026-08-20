@@ -29,13 +29,22 @@ describe('Plate', () => {
       ['abc-1d23', 'ABC1D23'],
       ['ABC 1D23', 'ABC1D23'],
       ['  abc1d23  ', 'ABC1D23'],
+      ['ABC.1234', 'ABC1234'],
     ])('normaliza "%s" para %s', (input, expected) => {
       expect(Plate.create(input).getValue()).toBe(expected);
+    });
+
+    it('remove apenas espaço, ponto e hífen', () => {
+      expect(Plate.create(' abc . 1d23 - ').getValue()).toBe('ABC1D23');
     });
   });
 
   describe('recusa', () => {
     it.each([
+      ['A#B$C1@2%3&4', 'símbolos no meio, não são separadores'],
+      ['ABC/1234', 'barra não é separador de placa'],
+      ['ABC_1234', 'underscore não é separador de placa'],
+      ['(ABC1234)', 'parênteses'],
       ['ABCD123', 'quatro letras na frente'],
       ['AB1234', 'só duas letras'],
       ['ABC123', 'dígitos de menos'],

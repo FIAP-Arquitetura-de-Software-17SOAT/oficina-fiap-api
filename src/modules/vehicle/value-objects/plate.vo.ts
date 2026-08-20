@@ -14,7 +14,10 @@ export class Plate {
   private constructor(private readonly value: string) {}
 
   static create(input: string): Plate {
-    const normalized = (input ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    // Remove apenas os separadores que aparecem numa placa escrita à mão.
+    // Descartar qualquer não-alfanumérico aceitaria "A#B$C1@2%3&4" como
+    // "ABC1234", o que transforma lixo em placa válida.
+    const normalized = (input ?? '').replace(/[\s.\-]/g, '').toUpperCase();
 
     if (
       !FORMATO_ANTIGO.test(normalized) &&
