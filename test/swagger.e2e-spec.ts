@@ -63,6 +63,55 @@ describe('Swagger', () => {
     },
   );
 
+  it('documents protected stock CRUD routes and their schemas', () => {
+    const collection = document.paths['/api/v1/stock'];
+    const item = document.paths['/api/v1/stock/{id}'];
+
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining(['/api/v1/stock', '/api/v1/stock/{id}']),
+    );
+    expect(Object.keys(collection)).toEqual(
+      expect.arrayContaining(['post', 'get']),
+    );
+    expect(Object.keys(item)).toEqual(
+      expect.arrayContaining(['get', 'patch', 'delete']),
+    );
+    expect(document.components?.schemas).toEqual(
+      expect.objectContaining({
+        CreatePartDto: expect.any(Object),
+        UpdatePartDto: expect.any(Object),
+        PartResponseDto: expect.any(Object),
+      }),
+    );
+
+    for (const operation of [
+      collection.post!,
+      collection.get!,
+      item.get!,
+      item.patch!,
+      item.delete!,
+    ]) {
+      expect(operation.summary).toBeTruthy();
+      expect(operation.security).toEqual([{ bearer: [] }]);
+      expect(Object.keys(operation.responses)).toEqual(
+        expect.arrayContaining(['401', '403']),
+      );
+    }
+
+    expect(Object.keys(collection.post!.responses)).toEqual(
+      expect.arrayContaining(['201', '400', '409']),
+    );
+    expect(Object.keys(item.get!.responses)).toEqual(
+      expect.arrayContaining(['200', '400', '404']),
+    );
+    expect(Object.keys(item.patch!.responses)).toEqual(
+      expect.arrayContaining(['200', '400', '404', '409']),
+    );
+    expect(Object.keys(item.delete!.responses)).toEqual(
+      expect.arrayContaining(['204', '400', '404']),
+    );
+  });
+
   it('expõe os schemas de request e response', () => {
     expect(Object.keys(document.components?.schemas ?? {})).toEqual(
       expect.arrayContaining([
