@@ -61,7 +61,7 @@ describe('Part', () => {
     expect(part.getQuantity().getValue()).toBe(7);
   });
 
-  it('updates the editable data and normalizes its value objects', () => {
+  it('updates catalogue data without changing stock', () => {
     const part = Part.create(validProps());
 
     part.update({
@@ -71,7 +71,6 @@ describe('Part', () => {
       type: PartType.SUPPLY,
       unit: MeasurementUnit.KILOGRAM,
       unitPrice: '25.5',
-      quantity: 4,
       minimumQuantity: 2,
     });
 
@@ -81,7 +80,7 @@ describe('Part', () => {
     expect(part.getType()).toBe(PartType.SUPPLY);
     expect(part.getUnit()).toBe(MeasurementUnit.KILOGRAM);
     expect(part.getUnitPrice().getValue()).toBe('25.50');
-    expect(part.getQuantity().getValue()).toBe(4);
+    expect(part.getQuantity().getValue()).toBe(10);
     expect(part.getMinimumQuantity().getValue()).toBe(2);
   });
 

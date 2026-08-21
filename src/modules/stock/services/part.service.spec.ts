@@ -58,7 +58,7 @@ describe('PartService', () => {
       minimumQuantity: 3,
     };
 
-    it('creates a part when its normalized code is available', async () => {
+    it('creates a catalogue part with zero stock', async () => {
       repository.findByCode.mockResolvedValue(null);
       repository.create.mockImplementation((part: Part) => part);
 
@@ -66,6 +66,7 @@ describe('PartService', () => {
 
       expect(repository.findByCode).toHaveBeenCalledWith('OIL-FILTER-123');
       expect(created.getCode().getValue()).toBe('OIL-FILTER-123');
+      expect(created.getQuantity().getValue()).toBe(0);
       expect(repository.create).toHaveBeenCalledTimes(1);
     });
 

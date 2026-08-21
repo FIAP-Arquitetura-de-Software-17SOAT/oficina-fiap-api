@@ -22,7 +22,7 @@ export class PartService {
   constructor(private readonly partRepository: PartRepository) {}
 
   async create(dto: CreatePartDto): Promise<Part> {
-    const part = Part.create(dto);
+    const part = Part.create({ ...dto, quantity: 0 });
     await this.assertCodeIsAvailable(part.getCode());
 
     try {

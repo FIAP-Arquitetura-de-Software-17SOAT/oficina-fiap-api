@@ -50,12 +50,6 @@ export class CreatePartDto {
   @IsNotEmpty()
   unitPrice: string;
 
-  @ApiProperty({ example: 10, minimum: 0 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  quantity: number;
-
   @ApiProperty({ example: 3, minimum: 0 })
   @Type(() => Number)
   @IsInt()
@@ -104,13 +98,6 @@ export class UpdatePartDto {
   @IsNotEmpty()
   @IsOptional()
   unitPrice?: string;
-
-  @ApiPropertyOptional({ example: 10, minimum: 0 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  quantity?: number;
 
   @ApiPropertyOptional({ example: 3, minimum: 0 })
   @Type(() => Number)
