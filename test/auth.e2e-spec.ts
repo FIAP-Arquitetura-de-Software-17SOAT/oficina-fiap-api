@@ -254,8 +254,22 @@ describe('Authentication and authorization (e2e)', () => {
       .expect(403);
   });
 
-  it('keeps the production client route public', async () => {
-    await request(http).get('/api/v1/client').expect(200, []);
+  it('protege as rotas administrativas: sem token não passa', async () => {
+    await request(http).get('/api/v1/client').expect(401);
+    await request(http).get('/api/v1/service-order').expect(401);
+    await request(http).get('/api/v1/budgets?serviceOrderId=x').expect(401);
+    await request(http).get('/api/v1/purchase-orders').expect(401);
+    await request(http).get('/api/v1/vehicle').expect(401);
+    await request(http).get('/api/v1/stock').expect(401);
+  });
+
+  it('deixa públicos apenas o health e a autenticação', async () => {
+    await request(http).get('/api/v1/health').expect(200);
+    // login com credencial inválida responde 401 do próprio fluxo, não do guard
+    await request(http)
+      .post('/api/v1/auth/login')
+      .send({ email: 'nao@existe.com', password: 'Senha!12345' })
+      .expect(401);
   });
 
   it('does not accept a token signed with the refresh secret as access', async () => {

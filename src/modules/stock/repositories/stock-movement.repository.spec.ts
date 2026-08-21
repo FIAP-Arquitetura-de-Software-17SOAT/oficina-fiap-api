@@ -11,7 +11,7 @@ const part = {
   description: null,
   type: 'PART',
   unit: 'UNIT',
-  unitPrice: { toString: () => '149.90' },
+  unitPriceCents: 14990,
   quantity: 4,
   minimumQuantity: 3,
   createdAt: new Date('2026-01-01T10:00:00.000Z'),

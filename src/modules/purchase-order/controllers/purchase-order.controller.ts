@@ -8,17 +8,29 @@ import {
   Post,
 } from '@nestjs/common';
 
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 import {
   AddPurchaseOrderItemDto,
   CreatePurchaseOrderDto,
+  RegisterShortageDto,
 } from '../dto/purchase-order.dto';
 
 import { PurchaseOrderMapper } from '../mappers/purchase-order.mapper';
 
 import { PurchaseOrderService } from '../services/purchase-order.service';
+import { Role } from '../../../../generated/prisma/enums';
+import { Roles } from '../../../shared/http/auth/roles.decorator';
 
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@Roles(Role.ADMIN, Role.EMPLOYEE)
 @ApiTags('Purchase Orders')
 @Controller('purchase-orders')
 export class PurchaseOrderController {
@@ -37,6 +49,23 @@ export class PurchaseOrderController {
     dto: CreatePurchaseOrderDto,
   ) {
     const purchaseOrder = await this.service.create(dto);
+
+    return PurchaseOrderMapper.toResponse(purchaseOrder);
+  }
+
+  @Post('shortages')
+  @ApiOperation({
+    summary: 'Registrar necessidade de compra a partir da falta de estoque',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Pedido de compra aberto em NEEDS_PURCHASE',
+  })
+  async registerShortage(
+    @Body()
+    dto: RegisterShortageDto,
+  ) {
+    const purchaseOrder = await this.service.registerShortage(dto);
 
     return PurchaseOrderMapper.toResponse(purchaseOrder);
   }

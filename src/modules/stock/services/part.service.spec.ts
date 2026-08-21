@@ -12,7 +12,7 @@ const makePart = (overrides: Partial<Parameters<typeof Part.create>[0]> = {}) =>
     description: 'Filter for engine oil',
     type: PartType.PART,
     unit: MeasurementUnit.UNIT,
-    unitPrice: '149.90',
+    unitPrice: 149.9,
     quantity: 10,
     minimumQuantity: 3,
     ...overrides,
@@ -53,7 +53,7 @@ describe('PartService', () => {
       description: 'Filter for engine oil',
       type: PartType.PART,
       unit: MeasurementUnit.UNIT,
-      unitPrice: '149.90',
+      unitPrice: 149.9,
       quantity: 10,
       minimumQuantity: 3,
     };
@@ -87,9 +87,9 @@ describe('PartService', () => {
     });
 
     it('rejects invalid domain input before querying the repository', async () => {
-      await expect(
-        service.create({ ...dto, unitPrice: '-1.00' }),
-      ).rejects.toThrow(DomainException);
+      await expect(service.create({ ...dto, unitPrice: -1 })).rejects.toThrow(
+        DomainException,
+      );
 
       expect(repository.findByCode).not.toHaveBeenCalled();
     });
@@ -128,10 +128,10 @@ describe('PartService', () => {
 
       const updated = await service.update(part.getId(), {
         code: 'oil-filter-123',
-        unitPrice: '159.9',
+        unitPrice: 159.9,
       });
 
-      expect(updated.getUnitPrice().getValue()).toBe('159.90');
+      expect(updated.getUnitPrice().value).toBe(159.9);
       expect(repository.update).toHaveBeenCalledWith(part);
     });
 

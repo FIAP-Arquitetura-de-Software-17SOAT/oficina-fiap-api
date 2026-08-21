@@ -10,6 +10,11 @@ export class ServiceOrderMapper {
       description: serviceOrder.getDescription(),
       status: serviceOrder.getStatus(),
       cancellationReason: serviceOrder.getCancellationReason(),
+      mechanicId: serviceOrder.getMechanicId(),
+      assignedAt: serviceOrder.getAssignedAt(),
+      partsDispatchedAt: serviceOrder.getPartsDispatchedAt(),
+      completedAt: serviceOrder.getCompletedAt(),
+      executionTimeMs: serviceOrder.getExecutionTimeMs(),
       createdAt: serviceOrder.getCreatedAt(),
       updatedAt: serviceOrder.getUpdatedAt(),
     };

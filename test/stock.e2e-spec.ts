@@ -15,8 +15,7 @@ const payload = {
   description: 'Filter for engine oil',
   type: 'PART',
   unit: 'UNIT',
-  unitPrice: '149.90',
-  quantity: 10,
+  unitPrice: 149.9,
   minimumQuantity: 3,
 };
 
@@ -92,17 +91,16 @@ describe('Stock (e2e)', () => {
 
     expect(created.body).toMatchObject({
       code: 'OIL-FILTER-123',
-      unitPrice: '149.90',
-      quantity: 10,
+      unitPrice: 149.9,
     });
 
     const updated = await request(http)
       .patch(`/api/v1/stock/${created.body.id}`)
       .auth(token, { type: 'bearer' })
-      .send({ quantity: 12 })
+      .send({ minimumQuantity: 12 })
       .expect(200);
 
-    expect(updated.body.quantity).toBe(12);
+    expect(updated.body.minimumQuantity).toBe(12);
 
     await request(http)
       .delete(`/api/v1/stock/${created.body.id}`)
@@ -121,7 +119,7 @@ describe('Stock (e2e)', () => {
     await request(http)
       .post('/api/v1/stock')
       .auth(token, { type: 'bearer' })
-      .send({ ...payload, quantity: -1, unexpected: true })
+      .send({ ...payload, minimumQuantity: -1, unexpected: true })
       .expect(400);
   });
 });

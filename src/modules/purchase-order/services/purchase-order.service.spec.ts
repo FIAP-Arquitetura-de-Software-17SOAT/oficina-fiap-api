@@ -16,8 +16,12 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 import { Quantity } from '../value-objects/quantity.vo';
 
+import { PartController } from '../../stock/controllers/part.controller';
+
 describe('PurchaseOrderService', () => {
   let service: PurchaseOrderService;
+
+  let partController: jest.Mocked<PartController>;
 
   let repository: jest.Mocked<PurchaseOrderRepository>;
 
@@ -33,12 +37,18 @@ describe('PurchaseOrderService', () => {
   beforeEach(() => {
     repository = {
       create: jest.fn(),
+      countByYear: jest.fn(),
       findAll: jest.fn(),
       findById: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<PurchaseOrderRepository>;
 
-    service = new PurchaseOrderService(repository);
+    partController = {
+      findById: jest.fn(),
+      increaseStock: jest.fn(),
+    } as unknown as jest.Mocked<PartController>;
+
+    service = new PurchaseOrderService(repository, partController);
   });
 
   afterEach(() => {
@@ -209,6 +219,63 @@ describe('PurchaseOrderService', () => {
       expect(result.getDeliveredAt()).toBeDefined();
 
       expect(repository.update).toHaveBeenCalledTimes(1);
+    });
+  });
+  describe('políticas do Event Storming', () => {
+    it('soma ao estoque a quantidade recebida quando o pedido é entregue', async () => {
+      const order = createPurchaseOrder();
+
+      order.addItem(
+        new PurchaseOrderItem({
+          id: 'item-id',
+
+          partId: 'part-id',
+
+          quantity: Quantity.create(4),
+
+          unitPrice: Money.fromDecimal(100),
+        }),
+      );
+
+      order.registerPurchase();
+
+      repository.findById.mockResolvedValue(order);
+
+      repository.update.mockImplementation(
+        async (purchaseOrder) => purchaseOrder,
+      );
+
+      await service.markAsDelivered('purchase-order-id');
+
+      expect(partController.increaseStock).toHaveBeenCalledWith('part-id', {
+        quantity: 4,
+        idempotencyKey: 'purchase-order:purchase-order-id:item-id',
+      });
+    });
+
+    it('abre o pedido da falta com número sequencial e preço da peça', async () => {
+      repository.countByYear.mockResolvedValue(41);
+
+      partController.findById.mockResolvedValue({
+        unitPrice: 149.9,
+      } as never);
+
+      repository.create.mockImplementation(
+        async (purchaseOrder) => purchaseOrder,
+      );
+
+      const result = await service.registerShortage({
+        items: [{ partId: 'part-id', quantity: 3 }],
+      });
+
+      expect(result.getNumber().value).toBe(
+        `PC-${new Date().getFullYear()}-0042`,
+      );
+      expect(result.getSupplier()).toBe('A definir');
+      expect(result.getStatus()).toBe(PurchaseOrderStatus.NEEDS_PURCHASE);
+      expect(result.getItems()).toHaveLength(1);
+      expect(result.getItems()[0].getUnitPrice().valueInCents).toBe(14_990);
+      expect(result.getItems()[0].getQuantity().value).toBe(3);
     });
   });
 });

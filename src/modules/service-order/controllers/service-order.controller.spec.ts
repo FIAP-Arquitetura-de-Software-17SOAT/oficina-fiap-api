@@ -19,11 +19,12 @@ describe('ServiceOrderController', () => {
       openServiceOrder: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findByClientId: jest.fn(),
+      assignToMechanic: jest.fn(),
       getAverageExecutionTime: jest.fn(),
-      startDiagnosis: jest.fn(),
       awaitApproval: jest.fn(),
       awaitParts: jest.fn(),
-      startProgress: jest.fn(),
+      registerPartsDispatched: jest.fn(),
       complete: jest.fn(),
       deliver: jest.fn(),
       cancel: jest.fn(),
@@ -86,10 +87,11 @@ describe('ServiceOrderController', () => {
   });
 
   it.each([
-    ['startDiagnosis', 'startDiagnosis'],
     ['awaitApproval', 'awaitApproval'],
+    // awaitParts e registerPartsDispatched não têm rota HTTP: só as políticas
+    // os chamam. O método continua no controller, que é a porta do agregado.
     ['awaitParts', 'awaitParts'],
-    ['startProgress', 'startProgress'],
+    ['registerPartsDispatched', 'registerPartsDispatched'],
     ['complete', 'complete'],
     ['deliver', 'deliver'],
   ] as const)(

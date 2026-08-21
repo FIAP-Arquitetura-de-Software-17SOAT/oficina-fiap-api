@@ -10,7 +10,7 @@ export class PartMapper {
       description: part.getDescription(),
       type: part.getType(),
       unit: part.getUnit(),
-      unitPrice: part.getUnitPrice().getValue(),
+      unitPrice: part.getUnitPrice().value,
       quantity: part.getQuantity().getValue(),
       minimumQuantity: part.getMinimumQuantity().getValue(),
       createdAt: part.getCreatedAt(),

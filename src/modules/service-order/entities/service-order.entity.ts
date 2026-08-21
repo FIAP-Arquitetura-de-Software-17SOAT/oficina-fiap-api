@@ -8,6 +8,9 @@ export interface ServiceOrderProps {
   description: string;
   status?: ServiceOrderStatus;
   cancellationReason?: string | null;
+  mechanicId?: string | null;
+  assignedAt?: Date | null;
+  partsDispatchedAt?: Date | null;
   completedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -47,6 +50,9 @@ export class ServiceOrder {
   private description: string;
   private status: ServiceOrderStatus;
   private cancellationReason: string | null;
+  private mechanicId: string | null;
+  private assignedAt: Date | null;
+  private partsDispatchedAt: Date | null;
   private completedAt: Date | null;
   private readonly createdAt: Date;
   private updatedAt: Date;
@@ -60,6 +66,9 @@ export class ServiceOrder {
     this.setStatus(props.status);
 
     this.cancellationReason = props.cancellationReason ?? null;
+    this.mechanicId = props.mechanicId ?? null;
+    this.assignedAt = props.assignedAt ?? null;
+    this.partsDispatchedAt = props.partsDispatchedAt ?? null;
     this.completedAt = props.completedAt ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
@@ -97,8 +106,33 @@ export class ServiceOrder {
     return this.cancellationReason;
   }
 
+  getMechanicId(): string | null {
+    return this.mechanicId;
+  }
+
+  getAssignedAt(): Date | null {
+    return this.assignedAt;
+  }
+
+  getPartsDispatchedAt(): Date | null {
+    return this.partsDispatchedAt;
+  }
+
   getCompletedAt(): Date | null {
     return this.completedAt;
+  }
+
+  /**
+   * O tempo que o enunciado cobra: conta do momento em que a OS foi atribuída
+   * ao mecânico até a finalização, não da abertura. Nulo enquanto faltar uma
+   * das duas pontas.
+   */
+  getExecutionTimeMs(): number | null {
+    if (!this.assignedAt || !this.completedAt) {
+      return null;
+    }
+
+    return this.completedAt.getTime() - this.assignedAt.getTime();
   }
 
   getCreatedAt(): Date {
@@ -109,8 +143,24 @@ export class ServiceOrder {
     return this.updatedAt;
   }
 
-  startDiagnosis(): void {
+  /**
+   * Política do Event Storming: "Quando a OS for atribuída a um mecânico, o
+   * status será alterado para 'em diagnóstico', e o timer será inicializado".
+   */
+  assignToMechanic(mechanicId: string): void {
+    const trimmed = (mechanicId ?? '').trim();
+
+    if (!trimmed) {
+      throw new DomainException('Mecânico da ordem de serviço é obrigatório');
+    }
+
+    if (this.mechanicId) {
+      throw new DomainException('Ordem de serviço já atribuída a um mecânico');
+    }
+
     this.transitionTo(ServiceOrderStatus.IN_DIAGNOSIS);
+    this.mechanicId = trimmed;
+    this.assignedAt = new Date();
   }
 
   awaitApproval(): void {
@@ -121,8 +171,23 @@ export class ServiceOrder {
     this.transitionTo(ServiceOrderStatus.AWAITING_PARTS);
   }
 
-  startProgress(): void {
+  /**
+   * Única porta para IN_PROGRESS, e ela só abre pelo estoque.
+   *
+   * A tabela de transições sozinha diria que AWAITING_PARTS -> IN_PROGRESS é
+   * permitido, sem perguntar se as peças saíram. Registrar o atendimento junto
+   * com a transição é o que impede uma OS ser dada como em execução sem nenhuma
+   * peça ter deixado a prateleira — e sem aparecer no tempo médio.
+   */
+  registerPartsDispatched(): void {
+    if (!this.mechanicId) {
+      throw new DomainException(
+        'Ordem de serviço sem mecânico responsável não entra em execução',
+      );
+    }
+
     this.transitionTo(ServiceOrderStatus.IN_PROGRESS);
+    this.partsDispatchedAt = new Date();
   }
 
   complete(): void {

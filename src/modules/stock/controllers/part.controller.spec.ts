@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Part, MeasurementUnit, PartType } from '../entities/part.entity';
 import { PartService } from '../services/part.service';
+import { PartsDispatchService } from '../services/parts-dispatch.service';
 import { StockMovementService } from '../services/stock-movement.service';
 import { PartController } from './part.controller';
 
@@ -11,7 +12,7 @@ const makePart = (code = 'OIL-FILTER-123') =>
     description: 'Filter for engine oil',
     type: PartType.PART,
     unit: MeasurementUnit.UNIT,
-    unitPrice: '149.90',
+    unitPrice: 149.9,
     quantity: 10,
     minimumQuantity: 3,
   });
@@ -26,6 +27,7 @@ describe('PartController', () => {
     delete: jest.Mock;
   };
   let stockMovementService: { increase: jest.Mock; decrease: jest.Mock };
+  let partsDispatchService: { dispatchForServiceOrder: jest.Mock };
 
   beforeEach(async () => {
     service = {
@@ -36,12 +38,14 @@ describe('PartController', () => {
       delete: jest.fn(),
     };
     stockMovementService = { increase: jest.fn(), decrease: jest.fn() };
+    partsDispatchService = { dispatchForServiceOrder: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PartController],
       providers: [
         { provide: PartService, useValue: service },
         { provide: StockMovementService, useValue: stockMovementService },
+        { provide: PartsDispatchService, useValue: partsDispatchService },
       ],
     }).compile();
 
@@ -56,7 +60,7 @@ describe('PartController', () => {
       description: 'Filter for engine oil',
       type: PartType.PART,
       unit: MeasurementUnit.UNIT,
-      unitPrice: '149.90',
+      unitPrice: 149.9,
       quantity: 10,
       minimumQuantity: 3,
     };
@@ -67,7 +71,7 @@ describe('PartController', () => {
     expect(response).toMatchObject({
       id: part.getId(),
       code: 'OIL-FILTER-123',
-      unitPrice: '149.90',
+      unitPrice: 149.9,
       quantity: 10,
     });
   });
@@ -93,8 +97,9 @@ describe('PartController', () => {
     const part = makePart();
     service.update.mockResolvedValue(part);
 
+    // quantidade não é editável aqui: ela só muda por movimento de estoque
     const response = await controller.update(part.getId(), {
-      quantity: 12,
+      minimumQuantity: 12,
     });
 
     expect(response.id).toBe(part.getId());

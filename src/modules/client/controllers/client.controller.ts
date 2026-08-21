@@ -11,6 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -19,6 +20,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import {
   ClientResponseDto,
@@ -27,7 +29,12 @@ import {
 } from '../dto/client.dto';
 import { ClientMapper } from '../mappers/client.mapper';
 import { ClientService } from '../services/client.service';
+import { Role } from '../../../../generated/prisma/enums';
+import { Roles } from '../../../shared/http/auth/roles.decorator';
 
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@Roles(Role.ADMIN, Role.EMPLOYEE)
 @ApiTags('client')
 @Controller('client')
 export class ClientController {

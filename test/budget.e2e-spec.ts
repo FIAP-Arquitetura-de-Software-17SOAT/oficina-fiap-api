@@ -6,105 +6,18 @@ import { AppModule } from '../src/app.module';
 import {
   Budget,
   BudgetItemType,
-  BudgetStatus,
 } from '../src/modules/budget/entities/budget.entity';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
-
-class InMemoryBudgetRepository {
-  private readonly budgets = new Map<string, Budget>();
-
-  create(budget: Budget): Promise<Budget> {
-    const persisted = this.clone(budget);
-    this.budgets.set(persisted.getId(), persisted);
-    return Promise.resolve(this.clone(persisted));
-  }
-
-  updateGenerated(
-    budget: Budget,
-    expectedUpdatedAt: Date,
-  ): Promise<Budget | null> {
-    return this.updateWhenStatus(
-      budget,
-      BudgetStatus.GENERATED,
-      expectedUpdatedAt,
-    );
-  }
-
-  updateWaitingApproval(
-    budget: Budget,
-    expectedUpdatedAt: Date,
-  ): Promise<Budget | null> {
-    return this.updateWhenStatus(
-      budget,
-      BudgetStatus.WAITING_APPROVAL,
-      expectedUpdatedAt,
-    );
-  }
-
-  private updateWhenStatus(
-    budget: Budget,
-    expectedStatus: BudgetStatus,
-    expectedUpdatedAt: Date,
-  ): Promise<Budget | null> {
-    const stored = this.budgets.get(budget.getId());
-
-    if (
-      !stored ||
-      stored.getStatus() !== expectedStatus ||
-      stored.getUpdatedAt().getTime() !== expectedUpdatedAt.getTime()
-    ) {
-      return Promise.resolve(null);
-    }
-
-    const persisted = this.clone(budget);
-    this.budgets.set(persisted.getId(), persisted);
-    return Promise.resolve(this.clone(persisted));
-  }
-
-  findById(id: string): Promise<Budget | null> {
-    const budget = this.budgets.get(id);
-    return Promise.resolve(budget ? this.clone(budget) : null);
-  }
-
-  findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
-    return Promise.resolve(
-      Array.from(this.budgets.values())
-        .filter((budget) => budget.getServiceOrderId() === serviceOrderId)
-        .sort((left, right) => left.getVersion() - right.getVersion())
-        .map((budget) => this.clone(budget)),
-    );
-  }
-
-  findLastVersionByServiceOrderId(serviceOrderId: string): Promise<number> {
-    const versions = Array.from(this.budgets.values())
-      .filter((budget) => budget.getServiceOrderId() === serviceOrderId)
-      .map((budget) => budget.getVersion());
-
-    return Promise.resolve(versions.length ? Math.max(...versions) : 0);
-  }
-
-  private clone(budget: Budget): Budget {
-    return Budget.restore(budget.getId(), {
-      serviceOrderId: budget.getServiceOrderId(),
-      version: budget.getVersion(),
-      items: budget.getItems().map((item) => ({
-        id: item.getId(),
-        description: item.getDescription(),
-        type: item.getType(),
-        quantity: item.getQuantity(),
-        unitPrice: item.getUnitPrice(),
-      })),
-      status: budget.getStatus(),
-      refusalReason: budget.getRefusalReason(),
-      sentAt: budget.getSentAt(),
-      answeredAt: budget.getAnsweredAt(),
-      createdAt: budget.getCreatedAt(),
-      updatedAt: budget.getUpdatedAt(),
-    });
-  }
-}
+import { InMemoryBudgetRepository } from './in-memory-budget.repository';
+import { InMemoryClientRepository } from './in-memory-client.repository';
+import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
+import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
+import { allowAuthenticated } from './allow-authenticated';
 
 describe('InMemoryBudgetRepository', () => {
   it('does not share mutable budget instances with persisted state', async () => {
@@ -170,33 +83,88 @@ describe('InMemoryBudgetRepository', () => {
 describe('Budget (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
+  // Aceitar ou recusar um orcamento mexe na ordem de servico, entao o cenario
+  // minimo agora inclui cliente, veiculo e uma OS aguardando aprovacao.
+  let serviceOrderId: string;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue({})
-      .overrideProvider(BudgetRepository)
-      .useValue(new InMemoryBudgetRepository())
-      .compile();
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule],
+      })
+        .overrideProvider(PrismaService)
+        .useValue({})
+        .overrideProvider(BudgetRepository)
+        .useValue(new InMemoryBudgetRepository())
+        .overrideProvider(ClientRepository)
+        .useValue(new InMemoryClientRepository())
+        .overrideProvider(VehicleRepository)
+        .useValue(new InMemoryVehicleRepository())
+        .overrideProvider(ServiceOrderRepository)
+        .useValue(new InMemoryServiceOrderRepository()),
+    ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
     http = app.getHttpServer();
+
+    serviceOrderId = await openServiceOrderAwaitingApproval();
   });
 
   afterEach(async () => {
     await app.close();
   });
 
+  const openServiceOrderAwaitingApproval = async (): Promise<string> => {
+    const client = await request(http)
+      .post('/api/v1/client')
+      .send({
+        name: 'Maria Silva',
+        document: '529.982.247-25',
+        email: 'maria@example.com',
+        phone: '(11) 99999-8888',
+      })
+      .expect(201);
+
+    const vehicle = await request(http)
+      .post('/api/v1/vehicle')
+      .send({
+        clientId: client.body.id,
+        plate: 'ABC1D23',
+        brand: 'Fiat',
+        model: 'Argo',
+        year: 2022,
+      })
+      .expect(201);
+
+    const serviceOrder = await request(http)
+      .post('/api/v1/service-order')
+      .send({
+        clientId: client.body.id,
+        vehicleId: vehicle.body.id,
+        description: 'Barulho no motor',
+      })
+      .expect(201);
+
+    const id = serviceOrder.body.id as string;
+
+    // Para em IN_DIAGNOSIS de propósito: quem move a OS para
+    // AWAITING_APPROVAL é a política de geração do orçamento.
+    await request(http)
+      .patch(`/api/v1/service-order/${id}/assign`)
+      .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
+      .expect(200);
+
+    return id;
+  };
+
   const createBudget = async () => {
     const response = await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Oil change',
@@ -224,7 +192,7 @@ describe('Budget (e2e)', () => {
     const create = await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Oil change',
@@ -292,7 +260,7 @@ describe('Budget (e2e)', () => {
       });
 
     await request(http)
-      .get('/api/v1/budgets?serviceOrderId=service-123')
+      .get(`/api/v1/budgets?serviceOrderId=${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveLength(1);
@@ -322,7 +290,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Precision overflow',
@@ -337,7 +305,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Range overflow',
