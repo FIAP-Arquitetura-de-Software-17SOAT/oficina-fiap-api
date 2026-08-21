@@ -4,7 +4,6 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
-  IsOptional,
   IsString,
   IsUUID,
   Min,
@@ -13,11 +12,10 @@ import {
 export class AddPurchaseOrderItemDto {
   @ApiProperty({
     format: 'uuid',
-    example:
-      '550e8400-e29b-41d4-a716-446655440000',
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsUUID()
-  pecaId!: string;
+  partId!: string;
 
   @ApiProperty({
     example: 2,
@@ -47,8 +45,7 @@ export class CreatePurchaseOrderDto {
   number!: string;
 
   @ApiProperty({
-    example:
-      'Auto Peças São Paulo',
+    example: 'Auto Peças São Paulo',
   })
   @IsString()
   @IsNotEmpty()

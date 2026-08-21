@@ -387,8 +387,6 @@ describe('BudgetService', () => {
     await expect(service.findByServiceOrderId(' service-123 ')).resolves.toBe(
       budgets,
     );
-    expect(repository.findByServiceOrderId).toHaveBeenCalledWith(
-      'service-123',
-    );
+    expect(repository.findByServiceOrderId).toHaveBeenCalledWith('service-123');
   });
 });

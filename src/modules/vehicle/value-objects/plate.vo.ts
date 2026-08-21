@@ -17,7 +17,7 @@ export class Plate {
     // Remove apenas os separadores que aparecem numa placa escrita à mão.
     // Descartar qualquer não-alfanumérico aceitaria "A#B$C1@2%3&4" como
     // "ABC1234", o que transforma lixo em placa válida.
-    const normalized = (input ?? '').replace(/[\s.\-]/g, '').toUpperCase();
+    const normalized = (input ?? '').replace(/[\s.-]/g, '').toUpperCase();
 
     if (
       !FORMATO_ANTIGO.test(normalized) &&

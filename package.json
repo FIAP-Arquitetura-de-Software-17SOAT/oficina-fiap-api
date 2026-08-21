@@ -18,7 +18,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "LOG_LEVEL=silent jest --config ./test/jest-e2e.json",
-    "test:e2e:db": "node ./scripts/run-database-e2e.js"
+    "test:e2e:db": "NODE_OPTIONS=--experimental-vm-modules RUN_DATABASE_TESTS=true LOG_LEVEL=silent jest --config ./test/jest-e2e.json",
     "test:seed": "jest --rootDir . prisma/seed.spec.ts --runInBand"
   },
   "dependencies": {

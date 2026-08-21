@@ -1,19 +1,13 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
 
 export class Quantity {
-  private constructor(
-    private readonly amount: number,
-  ) {
+  private constructor(private readonly amount: number) {
     if (!Number.isInteger(amount)) {
-      throw new DomainException(
-        'A quantidade deve ser um número inteiro',
-      );
+      throw new DomainException('A quantidade deve ser um número inteiro');
     }
 
     if (amount <= 0) {
-      throw new DomainException(
-        'A quantidade deve ser maior que zero',
-      );
+      throw new DomainException('A quantidade deve ser maior que zero');
     }
   }
 

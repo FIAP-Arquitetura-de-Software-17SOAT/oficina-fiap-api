@@ -62,3 +62,6 @@ docker-compose.override.yml
 
 # Local isolated worktrees
 .worktrees/
+
+# Runners auxiliares de teste (os comandos foram inlineados no package.json)
+/scripts

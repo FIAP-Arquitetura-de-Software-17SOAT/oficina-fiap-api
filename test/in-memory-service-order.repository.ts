@@ -21,6 +21,16 @@ export class InMemoryServiceOrderRepository {
     );
   }
 
+  findCompleted(): Promise<ServiceOrder[]> {
+    return Promise.resolve(
+      Array.from(this.serviceOrders.values())
+        .filter((order) => order.getCompletedAt() !== null)
+        .sort(
+          (a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime(),
+        ),
+    );
+  }
+
   update(serviceOrder: ServiceOrder): Promise<ServiceOrder> {
     this.serviceOrders.set(serviceOrder.getId(), serviceOrder);
 

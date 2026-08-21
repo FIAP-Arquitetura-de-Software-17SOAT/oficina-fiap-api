@@ -7,6 +7,7 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { BudgetMapper } from '../mappers/budget.mapper';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 type BudgetRecord = Prisma.BudgetGetPayload<{ include: { items: true } }>;
 
@@ -44,13 +45,8 @@ export class BudgetRepository {
       await tx.budgetItem.deleteMany({ where: { budgetId: budget.getId() } });
       await tx.budgetItem.createMany({
         data: budget.getItems().map((item) => ({
-          id: item.getId(),
+          ...BudgetMapper.itemToPersistence(item),
           budgetId: budget.getId(),
-          description: item.getDescription(),
-          type: item.getType(),
-          quantity: item.getQuantity(),
-          unitPrice: item.getUnitPrice(),
-          subtotal: item.getSubtotal(),
         })),
       });
 
@@ -135,7 +131,7 @@ export class BudgetRepository {
   private toUpdateData(budget: Budget) {
     return {
       status: budget.getStatus(),
-      totalAmount: budget.getTotalAmount(),
+      totalCents: Money.fromDecimal(budget.getTotalAmount()).valueInCents,
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),

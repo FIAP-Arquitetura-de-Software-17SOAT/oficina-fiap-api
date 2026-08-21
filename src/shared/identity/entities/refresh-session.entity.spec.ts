@@ -7,6 +7,7 @@ describe('RefreshSession', () => {
       tokenHash: '$2b$12$hash',
       expiresAt: new Date('2026-08-14T12:00:00.000Z'),
       userId: 'user-id',
+      revokedAt: null,
       createdAt: new Date('2026-08-13T12:00:00.000Z'),
       updatedAt: new Date('2026-08-13T12:00:00.000Z'),
     });
@@ -25,6 +26,7 @@ describe('RefreshSession', () => {
       tokenHash: '$2b$12$hash',
       expiresAt,
       userId: 'user-id',
+      revokedAt: null,
       createdAt: new Date('2026-08-13T12:00:00.000Z'),
       updatedAt: new Date('2026-08-13T12:00:00.000Z'),
     });

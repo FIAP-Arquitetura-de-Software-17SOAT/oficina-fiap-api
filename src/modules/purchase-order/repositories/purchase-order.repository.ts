@@ -1,41 +1,25 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import {
-  PrismaService,
-} from '../../../shared/database/prisma.service';
+import { PrismaService } from '../../../shared/database/prisma.service';
 
-import {
-  PurchaseOrder,
-} from '../entities/purchase-order.entity';
+import { PurchaseOrder } from '../entities/purchase-order.entity';
 
-import {
-  PurchaseOrderItem,
-} from '../entities/purchase-order-item.entity';
+import { PurchaseOrderItem } from '../entities/purchase-order-item.entity';
 
-import {
-  PurchaseOrderStatus,
-} from '../enums/purchase-order-status.enum';
+import { PurchaseOrderStatus } from '../enums/purchase-order-status.enum';
 
-import {
-  Money,
-} from '../value-objects/money.vo';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
-import {
-  PurchaseOrderNumber,
-} from '../value-objects/purchase-order-number.vo';
+import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import {
-  Quantity,
-} from '../value-objects/quantity.vo';
+import { Quantity } from '../value-objects/quantity.vo';
 
 interface PurchaseOrderItemRow {
   id: string;
 
   purchaseOrderId: string;
 
-  pecaId: string;
+  partId: string;
 
   quantity: number;
 
@@ -55,104 +39,65 @@ interface PurchaseOrderRow {
 
   updatedAt: Date;
 
-  deliveredAt:
-    Date | null;
+  deliveredAt: Date | null;
 
-  items:
-    PurchaseOrderItemRow[];
+  items: PurchaseOrderItemRow[];
 }
 
 @Injectable()
 export class PurchaseOrderRepository {
-  constructor(
-    private readonly prisma:
-      PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    purchaseOrder: PurchaseOrder,
-  ): Promise<PurchaseOrder> {
-    const row =
-      await this.prisma
-        .purchaseOrder
-        .create({
-          data: {
-            id:
-              purchaseOrder
-                .getId(),
+  async create(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
+    const row = await this.prisma.purchaseOrder.create({
+      data: {
+        id: purchaseOrder.getId(),
 
-            number:
-              purchaseOrder
-                .getNumber()
-                .value,
+        number: purchaseOrder.getNumber().value,
 
-            supplier:
-              purchaseOrder
-                .getSupplier(),
+        supplier: purchaseOrder.getSupplier(),
 
-            status:
-              purchaseOrder
-                .getStatus(),
+        status: purchaseOrder.getStatus(),
 
-            createdAt:
-              purchaseOrder
-                .getCreatedAt(),
+        createdAt: purchaseOrder.getCreatedAt(),
 
-            updatedAt:
-              purchaseOrder
-                .getUpdatedAt(),
+        updatedAt: purchaseOrder.getUpdatedAt(),
 
-            deliveredAt:
-              purchaseOrder
-                .getDeliveredAt(),
-          },
+        deliveredAt: purchaseOrder.getDeliveredAt(),
+      },
 
-          include: {
-            items: true,
-          },
-        });
+      include: {
+        items: true,
+      },
+    });
 
     return this.toDomain(row);
   }
 
-  async findAll():
-    Promise<PurchaseOrder[]> {
-    const rows =
-      await this.prisma
-        .purchaseOrder
-        .findMany({
-          include: {
-            items: true,
-          },
+  async findAll(): Promise<PurchaseOrder[]> {
+    const rows = await this.prisma.purchaseOrder.findMany({
+      include: {
+        items: true,
+      },
 
-          orderBy: {
-            createdAt: 'desc',
-          },
-        });
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
-    return rows.map(
-      (row) =>
-        this.toDomain(row),
-    );
+    return rows.map((row) => this.toDomain(row));
   }
 
-  async findById(
-    id: string,
-  ): Promise<
-    PurchaseOrder | null
-  > {
-    const row =
-      await this.prisma
-        .purchaseOrder
-        .findUnique({
-          where: {
-            id,
-          },
+  async findById(id: string): Promise<PurchaseOrder | null> {
+    const row = await this.prisma.purchaseOrder.findUnique({
+      where: {
+        id,
+      },
 
-          include: {
-            items: true,
-          },
-        });
+      include: {
+        items: true,
+      },
+    });
 
     if (!row) {
       return null;
@@ -161,123 +106,72 @@ export class PurchaseOrderRepository {
     return this.toDomain(row);
   }
 
-  async update(
-    purchaseOrder: PurchaseOrder,
-  ): Promise<PurchaseOrder> {
-    const row =
-      await this.prisma
-        .purchaseOrder
-        .update({
-          where: {
-            id:
-              purchaseOrder
-                .getId(),
-          },
+  async update(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
+    const row = await this.prisma.purchaseOrder.update({
+      where: {
+        id: purchaseOrder.getId(),
+      },
 
-          data: {
-            status:
-              purchaseOrder
-                .getStatus(),
+      data: {
+        status: purchaseOrder.getStatus(),
 
-            updatedAt:
-              purchaseOrder
-                .getUpdatedAt(),
+        updatedAt: purchaseOrder.getUpdatedAt(),
 
-            deliveredAt:
-              purchaseOrder
-                .getDeliveredAt(),
+        deliveredAt: purchaseOrder.getDeliveredAt(),
 
-            items: {
-              deleteMany: {},
+        items: {
+          deleteMany: {},
 
-              create:
-                purchaseOrder
-                  .getItems()
-                  .map(
-                    (item) => ({
-                      id:
-                        item.getId(),
+          create: purchaseOrder.getItems().map((item) => ({
+            id: item.getId(),
 
-                      pecaId:
-                        item
-                          .getPecaId(),
+            partId: item.getPecaId(),
 
-                      quantity:
-                        item
-                          .getQuantity()
-                          .value,
+            quantity: item.getQuantity().value,
 
-                      unitPriceCents:
-                        item
-                          .getUnitPrice()
-                          .valueInCents,
-                    }),
-                  ),
-            },
-          },
+            unitPriceCents: item.getUnitPrice().valueInCents,
+          })),
+        },
+      },
 
-          include: {
-            items: true,
-          },
-        });
+      include: {
+        items: true,
+      },
+    });
 
     return this.toDomain(row);
   }
 
-  private toDomain(
-    row: PurchaseOrderRow,
-  ): PurchaseOrder {
-    const items =
-      row.items.map(
-        (item) =>
-          new PurchaseOrderItem({
-            id:
-              item.id,
+  private toDomain(row: PurchaseOrderRow): PurchaseOrder {
+    const items = row.items.map(
+      (item) =>
+        new PurchaseOrderItem({
+          id: item.id,
 
-            pecaId:
-              item.pecaId,
+          partId: item.partId,
 
-            quantity:
-              Quantity.create(
-                item.quantity,
-              ),
+          quantity: Quantity.create(item.quantity),
 
-            unitPrice:
-              Money.fromCents(
-                item
-                  .unitPriceCents,
-              ),
-          }),
-      );
+          unitPrice: Money.fromCents(item.unitPriceCents),
+        }),
+    );
 
     return new PurchaseOrder({
-      id:
-        row.id,
+      id: row.id,
 
-      number:
-        PurchaseOrderNumber
-          .create(
-            row.number,
-          ),
+      number: PurchaseOrderNumber.create(row.number),
 
-      supplier:
-        row.supplier,
+      supplier: row.supplier,
 
-      status:
-        row.status as
-          PurchaseOrderStatus,
+      status: row.status as PurchaseOrderStatus,
 
       items,
 
-      createdAt:
-        row.createdAt,
+      createdAt: row.createdAt,
 
-      updatedAt:
-        row.updatedAt,
+      updatedAt: row.updatedAt,
 
-      deliveredAt:
-        row.deliveredAt ??
-        undefined,
+      deliveredAt: row.deliveredAt ?? undefined,
     });
   }
 }

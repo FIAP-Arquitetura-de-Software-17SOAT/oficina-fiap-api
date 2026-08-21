@@ -1,31 +1,16 @@
-import {
-  Module,
-} from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
-import {
-  PurchaseOrderController,
-} from './controllers/purchase-order.controller';
+import { PurchaseOrderController } from './controllers/purchase-order.controller';
 
-import {
-  PurchaseOrderRepository,
-} from './repositories/purchase-order.repository';
+import { PurchaseOrderRepository } from './repositories/purchase-order.repository';
 
-import {
-  PurchaseOrderService,
-} from './services/purchase-order.service';
+import { PurchaseOrderService } from './services/purchase-order.service';
 
 @Module({
-  controllers: [
-    PurchaseOrderController,
-  ],
+  controllers: [PurchaseOrderController],
 
-  providers: [
-    PurchaseOrderRepository,
-    PurchaseOrderService,
-  ],
+  providers: [PurchaseOrderRepository, PurchaseOrderService],
 
-  exports: [
-    PurchaseOrderService,
-  ],
+  exports: [PurchaseOrderService],
 })
 export class PurchaseOrderModule {}

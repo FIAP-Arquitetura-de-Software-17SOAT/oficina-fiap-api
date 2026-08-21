@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { hash as bcryptHash } from 'bcrypt';
 import {
   isValidLoginEmail,
@@ -11,7 +12,7 @@ type SeedPrisma = {
   user: {
     findUnique: (args: { where: { email: string } }) => Promise<unknown>;
     create: (args: {
-      data: { email: string; passwordHash: string; role: 'ADMIN' };
+      data: { id: string; email: string; passwordHash: string; role: 'ADMIN' };
     }) => Promise<unknown>;
   };
 };
@@ -69,6 +70,7 @@ export async function seedAdmin(
   try {
     await prisma.user.create({
       data: {
+        id: randomUUID(),
         email,
         passwordHash,
         role: 'ADMIN',
@@ -81,17 +83,20 @@ export async function seedAdmin(
   }
 }
 
-async function runSeed(): Promise<void> {
+export async function runSeed(): Promise<void> {
   const databaseUrl = process.env['DATABASE_URL'];
 
   if (!databaseUrl) {
     throw new Error('DATABASE_URL must be set to seed the administrator');
   }
 
-  const [{ PrismaPg }, { PrismaClient }] = await Promise.all([
-    import('@prisma/adapter-pg'),
-    import('../generated/prisma/client.js'),
-  ]);
+  const { PrismaPg } = await import('@prisma/adapter-pg');
+  // O Prisma Client é gerado como .ts com imports internos terminando em ".js",
+  // par que nem o loader ESM nem o resolver CJS do ts-node conseguem casar.
+  // No container, PRISMA_CLIENT_MODULE aponta para o client já compilado.
+  const clientModule =
+    process.env['PRISMA_CLIENT_MODULE'] ?? '../generated/prisma/client.js';
+  const { PrismaClient } = require(clientModule) as typeof import('../generated/prisma/client.js');
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: databaseUrl }),
   });

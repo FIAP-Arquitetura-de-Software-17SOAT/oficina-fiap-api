@@ -17,17 +17,13 @@ describe('Money', () => {
     });
 
     it('should not allow negative values', () => {
-      expect(() =>
-        Money.fromCents(-100),
-      ).toThrow(
+      expect(() => Money.fromCents(-100)).toThrow(
         'O valor monetário não pode ser negativo',
       );
     });
 
     it('should not allow decimal cents', () => {
-      expect(() =>
-        Money.fromCents(100.5),
-      ).toThrow(
+      expect(() => Money.fromCents(100.5)).toThrow(
         'O valor monetário deve ser representado em centavos inteiros',
       );
     });
@@ -47,9 +43,7 @@ describe('Money', () => {
     });
 
     it('should reject invalid monetary values', () => {
-      expect(() =>
-        Money.fromDecimal(Number.NaN),
-      ).toThrow(
+      expect(() => Money.fromDecimal(Number.NaN)).toThrow(
         'O valor monetário informado é inválido',
       );
     });
@@ -79,9 +73,7 @@ describe('Money', () => {
     it('should reject decimal quantity', () => {
       const money = Money.fromCents(1000);
 
-      expect(() =>
-        money.multiply(1.5),
-      ).toThrow(
+      expect(() => money.multiply(1.5)).toThrow(
         'A quantidade utilizada no cálculo deve ser inteira',
       );
     });

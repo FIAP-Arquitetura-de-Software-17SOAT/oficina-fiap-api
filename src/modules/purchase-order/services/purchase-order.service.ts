@@ -1,80 +1,45 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import {
   AddPurchaseOrderItemDto,
   CreatePurchaseOrderDto,
 } from '../dto/purchase-order.dto';
 
-import {
-  PurchaseOrder,
-} from '../entities/purchase-order.entity';
+import { PurchaseOrder } from '../entities/purchase-order.entity';
 
-import {
-  PurchaseOrderItem,
-} from '../entities/purchase-order-item.entity';
+import { PurchaseOrderItem } from '../entities/purchase-order-item.entity';
 
-import {
-  PurchaseOrderRepository,
-} from '../repositories/purchase-order.repository';
+import { PurchaseOrderRepository } from '../repositories/purchase-order.repository';
 
-import {
-  Money,
-} from '../value-objects/money.vo';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
-import {
-  PurchaseOrderNumber,
-} from '../value-objects/purchase-order-number.vo';
+import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import {
-  Quantity,
-} from '../value-objects/quantity.vo';
+import { Quantity } from '../value-objects/quantity.vo';
 
 @Injectable()
 export class PurchaseOrderService {
-  constructor(
-    private readonly repository:
-      PurchaseOrderRepository,
-  ) {}
+  constructor(private readonly repository: PurchaseOrderRepository) {}
 
-  async create(
-    dto: CreatePurchaseOrderDto,
-  ): Promise<PurchaseOrder> {
-    const purchaseOrder =
-      new PurchaseOrder({
-        number:
-          PurchaseOrderNumber
-            .create(
-              dto.number,
-            ),
+  async create(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
+    const purchaseOrder = new PurchaseOrder({
+      number: PurchaseOrderNumber.create(dto.number),
 
-        supplier:
-          dto.supplier,
-      });
+      supplier: dto.supplier,
+    });
 
-    return this.repository.create(
-      purchaseOrder,
-    );
+    return this.repository.create(purchaseOrder);
   }
 
-  async findAll():
-    Promise<PurchaseOrder[]> {
+  async findAll(): Promise<PurchaseOrder[]> {
     return this.repository.findAll();
   }
 
-  async findById(
-    id: string,
-  ): Promise<PurchaseOrder> {
-    const purchaseOrder =
-      await this.repository
-        .findById(id);
+  async findById(id: string): Promise<PurchaseOrder> {
+    const purchaseOrder = await this.repository.findById(id);
 
     if (!purchaseOrder) {
-      throw new NotFoundException(
-        'Pedido de compra não encontrado',
-      );
+      throw new NotFoundException('Pedido de compra não encontrado');
     }
 
     return purchaseOrder;
@@ -84,73 +49,42 @@ export class PurchaseOrderService {
     id: string,
     dto: AddPurchaseOrderItemDto,
   ): Promise<PurchaseOrder> {
-    const purchaseOrder =
-      await this.findById(id);
+    const purchaseOrder = await this.findById(id);
 
-    const item =
-      new PurchaseOrderItem({
-        pecaId:
-          dto.pecaId,
+    const item = new PurchaseOrderItem({
+      partId: dto.partId,
 
-        quantity:
-          Quantity.create(
-            dto.quantity,
-          ),
+      quantity: Quantity.create(dto.quantity),
 
-        unitPrice:
-          Money.fromDecimal(
-            dto.unitPrice,
-          ),
-      });
+      unitPrice: Money.fromDecimal(dto.unitPrice),
+    });
 
     purchaseOrder.addItem(item);
 
-    return this.repository.update(
-      purchaseOrder,
-    );
+    return this.repository.update(purchaseOrder);
   }
 
-  async removeItem(
-    id: string,
-    itemId: string,
-  ): Promise<PurchaseOrder> {
-    const purchaseOrder =
-      await this.findById(id);
+  async removeItem(id: string, itemId: string): Promise<PurchaseOrder> {
+    const purchaseOrder = await this.findById(id);
 
-    purchaseOrder.removeItem(
-      itemId,
-    );
+    purchaseOrder.removeItem(itemId);
 
-    return this.repository.update(
-      purchaseOrder,
-    );
+    return this.repository.update(purchaseOrder);
   }
 
-  async registerPurchase(
-    id: string,
-  ): Promise<PurchaseOrder> {
-    const purchaseOrder =
-      await this.findById(id);
+  async registerPurchase(id: string): Promise<PurchaseOrder> {
+    const purchaseOrder = await this.findById(id);
 
-    purchaseOrder
-      .registerPurchase();
+    purchaseOrder.registerPurchase();
 
-    return this.repository.update(
-      purchaseOrder,
-    );
+    return this.repository.update(purchaseOrder);
   }
 
-  async markAsDelivered(
-    id: string,
-  ): Promise<PurchaseOrder> {
-    const purchaseOrder =
-      await this.findById(id);
+  async markAsDelivered(id: string): Promise<PurchaseOrder> {
+    const purchaseOrder = await this.findById(id);
 
-    purchaseOrder
-      .markAsDelivered();
+    purchaseOrder.markAsDelivered();
 
-    return this.repository.update(
-      purchaseOrder,
-    );
+    return this.repository.update(purchaseOrder);
   }
 }

@@ -54,7 +54,7 @@ describeDatabase('Budget persistence (e2e)', () => {
             description: 'Oil change',
             type: 'SERVICE',
             quantity: 1,
-            unitPrice: 120,
+            unitPriceCents: 120,
           },
         ],
       })
@@ -66,7 +66,7 @@ describeDatabase('Budget persistence (e2e)', () => {
       where: { id: budgetId },
       include: { items: true },
     });
-    expect(persistedAfterCreate?.totalAmount.toString()).toBe('120');
+    expect(persistedAfterCreate?.totalCents.toString()).toBe('120');
     expect(persistedAfterCreate?.items).toHaveLength(1);
 
     let addedItemId = '';
@@ -77,12 +77,12 @@ describeDatabase('Budget persistence (e2e)', () => {
         description: 'Oil filter',
         type: 'PART',
         quantity: 1,
-        unitPrice: 40,
+        unitPriceCents: 40,
       })
       .expect(201)
       .expect(({ body }) => {
         expect(body.items).toHaveLength(2);
-        expect(body.totalAmount).toBe(160);
+        expect(body.totalCents).toBe(160);
         addedItemId = body.items.find(
           (item: { description: string }) => item.description === 'Oil filter',
         ).id;
@@ -92,7 +92,7 @@ describeDatabase('Budget persistence (e2e)', () => {
       where: { id: budgetId },
       include: { items: true },
     });
-    expect(persistedAfterAdd?.totalAmount.toString()).toBe('160');
+    expect(persistedAfterAdd?.totalCents.toString()).toBe('160');
     expect(persistedAfterAdd?.items).toHaveLength(2);
 
     await request(http)
@@ -100,14 +100,14 @@ describeDatabase('Budget persistence (e2e)', () => {
       .expect(200)
       .expect(({ body }) => {
         expect(body.items).toHaveLength(1);
-        expect(body.totalAmount).toBe(120);
+        expect(body.totalCents).toBe(120);
       });
 
     const persistedAfterRemove = await prisma.budget.findUnique({
       where: { id: budgetId },
       include: { items: true },
     });
-    expect(persistedAfterRemove?.totalAmount.toString()).toBe('120');
+    expect(persistedAfterRemove?.totalCents.toString()).toBe('120');
     expect(persistedAfterRemove?.items).toHaveLength(1);
 
     await request(http).post(`/api/v1/budgets/${budgetId}/send`).expect(200);
@@ -117,7 +117,7 @@ describeDatabase('Budget persistence (e2e)', () => {
       .expect(200)
       .expect(({ body }) => {
         expect(body.status).toBe('ACCEPTED');
-        expect(body.totalAmount).toBe(120);
+        expect(body.totalCents).toBe(120);
       });
 
     const accepted = await prisma.budget.findUnique({

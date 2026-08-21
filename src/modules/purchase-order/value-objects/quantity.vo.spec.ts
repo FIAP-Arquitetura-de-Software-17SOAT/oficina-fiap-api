@@ -14,25 +14,19 @@ describe('Quantity', () => {
   });
 
   it('should reject zero', () => {
-    expect(() =>
-      Quantity.create(0),
-    ).toThrow(
+    expect(() => Quantity.create(0)).toThrow(
       'A quantidade deve ser maior que zero',
     );
   });
 
   it('should reject negative quantities', () => {
-    expect(() =>
-      Quantity.create(-1),
-    ).toThrow(
+    expect(() => Quantity.create(-1)).toThrow(
       'A quantidade deve ser maior que zero',
     );
   });
 
   it('should reject decimal quantities', () => {
-    expect(() =>
-      Quantity.create(1.5),
-    ).toThrow(
+    expect(() => Quantity.create(1.5)).toThrow(
       'A quantidade deve ser um número inteiro',
     );
   });

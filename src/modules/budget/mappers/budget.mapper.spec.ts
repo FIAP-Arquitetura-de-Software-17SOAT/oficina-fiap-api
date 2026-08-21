@@ -22,14 +22,14 @@ describe('BudgetMapper', () => {
 
     const persistence = BudgetMapper.toPersistence(budget);
 
-    expect(persistence.totalAmount).toBe(100);
+    expect(persistence.totalCents).toBe(10000);
     expect(persistence.items.create).toEqual([
       expect.objectContaining({
         description: 'Oil change',
         type: BudgetItemType.SERVICE,
         quantity: 2,
-        unitPrice: 50,
-        subtotal: 100,
+        unitPriceCents: 5000,
+        subtotalCents: 10000,
       }),
     ]);
   });
@@ -53,7 +53,7 @@ describe('BudgetMapper', () => {
           description: 'Oil filter',
           type: BudgetItemType.PART,
           quantity: { toString: () => '2.5' },
-          unitPrice: { toString: () => '40.2' },
+          unitPriceCents: 4020,
         },
       ],
     });

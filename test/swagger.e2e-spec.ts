@@ -206,7 +206,7 @@ describe('Swagger', () => {
     }
   });
 
-   it('serve a UI e o JSON em /api/v1/docs', async () => {
+  it('serve a UI e o JSON em /api/v1/docs', async () => {
     await request(http)
       .get('/api/v1/docs')
       .expect('Content-Type', /html/)

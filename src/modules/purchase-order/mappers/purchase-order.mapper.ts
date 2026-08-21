@@ -1,71 +1,35 @@
-import {
-  PurchaseOrder,
-} from '../entities/purchase-order.entity';
+import { PurchaseOrder } from '../entities/purchase-order.entity';
 
 export class PurchaseOrderMapper {
-  static toResponse(
-    purchaseOrder: PurchaseOrder,
-  ) {
+  static toResponse(purchaseOrder: PurchaseOrder) {
     return {
-      id:
-        purchaseOrder.getId(),
+      id: purchaseOrder.getId(),
 
-      number:
-        purchaseOrder
-          .getNumber()
-          .value,
+      number: purchaseOrder.getNumber().value,
 
-      supplier:
-        purchaseOrder
-          .getSupplier(),
+      supplier: purchaseOrder.getSupplier(),
 
-      status:
-        purchaseOrder
-          .getStatus(),
+      status: purchaseOrder.getStatus(),
 
-      items:
-        purchaseOrder
-          .getItems()
-          .map((item) => ({
-            id:
-              item.getId(),
+      items: purchaseOrder.getItems().map((item) => ({
+        id: item.getId(),
 
-            pecaId:
-              item.getPecaId(),
+        partId: item.getPecaId(),
 
-            quantity:
-              item
-                .getQuantity()
-                .value,
+        quantity: item.getQuantity().value,
 
-            unitPrice:
-              item
-                .getUnitPrice()
-                .value,
+        unitPrice: item.getUnitPrice().value,
 
-            subtotal:
-              item
-                .getSubtotal()
-                .value,
-          })),
+        subtotal: item.getSubtotal().value,
+      })),
 
-      total:
-        purchaseOrder
-          .getTotal()
-          .value,
+      total: purchaseOrder.getTotal().value,
 
-      createdAt:
-        purchaseOrder
-          .getCreatedAt(),
+      createdAt: purchaseOrder.getCreatedAt(),
 
-      updatedAt:
-        purchaseOrder
-          .getUpdatedAt(),
+      updatedAt: purchaseOrder.getUpdatedAt(),
 
-      deliveredAt:
-        purchaseOrder
-          .getDeliveredAt() ??
-        null,
+      deliveredAt: purchaseOrder.getDeliveredAt() ?? null,
     };
   }
 }

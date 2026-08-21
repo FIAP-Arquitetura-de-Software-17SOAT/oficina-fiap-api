@@ -12,27 +12,27 @@ A implementação segue os princípios de DDD adotados no projeto, com separaç�
 
 O `PurchaseOrder` representa um pedido realizado pela oficina junto a um fornecedor.
 
-O agregado possui uma coleção de itens, em que cada item referencia uma peça ou insumo por meio de `pecaId`.
+O agregado possui uma coleção de itens, em que cada item referencia uma peça ou insumo por meio de `partId`.
 
 O fluxo principal é:
 
 ```text
-NECESSITA_COMPRA
+NEEDS_PURCHASE
         ↓
 registrarCompra()
         ↓
-AGUARDANDO_ENTREGA
+AWAITING_DELIVERY
         ↓
 marcarComoEntregue()
         ↓
-ENTREGUE
+DELIVERED
 ```
 
-O pedido pode ser alterado enquanto estiver em `NECESSITA_COMPRA`.
+O pedido pode ser alterado enquanto estiver em `NEEDS_PURCHASE`.
 
 Após o registro da compra junto ao fornecedor, os itens não podem mais ser adicionados ou removidos.
 
-`ENTREGUE` é o estado final do pedido.
+`DELIVERED` é o estado final do pedido.
 
 ---
 
@@ -120,7 +120,7 @@ Propriedades:
 
 ```text
 id
-pecaId
+partId
 quantity
 unitPrice
 ```
@@ -139,7 +139,7 @@ através do método:
 getSubtotal()
 ```
 
-`pecaId` representa apenas uma referência à peça ou insumo existente no contexto de estoque.
+`partId` representa apenas uma referência à peça ou insumo existente no contexto de estoque.
 
 O objeto completo de `Peca` não pertence ao agregado `PurchaseOrder`.
 
@@ -242,12 +242,12 @@ PurchaseOrderStatus
 com os valores:
 
 ```text
-NECESSITA_COMPRA
-AGUARDANDO_ENTREGA
-ENTREGUE
+NEEDS_PURCHASE
+AWAITING_DELIVERY
+DELIVERED
 ```
 
-## NECESSITA_COMPRA
+## NEEDS_PURCHASE
 
 Estado inicial de um pedido.
 
@@ -259,7 +259,7 @@ Enquanto estiver nesse estado:
 
 ---
 
-## AGUARDANDO_ENTREGA
+## AWAITING_DELIVERY
 
 Indica que a compra já foi registrada junto ao fornecedor.
 
@@ -271,7 +271,7 @@ A partir desse momento:
 
 ---
 
-## ENTREGUE
+## DELIVERED
 
 Estado final do pedido.
 
@@ -322,23 +322,23 @@ Quantity
 Permitido:
 
 ```text
-NECESSITA_COMPRA
+NEEDS_PURCHASE
         ↓
-AGUARDANDO_ENTREGA
+AWAITING_DELIVERY
         ↓
-ENTREGUE
+DELIVERED
 ```
 
 Não permitido:
 
 ```text
-NECESSITA_COMPRA → ENTREGUE
+NEEDS_PURCHASE → DELIVERED
 ```
 
 nem:
 
 ```text
-ENTREGUE → AGUARDANDO_ENTREGA
+DELIVERED → AWAITING_DELIVERY
 ```
 
 ---
@@ -362,12 +362,12 @@ são recusadas pelo domínio.
 
 ---
 
-### ENTREGUE é terminal
+### DELIVERED é terminal
 
 Depois que o pedido atingir:
 
 ```text
-ENTREGUE
+DELIVERED
 ```
 
 nenhuma nova alteração ou transição é permitida.
@@ -396,7 +396,7 @@ Exemplo:
 O pedido é criado inicialmente como:
 
 ```text
-NECESSITA_COMPRA
+NEEDS_PURCHASE
 ```
 
 ---
@@ -429,7 +429,7 @@ Exemplo:
 
 ```json
 {
-  "pecaId": "550e8400-e29b-41d4-a716-446655440000",
+  "partId": "550e8400-e29b-41d4-a716-446655440000",
   "quantity": 2,
   "unitPrice": 150.5
 }
@@ -438,7 +438,7 @@ Exemplo:
 A operação só é permitida enquanto o pedido estiver em:
 
 ```text
-NECESSITA_COMPRA
+NEEDS_PURCHASE
 ```
 
 ---
@@ -452,7 +452,7 @@ DELETE /api/v1/purchase-orders/{id}/items/{itemId}
 Também só é permitido enquanto o pedido estiver em:
 
 ```text
-NECESSITA_COMPRA
+NEEDS_PURCHASE
 ```
 
 ---
@@ -466,9 +466,9 @@ PATCH /api/v1/purchase-orders/{id}/register-purchase
 Executa a transição:
 
 ```text
-NECESSITA_COMPRA
+NEEDS_PURCHASE
         ↓
-AGUARDANDO_ENTREGA
+AWAITING_DELIVERY
 ```
 
 O pedido precisa possuir pelo menos um item.
@@ -484,9 +484,9 @@ PATCH /api/v1/purchase-orders/{id}/deliver
 Executa:
 
 ```text
-AGUARDANDO_ENTREGA
+AWAITING_DELIVERY
         ↓
-ENTREGUE
+DELIVERED
 ```
 
 e registra:
@@ -529,7 +529,7 @@ model PurchaseOrder {
 model PurchaseOrderItem {
   id              String @id @default(uuid())
   purchaseOrderId String
-  pecaId           String
+  partId           String
   quantity         Int
   unitPriceCents   Int
 
@@ -662,11 +662,11 @@ Exemplo de retorno:
   "id": "uuid",
   "number": "PC-2026-0042",
   "supplier": "Auto Peças São Paulo",
-  "status": "NECESSITA_COMPRA",
+  "status": "NEEDS_PURCHASE",
   "items": [
     {
       "id": "uuid",
-      "pecaId": "uuid",
+      "partId": "uuid",
       "quantity": 2,
       "unitPrice": 150.5,
       "subtotal": 301
@@ -718,13 +718,13 @@ As principais regras testadas incluem:
 * armazenamento de dinheiro em centavos;
 * cálculo do subtotal;
 * cálculo do total;
-* criação do pedido em `NECESSITA_COMPRA`;
+* criação do pedido em `NEEDS_PURCHASE`;
 * adição e remoção de itens;
 * impossibilidade de registrar compra sem itens;
-* transição para `AGUARDANDO_ENTREGA`;
+* transição para `AWAITING_DELIVERY`;
 * bloqueio de alterações após registro da compra;
-* transição para `ENTREGUE`;
-* comportamento terminal de `ENTREGUE`;
+* transição para `DELIVERED`;
+* comportamento terminal de `DELIVERED`;
 * busca de pedido inexistente.
 
 Para executar:
@@ -828,7 +828,7 @@ O fluxo esperado é:
 ```text
 PurchaseOrder
      ↓
-ENTREGUE
+DELIVERED
      ↓
 evento / application service
      ↓
@@ -866,23 +866,23 @@ Peça/insumo necessita de compra
               ↓
       PurchaseOrder criado
               ↓
-       NECESSITA_COMPRA
+       NEEDS_PURCHASE
               ↓
         adicionarItem()
               ↓
        registrarCompra()
               ↓
-     AGUARDANDO_ENTREGA
+     AWAITING_DELIVERY
               ↓
       markAsDelivered()
               ↓
-           ENTREGUE
+           DELIVERED
               ↓
        integração futura
               ↓
           Peca.repor()
 ```
 
-O módulo `PurchaseOrder` é responsável até o estado `ENTREGUE`.
+O módulo `PurchaseOrder` é responsável até o estado `DELIVERED`.
 
 A atualização efetiva do estoque pertence à integração entre os agregados.

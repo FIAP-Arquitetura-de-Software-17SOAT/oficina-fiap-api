@@ -4,6 +4,7 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { BudgetResponseDto } from '../dto/budget.dto';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 type BudgetWithItems = {
   id: string;
@@ -20,7 +21,7 @@ type BudgetWithItems = {
     description: string;
     type: BudgetItemType;
     quantity: unknown;
-    unitPrice: unknown;
+    unitPriceCents: number;
   }>;
 };
 
@@ -58,22 +59,36 @@ export class BudgetMapper {
       serviceOrderId: budget.getServiceOrderId(),
       version: budget.getVersion(),
       status: budget.getStatus(),
-      totalAmount: budget.getTotalAmount(),
+      totalCents: Money.fromDecimal(budget.getTotalAmount()).valueInCents,
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
       createdAt: budget.getCreatedAt(),
       updatedAt: budget.getUpdatedAt(),
       items: {
-        create: budget.getItems().map((item) => ({
-          id: item.getId(),
-          description: item.getDescription(),
-          type: item.getType(),
-          quantity: item.getQuantity(),
-          unitPrice: item.getUnitPrice(),
-          subtotal: item.getSubtotal(),
-        })),
+        create: budget
+          .getItems()
+          .map((item) => BudgetMapper.itemToPersistence(item)),
       },
+    };
+  }
+
+  /**
+   * Dinheiro é persistido sempre em centavos inteiros. A API continua em
+   * decimais; a conversão acontece só aqui, na fronteira de persistência.
+   */
+  static itemToPersistence(
+    item: Budget['getItems'] extends never
+      ? never
+      : ReturnType<Budget['getItems']>[number],
+  ) {
+    return {
+      id: item.getId(),
+      description: item.getDescription(),
+      type: item.getType(),
+      quantity: item.getQuantity(),
+      unitPriceCents: Money.fromDecimal(item.getUnitPrice()).valueInCents,
+      subtotalCents: Money.fromDecimal(item.getSubtotal()).valueInCents,
     };
   }
 
@@ -92,7 +107,7 @@ export class BudgetMapper {
         description: item.description,
         type: item.type,
         quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
+        unitPrice: Money.fromCents(item.unitPriceCents).value,
       })),
     });
   }

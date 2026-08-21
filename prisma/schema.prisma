@@ -22,7 +22,7 @@ enum Role {
 }
 
 model User {
-  id              String           @id @default(cuid())
+  id              String           @id @db.Uuid
   email           String           @unique
   passwordHash    String
   role            Role             @default(ADMIN)
@@ -34,12 +34,12 @@ model User {
 }
 
 model RefreshSession {
-  id        String    @id @default(cuid())
+  id        String    @id @db.Uuid
   jti       String    @unique
   tokenHash String
   expiresAt DateTime
   revokedAt DateTime?
-  userId    String
+  userId    String    @db.Uuid
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -49,7 +49,7 @@ model RefreshSession {
 }
 
 model Client {
-  id       String @id
+  id       String @id @db.Uuid
   name     String
   document String @unique
   email    String @unique
@@ -65,10 +65,10 @@ model Client {
 }
 
 model PurchaseOrder {
-  id       String @id @default(uuid())
-  number   String @unique
+  id       String              @id @db.Uuid
+  number   String              @unique
   supplier String
-  status   String
+  status   PurchaseOrderStatus
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -80,10 +80,10 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              String @id @default(uuid())
-  purchaseOrderId String
+  id              String @id @db.Uuid
+  purchaseOrderId String @db.Uuid
 
-  pecaId String
+  partId String @db.Uuid
 
   quantity Int
 
@@ -92,6 +92,23 @@ model PurchaseOrderItem {
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   @@map("purchase_order_item")
+}
+
+enum PurchaseOrderStatus {
+  NEEDS_PURCHASE
+  AWAITING_DELIVERY
+  DELIVERED
+}
+
+enum ServiceOrderStatus {
+  RECEIVED
+  IN_DIAGNOSIS
+  AWAITING_APPROVAL
+  AWAITING_PARTS
+  IN_PROGRESS
+  COMPLETED
+  DELIVERED
+  CANCELLED
 }
 
 enum BudgetStatus {
@@ -107,34 +124,34 @@ enum BudgetItemType {
 }
 
 model Budget {
-  id              String       @id
-  serviceOrderId  String
-  version         Int
-  status          BudgetStatus
-  totalAmount     Decimal      @db.Decimal(10, 2)
-  refusalReason   String?
-  sentAt          DateTime?
-  answeredAt      DateTime?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id             String       @id @db.Uuid
+  serviceOrderId String       @db.Uuid
+  version        Int
+  status         BudgetStatus
+  totalCents     Int
+  refusalReason  String?
+  sentAt         DateTime?
+  answeredAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   items BudgetItem[]
 
-  // TODO(service-order-integration): replace simple serviceOrderId with a relationship/validation
-  // with the ServiceOrder or Service module when it exists in the domain.
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+
   @@unique([serviceOrderId, version])
   @@index([serviceOrderId])
   @@map("budget")
 }
 
 model BudgetItem {
-  id          String         @id
-  budgetId    String
-  description String
-  type        BudgetItemType
-  quantity    Decimal        @db.Decimal(10, 2)
-  unitPrice   Decimal        @db.Decimal(10, 2)
-  subtotal    Decimal        @db.Decimal(10, 2)
+  id             String         @id @db.Uuid
+  budgetId       String         @db.Uuid
+  description    String
+  type           BudgetItemType
+  quantity       Decimal        @db.Decimal(10, 2)
+  unitPriceCents Int
+  subtotalCents  Int
 
   budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
 
@@ -142,26 +159,29 @@ model BudgetItem {
 }
 
 model ServiceOrder {
-  id                 String    @id
-  clientId           String
-  vehicleId          String
+  id                 String             @id @db.Uuid
+  clientId           String             @db.Uuid
+  vehicleId          String             @db.Uuid
   description        String
-  status             String
+  status             ServiceOrderStatus
   cancellationReason String?
   completedAt        DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  client  Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  budgets Budget[]
 
   @@index([clientId])
+  @@index([vehicleId])
   @@map("service_order")
 }
 
 model Vehicle {
-  id       String @id
-  clientId String
+  id       String @id @db.Uuid
+  clientId String @db.Uuid
   plate    String @unique
   brand    String
   model    String
@@ -172,7 +192,8 @@ model Vehicle {
 
   // Restrict (padrão) de propósito: apagar um cliente que ainda tem veículo
   // deve falhar, não levar o histórico junto. O erro é traduzido em 409.
-  client Client @relation(fields: [clientId], references: [id])
+  client        Client         @relation(fields: [clientId], references: [id])
+  serviceOrders ServiceOrder[]
 
   @@index([clientId])
   @@map("vehicle")
