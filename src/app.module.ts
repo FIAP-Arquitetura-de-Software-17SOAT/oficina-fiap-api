@@ -8,6 +8,7 @@ import { BudgetModule } from './modules/budget/budget.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { StockModule } from './modules/stock/stock.module';
 import { PrismaModule } from './shared/database/prisma.module';
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PrismaModule } from './shared/database/prisma.module';
     }),
     PrismaModule,
     AuthModule,
+    StockModule,
     ClientModule,
     PurchaseOrderModule,
     BudgetModule,
