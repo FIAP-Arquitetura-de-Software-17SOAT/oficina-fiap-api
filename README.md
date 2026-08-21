@@ -307,3 +307,22 @@ Regras aplicadas:
 - Telefone exige DDD, aceita 8 ou 9 dígitos, persiste apenas dígitos
 - Documento é **imutável** após o cadastro — não existe no `UpdateClientDto`
 - Documento e e-mail duplicados retornam `409`; dado inválido retorna `400`
+- Cliente que ainda tem veículo não pode ser removido (`409`)
+
+### Veículo (implementado)
+
+| Verbo | Rota | Descrição |
+|---|---|---|
+| POST | `/api/v1/vehicle` | Cadastra |
+| GET | `/api/v1/vehicle` | Lista, com filtro opcional `?clientId=` |
+| GET | `/api/v1/vehicle/:id` | Busca por id |
+| PATCH | `/api/v1/vehicle/:id` | Atualiza marca, modelo ou ano |
+| DELETE | `/api/v1/vehicle/:id` | Remove |
+
+Regras aplicadas:
+
+- Placa validada nos dois formatos, antigo (`ABC1234`) e Mercosul (`ABC1D23`); aceita com
+  hífen ou minúsculas e persiste normalizada
+- Ano entre 1900 e o ano seguinte ao atual — a montadora antecipa o modelo
+- Placa e dono são **imutáveis** após o cadastro; não existem no `UpdateVehicleDto`
+- Cadastro com cliente inexistente retorna `404`; placa duplicada retorna `409`

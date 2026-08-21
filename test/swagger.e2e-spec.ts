@@ -40,20 +40,28 @@ describe('Swagger', () => {
     await app.close();
   });
 
-  it('documenta as rotas de cliente sob o prefixo da API', () => {
+  it('documenta as rotas de cliente e veículo sob o prefixo da API', () => {
     expect(Object.keys(document.paths)).toEqual(
-      expect.arrayContaining(['/api/v1/client', '/api/v1/client/{id}']),
+      expect.arrayContaining([
+        '/api/v1/client',
+        '/api/v1/client/{id}',
+        '/api/v1/vehicle',
+        '/api/v1/vehicle/{id}',
+      ]),
     );
   });
 
-  it('documenta todos os verbos do CRUD', () => {
-    expect(Object.keys(document.paths['/api/v1/client'])).toEqual(
-      expect.arrayContaining(['post', 'get']),
-    );
-    expect(Object.keys(document.paths['/api/v1/client/{id}'])).toEqual(
-      expect.arrayContaining(['get', 'patch', 'delete']),
-    );
-  });
+  it.each([['client'], ['vehicle']])(
+    'documenta todos os verbos do CRUD de %s',
+    (recurso) => {
+      expect(Object.keys(document.paths[`/api/v1/${recurso}`])).toEqual(
+        expect.arrayContaining(['post', 'get']),
+      );
+      expect(Object.keys(document.paths[`/api/v1/${recurso}/{id}`])).toEqual(
+        expect.arrayContaining(['get', 'patch', 'delete']),
+      );
+    },
+  );
 
   it('documents protected stock CRUD routes and their schemas', () => {
     const collection = document.paths['/api/v1/stock'];
@@ -110,10 +118,42 @@ describe('Swagger', () => {
         'CreateClientDto',
         'UpdateClientDto',
         'ClientResponseDto',
+        'CreateVehicleDto',
+        'UpdateVehicleDto',
+        'VehicleResponseDto',
         'LoginDto',
         'RefreshTokenDto',
         'TokenPairDto',
       ]),
+    );
+  });
+
+  it('VehicleResponseDto declara os Value Objects como primitivos', () => {
+    const schema = document.components?.schemas?.['VehicleResponseDto'] as {
+      properties: Record<string, { type?: string; format?: string }>;
+    };
+
+    expect(schema.properties.plate.type).toBe('string');
+    expect(schema.properties.year.type).toBe('number');
+    expect(schema.properties.clientId.format).toBe('uuid');
+  });
+
+  it.each([
+    ['UpdateVehicleDto', 'plate'],
+    ['UpdateVehicleDto', 'clientId'],
+  ])('%s não permite alterar %s', (schemaName, prop) => {
+    const schema = document.components?.schemas?.[schemaName] as {
+      properties: Record<string, unknown>;
+    };
+
+    expect(schema.properties).not.toHaveProperty(prop);
+  });
+
+  it('a listagem de veículos documenta o filtro por cliente', () => {
+    const parameters = document.paths['/api/v1/vehicle'].get?.parameters ?? [];
+
+    expect(parameters.map((p) => (p as { name: string }).name)).toContain(
+      'clientId',
     );
   });
 
@@ -200,11 +240,83 @@ describe('Swagger', () => {
     );
   });
 
-  it('serve a UI e o JSON em /api/v1/docs', async () => {
+  it('documenta conflitos nas operacoes mutaveis de budget', () => {
+    const budgetPaths = [
+      ['/api/v1/budgets', 'post'],
+      ['/api/v1/budgets/{id}/items', 'post'],
+      ['/api/v1/budgets/{id}/items/{itemId}', 'delete'],
+      ['/api/v1/budgets/{id}/send', 'post'],
+      ['/api/v1/budgets/{id}/accept', 'post'],
+      ['/api/v1/budgets/{id}/refuse', 'post'],
+    ] as const;
+
+    for (const [path, method] of budgetPaths) {
+      expect(document.paths[path][method]!.responses).toHaveProperty('409');
+    }
+  });
+
+   it('serve a UI e o JSON em /api/v1/docs', async () => {
     await request(http)
       .get('/api/v1/docs')
       .expect('Content-Type', /html/)
       .expect(200);
     expect(document.paths['/api/v1/health']).toBeDefined();
+  });
+
+  it('documenta as rotas de ordem de serviço sob o prefixo da API', () => {
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining([
+        '/api/v1/service-order',
+        '/api/v1/service-order/{id}',
+        '/api/v1/service-order/metrics/average-execution-time',
+        '/api/v1/service-order/{id}/start-diagnosis',
+        '/api/v1/service-order/{id}/await-approval',
+        '/api/v1/service-order/{id}/await-parts',
+        '/api/v1/service-order/{id}/start-progress',
+        '/api/v1/service-order/{id}/complete',
+        '/api/v1/service-order/{id}/deliver',
+        '/api/v1/service-order/{id}/cancel',
+      ]),
+    );
+  });
+
+  it('documenta todos os verbos das rotas de ordem de serviço', () => {
+    expect(Object.keys(document.paths['/api/v1/service-order'])).toEqual(
+      expect.arrayContaining(['post', 'get']),
+    );
+    expect(Object.keys(document.paths['/api/v1/service-order/{id}'])).toEqual(
+      expect.arrayContaining(['get']),
+    );
+
+    for (const action of [
+      'start-diagnosis',
+      'await-approval',
+      'await-parts',
+      'start-progress',
+      'complete',
+      'deliver',
+      'cancel',
+    ]) {
+      expect(
+        Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
+      ).toEqual(expect.arrayContaining(['patch']));
+    }
+
+    expect(
+      Object.keys(
+        document.paths['/api/v1/service-order/metrics/average-execution-time'],
+      ),
+    ).toEqual(expect.arrayContaining(['get']));
+  });
+
+  it('expõe os schemas de request e response da ordem de serviço', () => {
+    expect(Object.keys(document.components?.schemas ?? {})).toEqual(
+      expect.arrayContaining([
+        'OpenServiceOrderDto',
+        'CancelServiceOrderDto',
+        'ServiceOrderResponseDto',
+        'AverageExecutionTimeResponseDto',
+      ]),
+    );
   });
 });

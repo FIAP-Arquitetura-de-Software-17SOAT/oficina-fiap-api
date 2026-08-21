@@ -23,7 +23,11 @@ COPY src ./src
 RUN npm run build
 
 FROM prisma AS migrator
-CMD ["npx", "prisma", "migrate", "deploy"]
+# Retry limitado: um blip de rede entre containers não pode derrubar o
+# `docker compose up` inteiro. Cinco tentativas com 3s de intervalo cobrem a
+# indisponibilidade transitória; erro real de migration ainda falha, só que
+# depois de imprimir a causa cinco vezes.
+CMD ["sh", "-c", "for i in 1 2 3 4 5; do npx prisma migrate deploy && exit 0; echo \"tentativa $i falhou, aguardando o banco...\"; sleep 3; done; echo 'migrate falhou apos 5 tentativas'; exit 1"]
 
 FROM prisma AS dev
 COPY tsconfig*.json nest-cli.json ./
