@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ClientModule } from './modules/client/client.module';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { BudgetModule } from './modules/budget/budget.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -38,6 +39,7 @@ import { PrismaModule } from './shared/database/prisma.module';
     ClientModule,
     PurchaseOrderModule,
     BudgetModule,
+    BillingModule,
     ServiceOrderModule,
     VehicleModule,
   ],
