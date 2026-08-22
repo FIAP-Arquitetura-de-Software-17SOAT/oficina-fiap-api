@@ -106,6 +106,26 @@ describe('BillingService', () => {
     ).rejects.toThrow('Billing already exists for service order');
   });
 
+  it('translates a concurrent billing unique violation to a conflict', async () => {
+    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
+    budgetService.findByServiceOrderId.mockResolvedValue([
+      acceptedBudget(1, 150),
+    ]);
+    repository.findByServiceOrderId.mockResolvedValue(null);
+    repository.create.mockRejectedValue(
+      Object.assign(new Error('Unique constraint failed'), {
+        code: 'P2002',
+        meta: { target: ['serviceOrderId'] },
+      }),
+    );
+
+    await expect(
+      service.generateForServiceOrder({ serviceOrderId }),
+    ).rejects.toThrow(
+      new ConflictException('Billing already exists for service order'),
+    );
+  });
+
   it('registers payment and persists billing', async () => {
     const billing = Billing.create({
       serviceOrderId,

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { isUniqueViolation } from '../../../shared/database/prisma-errors';
 import { BudgetStatus } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
@@ -56,7 +57,15 @@ export class BillingService {
       totalAmountInCents: Math.round(acceptedBudget.getTotalAmount() * 100),
     });
 
-    return this.billingRepository.create(billing);
+    try {
+      return await this.billingRepository.create(billing);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Billing already exists for service order');
+      }
+
+      throw error;
+    }
   }
 
   async findById(id: string): Promise<Billing> {
