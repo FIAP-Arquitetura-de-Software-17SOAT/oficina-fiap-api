@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { bootstrap } from './main';
 
 jest.mock('@nestjs/core', () => ({
   NestFactory: {
@@ -17,8 +18,7 @@ describe('main bootstrap', () => {
     const listen = jest.fn();
     (NestFactory.create as jest.Mock).mockResolvedValue({ listen });
 
-    await import('./main');
-    await new Promise(process.nextTick);
+    await bootstrap();
 
     expect(NestFactory.create).toHaveBeenCalledWith(AppModule, {
       rawBody: true,

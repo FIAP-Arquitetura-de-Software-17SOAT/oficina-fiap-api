@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { configureApp, setupSwagger } from './setup-app';
 
-async function bootstrap() {
+export async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   configureApp(app);
@@ -10,4 +10,7 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-void bootstrap();
+
+if (require.main === module) {
+  void bootstrap();
+}
