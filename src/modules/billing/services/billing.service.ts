@@ -99,21 +99,23 @@ export class BillingService {
     dto: RegisterPaymentDto,
   ): Promise<Billing> {
     const billing = await this.findById(id);
+    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
 
     billing.registerPayment({
       amount: PaymentAmount.fromDecimal(dto.amount),
       method: dto.method,
     });
 
-    return this.billingRepository.update(billing);
+    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
   }
 
   async cancel(id: string): Promise<Billing> {
     const billing = await this.findById(id);
+    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
 
     billing.cancel();
 
-    return this.billingRepository.update(billing);
+    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
   }
 
   async deliverServiceOrder(id: string): Promise<void> {
@@ -124,5 +126,21 @@ export class BillingService {
     }
 
     await this.serviceOrderService.deliver(billing.getServiceOrderId());
+  }
+
+  private async persistUpdatedBilling(
+    billing: Billing,
+    expectedUpdatedAt: Date,
+  ): Promise<Billing> {
+    const updated = await this.billingRepository.update(
+      billing,
+      expectedUpdatedAt,
+    );
+
+    if (!updated) {
+      throw new ConflictException('Billing was changed by another request');
+    }
+
+    return updated;
   }
 }

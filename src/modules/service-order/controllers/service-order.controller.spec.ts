@@ -91,7 +91,6 @@ describe('ServiceOrderController', () => {
     ['awaitParts', 'awaitParts'],
     ['startProgress', 'startProgress'],
     ['complete', 'complete'],
-    ['deliver', 'deliver'],
   ] as const)(
     '%s delega o id para o service',
     async (method, serviceMethod) => {

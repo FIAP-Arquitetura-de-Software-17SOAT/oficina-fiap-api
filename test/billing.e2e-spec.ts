@@ -190,6 +190,17 @@ describe('Billing (integracao)', () => {
     expect(partial.body.status).toBe('PARTIALLY_PAID');
     expect(partial.body.balanceAmount).toBe(100);
 
+    const persistedPartial = await request(http)
+      .get(`/api/v1/billings/${billing.body.id}`)
+      .expect(200);
+
+    expect(persistedPartial.body).toMatchObject({
+      status: 'PARTIALLY_PAID',
+      paidAmount: 50,
+      balanceAmount: 100,
+    });
+    expect(persistedPartial.body.payments).toHaveLength(1);
+
     const paid = await request(http)
       .post(`/api/v1/billings/${billing.body.id}/payments`)
       .send({ amount: 100, method: PaymentMethod.CREDIT_CARD })
@@ -206,6 +217,10 @@ describe('Billing (integracao)', () => {
       .post('/api/v1/billings')
       .send({ serviceOrderId })
       .expect(201);
+
+    await request(http)
+      .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
+      .expect(404);
 
     await request(http)
       .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)

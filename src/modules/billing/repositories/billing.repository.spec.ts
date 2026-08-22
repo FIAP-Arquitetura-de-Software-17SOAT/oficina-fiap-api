@@ -22,7 +22,7 @@ describe('BillingRepository', () => {
       create: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
-      update: jest.Mock;
+      updateMany: jest.Mock;
     };
     $transaction: jest.Mock;
   };
@@ -34,7 +34,7 @@ describe('BillingRepository', () => {
         create: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
-        update: jest.fn(),
+        updateMany: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -88,7 +88,7 @@ describe('BillingRepository', () => {
     prisma.$transaction.mockImplementation(async (fn) =>
       fn({
         billing: {
-          update: jest.fn().mockResolvedValue({ ...row, status: 'PAID' }),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           findUnique: jest.fn().mockResolvedValue({
             ...row,
             status: 'PAID',
@@ -113,9 +113,36 @@ describe('BillingRepository', () => {
       }),
     );
 
-    const updated = await repository.update(billing);
+    const updated = await repository.update(billing, row.updatedAt);
 
     expect(updated.getStatus()).toBe('PAID');
     expect(updated.getPayments()).toHaveLength(1);
+  });
+
+  it('does not replace payment rows when the billing was changed concurrently', async () => {
+    const billing = Billing.restore(row.id, {
+      serviceOrderId: row.serviceOrderId,
+      totalAmountInCents: row.totalCents,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+    billing.registerPayment({
+      amount: PaymentAmount.fromCents(5000),
+      method: PaymentMethod.PIX,
+    });
+    const transaction = {
+      billing: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      billingPayment: { deleteMany: jest.fn(), createMany: jest.fn() },
+    };
+    prisma.$transaction.mockImplementation(async (fn) => fn(transaction));
+
+    await expect(repository.update(billing, row.updatedAt)).resolves.toBeNull();
+    expect(transaction.billing.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: row.id, updatedAt: row.updatedAt },
+      }),
+    );
+    expect(transaction.billingPayment.deleteMany).not.toHaveBeenCalled();
+    expect(transaction.billingPayment.createMany).not.toHaveBeenCalled();
   });
 });

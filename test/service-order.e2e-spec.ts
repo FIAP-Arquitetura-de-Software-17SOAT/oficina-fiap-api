@@ -142,7 +142,6 @@ describe('ServiceOrder (integração)', () => {
       await advance(created.id, 'await-approval').expect(200);
       await advance(created.id, 'start-progress').expect(200);
       await advance(created.id, 'complete').expect(200);
-      await advance(created.id, 'deliver').expect(200);
 
       const response = await request(http)
         .get('/api/v1/service-order/metrics/average-execution-time')
@@ -177,7 +176,7 @@ describe('ServiceOrder (integração)', () => {
   });
 
   describe('fluxo de transição de status', () => {
-    it('percorre o fluxo feliz até DELIVERED', async () => {
+    it('percorre o fluxo feliz até COMPLETED', async () => {
       const clientId = await createClient();
       const { body: created } = await open(openPayload(clientId)).expect(201);
 
@@ -185,16 +184,28 @@ describe('ServiceOrder (integração)', () => {
       await advance(created.id, 'await-approval').expect(200);
       await advance(created.id, 'start-progress').expect(200);
       await advance(created.id, 'complete').expect(200);
-      const response = await advance(created.id, 'deliver').expect(200);
+      const response = await request(http)
+        .get(`/api/v1/service-order/${created.id}`)
+        .expect(200);
 
-      expect(response.body.status).toBe('DELIVERED');
+      expect(response.body.status).toBe('COMPLETED');
     });
 
-    it('devolve 400 ao entregar OS que ainda não foi finalizada', async () => {
+    it('does not expose the legacy delivery path for an unpaid completed service order', async () => {
       const clientId = await createClient();
       const { body: created } = await open(openPayload(clientId)).expect(201);
 
-      await advance(created.id, 'deliver').expect(400);
+      await advance(created.id, 'start-diagnosis').expect(200);
+      await advance(created.id, 'await-approval').expect(200);
+      await advance(created.id, 'start-progress').expect(200);
+      await advance(created.id, 'complete').expect(200);
+
+      await advance(created.id, 'deliver').expect(404);
+
+      const response = await request(http)
+        .get(`/api/v1/service-order/${created.id}`)
+        .expect(200);
+      expect(response.body.status).toBe('COMPLETED');
     });
 
     it('percorre o fluxo com peças até COMPLETED', async () => {

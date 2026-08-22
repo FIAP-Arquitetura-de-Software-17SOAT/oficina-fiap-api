@@ -43,10 +43,13 @@ export class BillingRepository {
     return records.map((record) => BillingMapper.toDomain(record));
   }
 
-  async update(billing: Billing): Promise<Billing> {
+  async update(
+    billing: Billing,
+    expectedUpdatedAt: Date,
+  ): Promise<Billing | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.billing.update({
-        where: { id: billing.getId() },
+      const result = await tx.billing.updateMany({
+        where: { id: billing.getId(), updatedAt: expectedUpdatedAt },
         data: {
           status: billing.getStatus(),
           totalCents: billing.getTotalAmountInCents(),
@@ -55,6 +58,10 @@ export class BillingRepository {
           updatedAt: billing.getUpdatedAt(),
         },
       });
+
+      if (result.count === 0) {
+        return null;
+      }
 
       await tx.billingPayment.deleteMany({
         where: { billingId: billing.getId() },
@@ -77,6 +84,6 @@ export class BillingRepository {
       });
     });
 
-    return BillingMapper.toDomain(updated!);
+    return updated ? BillingMapper.toDomain(updated) : null;
   }
 }

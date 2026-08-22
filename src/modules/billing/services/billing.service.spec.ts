@@ -140,7 +140,39 @@ describe('BillingService', () => {
     });
 
     expect(updated.getBalanceAmountInCents()).toBe(0);
-    expect(repository.update).toHaveBeenCalledWith(updated);
+    expect(repository.update).toHaveBeenCalledWith(
+      updated,
+      expect.any(Date),
+    );
+  });
+
+  it('rejects payment registration when the billing was changed concurrently', async () => {
+    const billing = Billing.create({
+      serviceOrderId,
+      totalAmountInCents: 15000,
+    });
+    repository.findById.mockResolvedValue(billing);
+    repository.update.mockResolvedValue(null);
+
+    await expect(
+      service.registerPayment(billing.getId(), {
+        amount: 150,
+        method: PaymentMethod.PIX,
+      }),
+    ).rejects.toThrow('Billing was changed by another request');
+  });
+
+  it('rejects cancellation when the billing was changed concurrently', async () => {
+    const billing = Billing.create({
+      serviceOrderId,
+      totalAmountInCents: 15000,
+    });
+    repository.findById.mockResolvedValue(billing);
+    repository.update.mockResolvedValue(null);
+
+    await expect(service.cancel(billing.getId())).rejects.toThrow(
+      'Billing was changed by another request',
+    );
   });
 
   it('delivers service order only when billing is paid', async () => {
