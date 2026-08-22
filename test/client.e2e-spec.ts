@@ -7,6 +7,7 @@ import { ClientRepository } from '../src/modules/client/repositories/client.repo
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
+import { allowAuthenticated } from './allow-authenticated';
 
 const VALID_CPF = '52998224725';
 const VALID_CNPJ = '11222333000181';
@@ -23,14 +24,15 @@ describe('Client (integração)', () => {
   let http: App;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue({})
-      .overrideProvider(ClientRepository)
-      .useValue(new InMemoryClientRepository())
-      .compile();
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule],
+      })
+        .overrideProvider(PrismaService)
+        .useValue({})
+        .overrideProvider(ClientRepository)
+        .useValue(new InMemoryClientRepository()),
+    ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),

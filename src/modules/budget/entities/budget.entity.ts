@@ -18,6 +18,9 @@ export enum BudgetItemType {
 
 export interface BudgetItemProps {
   id?: string;
+  // `referenciaId` do modelo de dominio: a peca que o item representa. Nulo em
+  // itens de servico, que nao saem do estoque.
+  partId?: string | null;
   description: string;
   type: BudgetItemType;
   quantity: number;
@@ -41,6 +44,7 @@ export interface BudgetProps extends CreateBudgetProps {
 
 export class BudgetItem {
   private readonly id: string;
+  private readonly partId: string | null;
   private readonly description: string;
   private readonly type: BudgetItemType;
   private readonly quantity: number;
@@ -48,6 +52,7 @@ export class BudgetItem {
 
   constructor(props: BudgetItemProps) {
     this.id = props.id ?? randomUUID();
+    this.partId = this.validatePartId(props.partId, props.type);
     this.description = this.validateDescription(props.description);
     this.type = props.type;
     this.quantity = this.validateDecimalAmount(props.quantity, 'Quantity');
@@ -57,6 +62,10 @@ export class BudgetItem {
 
   getId(): string {
     return this.id;
+  }
+
+  getPartId(): string | null {
+    return this.partId;
   }
 
   getDescription(): string {
@@ -83,6 +92,21 @@ export class BudgetItem {
     return Math.round(
       (this.toCents(this.quantity) * this.toCents(this.unitPrice)) / 100,
     );
+  }
+
+  private validatePartId(
+    partId: string | null | undefined,
+    type: BudgetItemType,
+  ): string | null {
+    const trimmed = (partId ?? '').trim();
+
+    if (!trimmed) return null;
+
+    if (type !== BudgetItemType.PART) {
+      throw new DomainException('Only part items can reference a part');
+    }
+
+    return trimmed;
   }
 
   private validateDescription(description: string): string {

@@ -5,11 +5,13 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
+  forwardRef,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -33,8 +35,10 @@ import {
   CreateStockMovementDto,
   StockMovementResponseDto,
 } from '../dto/stock-movement.dto';
+import { PartsDispatchResponseDto } from '../dto/parts-dispatch.dto';
 import { PartMapper } from '../mappers/part.mapper';
 import { PartService } from '../services/part.service';
+import { PartsDispatchService } from '../services/parts-dispatch.service';
 import { StockMovementService } from '../services/stock-movement.service';
 
 @ApiTags('stock')
@@ -48,7 +52,31 @@ export class PartController {
   constructor(
     private readonly partService: PartService,
     private readonly stockMovementService: StockMovementService,
+    // forwardRef fecha o ciclo estoque -> pedido de compra -> estoque: o
+    // dispatch abre o pedido quando falta peça, e o pedido devolve a peça aqui.
+    @Inject(forwardRef(() => PartsDispatchService))
+    private readonly partsDispatchService: PartsDispatchService,
   ) {}
+
+  @Post('service-orders/:serviceOrderId/dispatch')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Consulta e baixa as peças do orçamento aceito de uma OS',
+    description:
+      'Havendo saldo, baixa as peças e move a OS para EM_EXECUCAO. Faltando ' +
+      'peça, nada é baixado e um pedido de compra é aberto com a diferença.',
+  })
+  @ApiOkResponse({ type: PartsDispatchResponseDto })
+  @ApiBadRequestResponse({
+    description: 'OS sem orçamento aceito ou com item de peça sem referência',
+  })
+  @ApiNotFoundResponse({ description: 'Part not found' })
+  @ApiConflictResponse({ description: 'Insufficient stock' })
+  async dispatchServiceOrderParts(
+    @Param('serviceOrderId', ParseUUIDPipe) serviceOrderId: string,
+  ): Promise<PartsDispatchResponseDto> {
+    return this.partsDispatchService.dispatchForServiceOrder(serviceOrderId);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Creates a stock part' })

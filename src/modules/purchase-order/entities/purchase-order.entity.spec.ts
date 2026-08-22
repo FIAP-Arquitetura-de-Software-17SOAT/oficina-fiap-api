@@ -1,74 +1,46 @@
-import {
-  PurchaseOrder,
-} from './purchase-order.entity';
+import { PurchaseOrder } from './purchase-order.entity';
 
-import {
-  PurchaseOrderItem,
-} from './purchase-order-item.entity';
+import { PurchaseOrderItem } from './purchase-order-item.entity';
 
-import {
-  PurchaseOrderStatus,
-} from '../enums/purchase-order-status.enum';
+import { PurchaseOrderStatus } from '../enums/purchase-order-status.enum';
 
-import {
-  Money,
-} from '../value-objects/money.vo';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
-import {
-  PurchaseOrderNumber,
-} from '../value-objects/purchase-order-number.vo';
+import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import {
-  Quantity,
-} from '../value-objects/quantity.vo';
+import { Quantity } from '../value-objects/quantity.vo';
 
 describe('PurchaseOrder', () => {
-  const createOrder =
-    (): PurchaseOrder => {
-      return new PurchaseOrder({
-        number:
-          PurchaseOrderNumber.create(
-            'PC-2026-0042',
-          ),
+  const createOrder = (): PurchaseOrder => {
+    return new PurchaseOrder({
+      number: PurchaseOrderNumber.create('PC-2026-0042'),
 
-        supplier:
-          'Auto Peças São Paulo',
-      });
-    };
-
-  const createItem = (
-    id?: string,
-  ): PurchaseOrderItem => {
-    return new PurchaseOrderItem({
-      id,
-
-      pecaId:
-        '550e8400-e29b-41d4-a716-446655440000',
-
-      quantity:
-        Quantity.create(2),
-
-      unitPrice:
-        Money.fromDecimal(150.5),
+      supplier: 'Auto Peças São Paulo',
     });
   };
 
-  it('should create purchase order in NECESSITA_COMPRA status', () => {
+  const createItem = (id?: string): PurchaseOrderItem => {
+    return new PurchaseOrderItem({
+      id,
+
+      partId: '550e8400-e29b-41d4-a716-446655440000',
+
+      quantity: Quantity.create(2),
+
+      unitPrice: Money.fromDecimal(150.5),
+    });
+  };
+
+  it('should create purchase order in NEEDS_PURCHASE status', () => {
     const order = createOrder();
 
     expect(order.getId()).toBeDefined();
 
-    expect(order.getStatus()).toBe(
-      PurchaseOrderStatus.NECESSITA_COMPRA,
-    );
+    expect(order.getStatus()).toBe(PurchaseOrderStatus.NEEDS_PURCHASE);
 
-    expect(order.getItems()).toHaveLength(
-      0,
-    );
+    expect(order.getItems()).toHaveLength(0);
 
-    expect(
-      order.getDeliveredAt(),
-    ).toBeUndefined();
+    expect(order.getDeliveredAt()).toBeUndefined();
   });
 
   it('should add an item', () => {
@@ -76,32 +48,25 @@ describe('PurchaseOrder', () => {
 
     order.addItem(createItem());
 
-    expect(order.getItems()).toHaveLength(
-      1,
-    );
+    expect(order.getItems()).toHaveLength(1);
   });
 
   it('should remove an item', () => {
     const order = createOrder();
 
-    const item =
-      createItem('item-123');
+    const item = createItem('item-123');
 
     order.addItem(item);
 
     order.removeItem('item-123');
 
-    expect(order.getItems()).toHaveLength(
-      0,
-    );
+    expect(order.getItems()).toHaveLength(0);
   });
 
   it('should throw when removing an unknown item', () => {
     const order = createOrder();
 
-    expect(() =>
-      order.removeItem('unknown-item'),
-    ).toThrow(
+    expect(() => order.removeItem('unknown-item')).toThrow(
       'Item não encontrado no pedido',
     );
   });
@@ -111,57 +76,45 @@ describe('PurchaseOrder', () => {
 
     order.addItem(
       new PurchaseOrderItem({
-        pecaId: 'peca-1',
+        partId: 'peca-1',
 
-        quantity:
-          Quantity.create(2),
+        quantity: Quantity.create(2),
 
-        unitPrice:
-          Money.fromDecimal(100),
+        unitPrice: Money.fromDecimal(100),
       }),
     );
 
     order.addItem(
       new PurchaseOrderItem({
-        pecaId: 'peca-2',
+        partId: 'peca-2',
 
-        quantity:
-          Quantity.create(4),
+        quantity: Quantity.create(4),
 
-        unitPrice:
-          Money.fromDecimal(25),
+        unitPrice: Money.fromDecimal(25),
       }),
     );
 
-    expect(
-      order.getTotal().value,
-    ).toBe(300);
+    expect(order.getTotal().value).toBe(300);
   });
 
   it('should not register purchase without items', () => {
     const order = createOrder();
 
-    expect(() =>
-      order.registerPurchase(),
-    ).toThrow(
+    expect(() => order.registerPurchase()).toThrow(
       'Não é possível registrar uma compra sem itens',
     );
 
-    expect(order.getStatus()).toBe(
-      PurchaseOrderStatus.NECESSITA_COMPRA,
-    );
+    expect(order.getStatus()).toBe(PurchaseOrderStatus.NEEDS_PURCHASE);
   });
 
-  it('should change from NECESSITA_COMPRA to AGUARDANDO_ENTREGA', () => {
+  it('should change from NEEDS_PURCHASE to AWAITING_DELIVERY', () => {
     const order = createOrder();
 
     order.addItem(createItem());
 
     order.registerPurchase();
 
-    expect(order.getStatus()).toBe(
-      PurchaseOrderStatus.AGUARDANDO_ENTREGA,
-    );
+    expect(order.getStatus()).toBe(PurchaseOrderStatus.AWAITING_DELIVERY);
   });
 
   it('should not register purchase twice', () => {
@@ -171,10 +124,8 @@ describe('PurchaseOrder', () => {
 
     order.registerPurchase();
 
-    expect(() =>
-      order.registerPurchase(),
-    ).toThrow(
-      'Somente pedidos em NECESSITA_COMPRA podem registrar a compra',
+    expect(() => order.registerPurchase()).toThrow(
+      'Somente pedidos em NEEDS_PURCHASE podem registrar a compra',
     );
   });
 
@@ -185,9 +136,7 @@ describe('PurchaseOrder', () => {
 
     order.registerPurchase();
 
-    expect(() =>
-      order.addItem(createItem()),
-    ).toThrow(
+    expect(() => order.addItem(createItem())).toThrow(
       'Não é possível alterar os itens após o registro da compra',
     );
   });
@@ -195,16 +144,13 @@ describe('PurchaseOrder', () => {
   it('should not remove items after purchase registration', () => {
     const order = createOrder();
 
-    const item =
-      createItem('item-123');
+    const item = createItem('item-123');
 
     order.addItem(item);
 
     order.registerPurchase();
 
-    expect(() =>
-      order.removeItem('item-123'),
-    ).toThrow(
+    expect(() => order.removeItem('item-123')).toThrow(
       'Não é possível alterar os itens após o registro da compra',
     );
   });
@@ -218,13 +164,9 @@ describe('PurchaseOrder', () => {
 
     order.markAsDelivered();
 
-    expect(order.getStatus()).toBe(
-      PurchaseOrderStatus.ENTREGUE,
-    );
+    expect(order.getStatus()).toBe(PurchaseOrderStatus.DELIVERED);
 
-    expect(
-      order.getDeliveredAt(),
-    ).toBeInstanceOf(Date);
+    expect(order.getDeliveredAt()).toBeInstanceOf(Date);
   });
 
   it('should not deliver order before purchase registration', () => {
@@ -232,14 +174,12 @@ describe('PurchaseOrder', () => {
 
     order.addItem(createItem());
 
-    expect(() =>
-      order.markAsDelivered(),
-    ).toThrow(
+    expect(() => order.markAsDelivered()).toThrow(
       'Somente pedidos aguardando entrega podem ser marcados como entregues',
     );
   });
 
-  it('should treat ENTREGUE as terminal status', () => {
+  it('should treat DELIVERED as terminal status', () => {
     const order = createOrder();
 
     order.addItem(createItem());
@@ -248,20 +188,12 @@ describe('PurchaseOrder', () => {
 
     order.markAsDelivered();
 
-    expect(() =>
-      order.markAsDelivered(),
-    ).toThrow();
+    expect(() => order.markAsDelivered()).toThrow();
 
-    expect(() =>
-      order.registerPurchase(),
-    ).toThrow();
+    expect(() => order.registerPurchase()).toThrow();
 
-    expect(() =>
-      order.addItem(createItem()),
-    ).toThrow();
+    expect(() => order.addItem(createItem())).toThrow();
 
-    expect(order.getStatus()).toBe(
-      PurchaseOrderStatus.ENTREGUE,
-    );
+    expect(order.getStatus()).toBe(PurchaseOrderStatus.DELIVERED);
   });
 });

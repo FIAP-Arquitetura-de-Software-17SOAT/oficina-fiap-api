@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ClientRepository } from '../../client/repositories/client.repository';
 import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
+import {
+  AssignMechanicDto,
   CancelServiceOrderDto,
   OpenServiceOrderDto,
 } from '../dto/service-order.dto';
@@ -12,6 +19,7 @@ export class ServiceOrderService {
   constructor(
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly clientRepository: ClientRepository,
+    private readonly vehicleController: VehicleController,
   ) {}
 
   async openServiceOrder(dto: OpenServiceOrderDto): Promise<ServiceOrder> {
@@ -19,6 +27,16 @@ export class ServiceOrderService {
 
     if (!client) {
       throw new NotFoundException('Client not found');
+    }
+
+    // O veículo precisa existir e ser do cliente da OS. Sem isso dá para abrir
+    // ordem de serviço do cliente A com o carro do cliente B.
+    const vehicle = await this.vehicleController.findById(dto.vehicleId);
+
+    if (vehicle.clientId !== dto.clientId) {
+      throw new BadRequestException(
+        'Vehicle does not belong to the informed client',
+      );
     }
 
     const serviceOrder = ServiceOrder.create({
@@ -44,10 +62,43 @@ export class ServiceOrderService {
     return this.serviceOrderRepository.findAll();
   }
 
-  async startDiagnosis(id: string): Promise<ServiceOrder> {
+  /**
+   * O acompanhamento que o enunciado pede: o cliente vê onde cada OS dele está.
+   * Lista vazia é resposta legítima; 404 aqui significa cliente inexistente.
+   */
+  async findByClientId(clientId: string): Promise<ServiceOrder[]> {
+    const client = await this.clientRepository.findById(clientId);
+
+    if (!client) {
+      throw new NotFoundException('Client not found');
+    }
+
+    return this.serviceOrderRepository.findByClientId(clientId);
+  }
+
+  /**
+   * Política do Event Storming: atribuir a OS a um mecânico move o status para
+   * IN_DIAGNOSIS e inicializa o timer. O board também diz que o mecânico não
+   * pega outra OS antes de finalizar a atual — regra entre instâncias, então
+   * mora aqui e não na entidade.
+   */
+  async assignToMechanic(
+    id: string,
+    dto: AssignMechanicDto,
+  ): Promise<ServiceOrder> {
     const serviceOrder = await this.findById(id);
 
-    serviceOrder.startDiagnosis();
+    const active = await this.serviceOrderRepository.findActiveByMechanicId(
+      dto.mechanicId,
+    );
+
+    if (active) {
+      throw new ConflictException(
+        `Mechanic already has an open service order (${active.getId()})`,
+      );
+    }
+
+    serviceOrder.assignToMechanic(dto.mechanicId);
 
     return this.serviceOrderRepository.update(serviceOrder);
   }
@@ -68,10 +119,14 @@ export class ServiceOrderService {
     return this.serviceOrderRepository.update(serviceOrder);
   }
 
-  async startProgress(id: string): Promise<ServiceOrder> {
+  /**
+   * Chamado pelo estoque depois de atender as peças da OS. Não é endpoint: a
+   * única forma de a OS entrar em execução é o estoque tê-la atendido.
+   */
+  async registerPartsDispatched(id: string): Promise<ServiceOrder> {
     const serviceOrder = await this.findById(id);
 
-    serviceOrder.startProgress();
+    serviceOrder.registerPartsDispatched();
 
     return this.serviceOrderRepository.update(serviceOrder);
   }
@@ -110,11 +165,9 @@ export class ServiceOrderService {
       return { averageExecutionTimeMs: null, sampleSize: 0 };
     }
 
+    // O timer do board começa na atribuição ao mecânico, não na abertura da OS.
     const totalMs = completed.reduce(
-      (sum, serviceOrder) =>
-        sum +
-        (serviceOrder.getCompletedAt()!.getTime() -
-          serviceOrder.getCreatedAt().getTime()),
+      (sum, serviceOrder) => sum + (serviceOrder.getExecutionTimeMs() ?? 0),
       0,
     );
 

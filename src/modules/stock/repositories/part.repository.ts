@@ -1,3 +1,4 @@
+import { Money as SharedMoney } from '../../../shared/domain/value-objects/money.vo';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { MeasurementUnit, Part, PartType } from '../entities/part.entity';
@@ -9,7 +10,7 @@ interface PartRow {
   description: string | null;
   type: string;
   unit: string;
-  unitPrice: { toString(): string };
+  unitPriceCents: number;
   quantity: number;
   minimumQuantity: number;
   createdAt: Date;
@@ -69,7 +70,8 @@ export class PartRepository {
       description: part.getDescription(),
       type: part.getType(),
       unit: part.getUnit(),
-      unitPrice: part.getUnitPrice().getValue(),
+      unitPriceCents: SharedMoney.fromDecimal(Number(part.getUnitPrice().value))
+        .valueInCents,
       quantity: part.getQuantity().getValue(),
       minimumQuantity: part.getMinimumQuantity().getValue(),
       createdAt: part.getCreatedAt(),
@@ -84,7 +86,8 @@ export class PartRepository {
       description: part.getDescription(),
       type: part.getType(),
       unit: part.getUnit(),
-      unitPrice: part.getUnitPrice().getValue(),
+      unitPriceCents: SharedMoney.fromDecimal(Number(part.getUnitPrice().value))
+        .valueInCents,
       minimumQuantity: part.getMinimumQuantity().getValue(),
       updatedAt: part.getUpdatedAt(),
     };
@@ -97,7 +100,7 @@ export class PartRepository {
       description: row.description ?? undefined,
       type: row.type as PartType,
       unit: row.unit as MeasurementUnit,
-      unitPrice: row.unitPrice.toString(),
+      unitPrice: SharedMoney.fromCents(row.unitPriceCents).value,
       quantity: row.quantity,
       minimumQuantity: row.minimumQuantity,
       createdAt: row.createdAt,

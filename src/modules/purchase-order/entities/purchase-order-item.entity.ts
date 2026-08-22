@@ -1,48 +1,38 @@
 import { randomUUID } from 'crypto';
 
-import { Money } from '../value-objects/money.vo';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { Quantity } from '../value-objects/quantity.vo';
 import { DomainException } from '../../../shared/domain/domain.exception';
 
 export interface PurchaseOrderItemProps {
   id?: string;
-  pecaId: string;
+  partId: string;
   quantity: Quantity;
   unitPrice: Money;
 }
 
 export class PurchaseOrderItem {
   private readonly id: string;
-  private readonly pecaId: string;
+  private readonly partId: string;
   private readonly quantity: Quantity;
   private readonly unitPrice: Money;
 
-  constructor(
-    props: PurchaseOrderItemProps,
-  ) {
-    if (!props.pecaId?.trim()) {
-      throw new DomainException(
-        'A peça deve ser informada',
-      );
+  constructor(props: PurchaseOrderItemProps) {
+    if (!props.partId?.trim()) {
+      throw new DomainException('A peça deve ser informada');
     }
 
-    this.id =
-      props.id ?? randomUUID();
+    this.id = props.id ?? randomUUID();
 
-    this.pecaId =
-      props.pecaId.trim();
+    this.partId = props.partId.trim();
 
-    this.quantity =
-      props.quantity;
+    this.quantity = props.quantity;
 
-    this.unitPrice =
-      props.unitPrice;
+    this.unitPrice = props.unitPrice;
   }
 
   getSubtotal(): Money {
-    return this.unitPrice.multiply(
-      this.quantity.value,
-    );
+    return this.unitPrice.multiply(this.quantity.value);
   }
 
   getId(): string {
@@ -50,7 +40,7 @@ export class PurchaseOrderItem {
   }
 
   getPecaId(): string {
-    return this.pecaId;
+    return this.partId;
   }
 
   getQuantity(): Quantity {

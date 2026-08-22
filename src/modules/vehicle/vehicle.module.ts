@@ -9,7 +9,7 @@ import { VehicleService } from './services/vehicle.service';
   // veículo existe antes do cadastro.
   imports: [ClientModule],
   controllers: [VehicleController],
-  providers: [VehicleService, VehicleRepository],
-  exports: [VehicleService],
+  providers: [VehicleService, VehicleRepository, VehicleController],
+  exports: [VehicleService, VehicleController],
 })
 export class VehicleModule {}

@@ -8,7 +8,7 @@ const makePart = (code = 'OIL-FILTER-123') =>
     description: 'Filter for engine oil',
     type: PartType.PART,
     unit: MeasurementUnit.UNIT,
-    unitPrice: '149.90',
+    unitPrice: 149.9,
     quantity: 10,
     minimumQuantity: 3,
   });
@@ -24,7 +24,7 @@ describe('PartMapper', () => {
       description: 'Filter for engine oil',
       type: PartType.PART,
       unit: MeasurementUnit.UNIT,
-      unitPrice: '149.90',
+      unitPrice: 149.9,
       quantity: 10,
       minimumQuantity: 3,
       createdAt: expect.any(Date) as Date,
@@ -32,12 +32,14 @@ describe('PartMapper', () => {
     });
   });
 
-  it('serializes the unit price as a string', () => {
+  it('serializes the unit price as a decimal number', () => {
     const json = JSON.parse(
       JSON.stringify(PartMapper.toResponse(makePart())),
     ) as Record<string, unknown>;
 
-    expect(typeof json.unitPrice).toBe('string');
+    // Dinheiro atravessa a API como decimal e vive em centavos no domínio;
+    // não sai mais como string.
+    expect(typeof json.unitPrice).toBe('number');
   });
 
   it('maps lists while preserving order', () => {

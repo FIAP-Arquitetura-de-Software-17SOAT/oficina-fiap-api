@@ -5,6 +5,7 @@ import {
   BudgetItemType,
   BudgetStatus,
 } from '../entities/budget.entity';
+import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { BudgetRepository } from '../repositories/budget.repository';
 import { BudgetService } from './budget.service';
 
@@ -29,6 +30,11 @@ const makeBudget = () =>
 describe('BudgetService', () => {
   let service: BudgetService;
   let repository: MockedRepository;
+  let serviceOrderController: {
+    awaitApproval: jest.Mock;
+    awaitParts: jest.Mock;
+    cancel: jest.Mock;
+  };
 
   beforeEach(async () => {
     repository = {
@@ -40,10 +46,20 @@ describe('BudgetService', () => {
       findLastVersionByServiceOrderId: jest.fn(),
     };
 
+    serviceOrderController = {
+      awaitApproval: jest.fn(),
+      awaitParts: jest.fn(),
+      cancel: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BudgetService,
         { provide: BudgetRepository, useValue: repository },
+        {
+          provide: ServiceOrderController,
+          useValue: serviceOrderController,
+        },
       ],
     }).compile();
 
@@ -387,8 +403,99 @@ describe('BudgetService', () => {
     await expect(service.findByServiceOrderId(' service-123 ')).resolves.toBe(
       budgets,
     );
-    expect(repository.findByServiceOrderId).toHaveBeenCalledWith(
-      'service-123',
-    );
+    expect(repository.findByServiceOrderId).toHaveBeenCalledWith('service-123');
+  });
+  describe('políticas do Event Storming', () => {
+    const makeBudgetWithPart = () =>
+      Budget.create({
+        serviceOrderId: 'service-123',
+        version: 1,
+        items: [
+          {
+            partId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+            description: 'Oil filter',
+            type: BudgetItemType.PART,
+            quantity: 1,
+            unitPrice: 40,
+          },
+        ],
+      });
+
+    it('gerar o primeiro orçamento coloca a OS aguardando aprovação', async () => {
+      repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
+
+      await service.create({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Oil change',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 120,
+          },
+        ],
+      });
+
+      expect(serviceOrderController.awaitApproval).toHaveBeenCalledWith(
+        'service-123',
+      );
+    });
+
+    it('orçamento de reparo adicional não mexe no status da OS', async () => {
+      // A OS já saiu do diagnóstico; a versão 2 nasce durante a execução.
+      repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+
+      await service.create({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Reparo extra',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 90,
+          },
+        ],
+      });
+
+      expect(serviceOrderController.awaitApproval).not.toHaveBeenCalled();
+    });
+
+    it('orçamento aceito com peças coloca a OS aguardando peças', async () => {
+      const budget = makeBudgetWithPart();
+      budget.sendToCustomer();
+      repository.findById.mockResolvedValue(budget);
+
+      await service.accept(budget.getId());
+
+      expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
+        'service-123',
+      );
+    });
+
+    it('orçamento só de serviços também passa pela solicitação de peças', async () => {
+      const budget = makeBudget();
+      budget.sendToCustomer();
+      repository.findById.mockResolvedValue(budget);
+
+      await service.accept(budget.getId());
+
+      // O board não bifurca no aceite: quem libera a OS é o despacho.
+      expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
+        'service-123',
+      );
+    });
+
+    it('orçamento recusado encerra a ordem de serviço com o motivo', async () => {
+      const budget = makeBudget();
+      budget.sendToCustomer();
+      repository.findById.mockResolvedValue(budget);
+
+      await service.refuse(budget.getId(), { reason: 'Achou caro' });
+
+      expect(serviceOrderController.cancel).toHaveBeenCalledWith(
+        'service-123',
+        { reason: 'Orcamento recusado: Achou caro' },
+      );
+    });
   });
 });

@@ -9,6 +9,7 @@ import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
+import { allowAuthenticated } from './allow-authenticated';
 
 const UUID_INEXISTENTE = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
@@ -25,16 +26,17 @@ describe('Vehicle (integração)', () => {
   let clientId: string;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue({})
-      .overrideProvider(ClientRepository)
-      .useValue(new InMemoryClientRepository())
-      .overrideProvider(VehicleRepository)
-      .useValue(new InMemoryVehicleRepository())
-      .compile();
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule],
+      })
+        .overrideProvider(PrismaService)
+        .useValue({})
+        .overrideProvider(ClientRepository)
+        .useValue(new InMemoryClientRepository())
+        .overrideProvider(VehicleRepository)
+        .useValue(new InMemoryVehicleRepository()),
+    ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),

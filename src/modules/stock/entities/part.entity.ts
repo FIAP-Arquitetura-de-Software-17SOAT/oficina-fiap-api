@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
-import { Money } from '../value-objects/money';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { PartCode } from '../value-objects/part-code';
 import { Quantity } from '../value-objects/quantity';
 
@@ -21,7 +21,7 @@ export interface PartProps {
   description?: string;
   type: PartType;
   unit: MeasurementUnit;
-  unitPrice: string;
+  unitPrice: number;
   quantity: number;
   minimumQuantity: number;
   createdAt?: Date;
@@ -52,7 +52,7 @@ export class Part {
     this.description = Part.normalizeDescription(props.description);
     this.type = Part.validateType(props.type);
     this.unit = Part.validateUnit(props.unit);
-    this.unitPrice = Money.create(props.unitPrice);
+    this.unitPrice = Money.fromDecimal(props.unitPrice);
     this.quantity = Quantity.create(props.quantity);
     this.minimumQuantity = Quantity.create(props.minimumQuantity);
     this.createdAt = props.createdAt ?? new Date();
@@ -161,7 +161,7 @@ export class Part {
     }
 
     if (props.unitPrice !== undefined) {
-      this.unitPrice = Money.create(props.unitPrice);
+      this.unitPrice = Money.fromDecimal(props.unitPrice);
     }
 
     if (props.minimumQuantity !== undefined) {

@@ -17,8 +17,8 @@ describe('PartCode', () => {
   );
 
   it('compares normalized values', () => {
-    expect(PartCode.create('oil-filter').equals(PartCode.create('OIL-FILTER'))).toBe(
-      true,
-    );
+    expect(
+      PartCode.create('oil-filter').equals(PartCode.create('OIL-FILTER')),
+    ).toBe(true);
   });
 });

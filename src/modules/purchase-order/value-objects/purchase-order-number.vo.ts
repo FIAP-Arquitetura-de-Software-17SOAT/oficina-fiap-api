@@ -1,24 +1,16 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
 
 export class PurchaseOrderNumber {
-  private constructor(
-    private readonly number: string,
-  ) {}
+  private constructor(private readonly number: string) {}
 
-  static create(
-    value: string,
-  ): PurchaseOrderNumber {
+  static create(value: string): PurchaseOrderNumber {
     if (!value?.trim()) {
-      throw new DomainException(
-        'O número do pedido deve ser informado',
-      );
+      throw new DomainException('O número do pedido deve ser informado');
     }
 
-    const normalized =
-      value.trim().toUpperCase();
+    const normalized = value.trim().toUpperCase();
 
-    const pattern =
-      /^PC-\d{4}-\d{4}$/;
+    const pattern = /^PC-\d{4}-\d{4}$/;
 
     if (!pattern.test(normalized)) {
       throw new DomainException(
@@ -26,14 +18,10 @@ export class PurchaseOrderNumber {
       );
     }
 
-    return new PurchaseOrderNumber(
-      normalized,
-    );
+    return new PurchaseOrderNumber(normalized);
   }
 
-  equals(
-    other: PurchaseOrderNumber,
-  ): boolean {
+  equals(other: PurchaseOrderNumber): boolean {
     return this.number === other.number;
   }
 

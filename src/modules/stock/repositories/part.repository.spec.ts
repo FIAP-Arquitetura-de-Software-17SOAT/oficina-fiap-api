@@ -9,7 +9,7 @@ const row = {
   description: 'Filter for engine oil',
   type: PartType.PART,
   unit: MeasurementUnit.UNIT,
-  unitPrice: { toString: () => '149.90' },
+  unitPriceCents: 14990,
   quantity: 10,
   minimumQuantity: 3,
   createdAt: new Date('2026-01-01T10:00:00.000Z'),
@@ -23,7 +23,7 @@ const makePart = () =>
     description: row.description,
     type: row.type,
     unit: row.unit,
-    unitPrice: row.unitPrice.toString(),
+    unitPrice: 149.9,
     quantity: row.quantity,
     minimumQuantity: row.minimumQuantity,
     createdAt: row.createdAt,
@@ -64,7 +64,7 @@ describe('PartRepository', () => {
     expect(prisma.part.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         code: 'OIL-FILTER-123',
-        unitPrice: '149.90',
+        unitPriceCents: 14990,
         quantity: 10,
         minimumQuantity: 3,
       }) as unknown,
@@ -77,7 +77,7 @@ describe('PartRepository', () => {
     const part = await repository.create(makePart());
 
     expect(part.getId()).toBe(row.id);
-    expect(part.getUnitPrice().getValue()).toBe('149.90');
+    expect(part.getUnitPrice().value).toBe(149.9);
     expect(part.getCreatedAt()).toEqual(row.createdAt);
   });
 
@@ -122,7 +122,7 @@ describe('PartRepository', () => {
       where: { id: row.id },
       data: expect.objectContaining({
         code: row.code,
-        unitPrice: '149.90',
+        unitPriceCents: 14990,
       }) as unknown,
     });
 

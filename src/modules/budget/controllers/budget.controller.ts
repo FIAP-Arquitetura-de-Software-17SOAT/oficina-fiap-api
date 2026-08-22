@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -18,6 +19,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import {
   BudgetResponseDto,
@@ -29,7 +31,12 @@ import {
 } from '../dto/budget.dto';
 import { BudgetMapper } from '../mappers/budget.mapper';
 import { BudgetService } from '../services/budget.service';
+import { Role } from '../../../../generated/prisma/enums';
+import { Roles } from '../../../shared/http/auth/roles.decorator';
 
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@Roles(Role.ADMIN, Role.EMPLOYEE)
 @ApiTags('budget')
 @Controller('budgets')
 export class BudgetController {

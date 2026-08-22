@@ -20,21 +20,28 @@ describe('UserRepository', () => {
   });
 
   it.each([
-    ['findByEmail', () => repository.findByEmail(row.email), { email: row.email }],
+    [
+      'findByEmail',
+      () => repository.findByEmail(row.email),
+      { email: row.email },
+    ],
     ['findById', () => repository.findById(row.id), { id: row.id }],
-  ])('%s maps the found persistence row to a user', async (_label, act, where) => {
-    prisma.user.findUnique.mockResolvedValue(row);
+  ])(
+    '%s maps the found persistence row to a user',
+    async (_label, act, where) => {
+      prisma.user.findUnique.mockResolvedValue(row);
 
-    const user = await act();
+      const user = await act();
 
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where });
-    expect(user).toMatchObject({
-      getId: expect.any(Function),
-      getEmail: expect.any(Function),
-    });
-    expect(user?.getId()).toBe(row.id);
-    expect(user?.getEmail()).toBe(row.email);
-  });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where });
+      expect(user).toMatchObject({
+        getId: expect.any(Function),
+        getEmail: expect.any(Function),
+      });
+      expect(user?.getId()).toBe(row.id);
+      expect(user?.getEmail()).toBe(row.email);
+    },
+  );
 
   it('returns null when a user is not found by email', async () => {
     prisma.user.findUnique.mockResolvedValue(null);

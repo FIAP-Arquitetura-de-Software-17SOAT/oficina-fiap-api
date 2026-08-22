@@ -12,6 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -20,6 +21,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import {
   CreateVehicleDto,
@@ -29,7 +31,12 @@ import {
 } from '../dto/vehicle.dto';
 import { VehicleMapper } from '../mappers/vehicle.mapper';
 import { VehicleService } from '../services/vehicle.service';
+import { Role } from '../../../../generated/prisma/enums';
+import { Roles } from '../../../shared/http/auth/roles.decorator';
 
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@Roles(Role.ADMIN, Role.EMPLOYEE)
 @ApiTags('vehicle')
 @Controller('vehicle')
 export class VehicleController {

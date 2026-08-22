@@ -7,7 +7,7 @@ const validProps = (overrides: Partial<PartProps> = {}): PartProps => ({
   description: 'Filter for engine oil',
   type: PartType.PART,
   unit: MeasurementUnit.UNIT,
-  unitPrice: '149.90',
+  unitPrice: 149.9,
   quantity: 10,
   minimumQuantity: 3,
   ...overrides,
@@ -21,7 +21,7 @@ describe('Part', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
     expect(part.getCode().getValue()).toBe('OIL-FILTER-123');
-    expect(part.getUnitPrice().getValue()).toBe('149.90');
+    expect(part.getUnitPrice().value).toBe(149.9);
     expect(part.getQuantity().getValue()).toBe(10);
     expect(part.getMinimumQuantity().getValue()).toBe(3);
   });
@@ -70,7 +70,7 @@ describe('Part', () => {
       description: '  Air conditioning filter  ',
       type: PartType.SUPPLY,
       unit: MeasurementUnit.KILOGRAM,
-      unitPrice: '25.5',
+      unitPrice: 25.5,
       minimumQuantity: 2,
     });
 
@@ -79,7 +79,7 @@ describe('Part', () => {
     expect(part.getDescription()).toBe('Air conditioning filter');
     expect(part.getType()).toBe(PartType.SUPPLY);
     expect(part.getUnit()).toBe(MeasurementUnit.KILOGRAM);
-    expect(part.getUnitPrice().getValue()).toBe('25.50');
+    expect(part.getUnitPrice().value).toBe(25.5);
     expect(part.getQuantity().getValue()).toBe(10);
     expect(part.getMinimumQuantity().getValue()).toBe(2);
   });

@@ -6,12 +6,14 @@ import {
 } from '../entities/budget.entity';
 import { BudgetRepository } from './budget.repository';
 
+// O banco guarda dinheiro em centavos inteiros; o domínio trabalha em
+// decimais. As duas formas são fixtures distintas de propósito.
 const row = {
   id: 'budget-123',
   serviceOrderId: 'service-123',
   version: 1,
   status: BudgetStatus.GENERATED,
-  totalAmount: 100,
+  totalCents: 10000,
   refusalReason: null,
   sentAt: null,
   answeredAt: null,
@@ -23,7 +25,8 @@ const row = {
       description: 'Oil change',
       type: BudgetItemType.SERVICE,
       quantity: 2,
-      unitPrice: 50,
+      unitPriceCents: 5000,
+      subtotalCents: 10000,
     },
   ],
 };
@@ -33,7 +36,15 @@ const makeBudget = () =>
     serviceOrderId: row.serviceOrderId,
     version: row.version,
     status: row.status,
-    items: row.items,
+    items: [
+      {
+        id: 'item-123',
+        description: 'Oil change',
+        type: BudgetItemType.SERVICE,
+        quantity: 2,
+        unitPrice: 50,
+      },
+    ],
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });
@@ -75,7 +86,7 @@ describe('BudgetRepository', () => {
     expect(prisma.budget.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         id: row.id,
-        totalAmount: 100,
+        totalCents: 10000,
         items: { create: [expect.objectContaining({ id: 'item-123' })] },
       }) as unknown,
       include: { items: true },
@@ -115,7 +126,7 @@ describe('BudgetRepository', () => {
     prisma.budget.updateMany.mockResolvedValue({ count: 1 });
     prisma.budget.findUnique.mockResolvedValue({
       ...row,
-      totalAmount: 130,
+      totalCents: 13000,
       items: [
         ...row.items,
         {
@@ -123,7 +134,8 @@ describe('BudgetRepository', () => {
           description: 'Oil filter',
           type: BudgetItemType.PART,
           quantity: 1,
-          unitPrice: 30,
+          unitPriceCents: 3000,
+          subtotalCents: 3000,
         },
       ],
     });

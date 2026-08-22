@@ -127,16 +127,25 @@ describe('ServiceOrder', () => {
   describe('transições de status', () => {
     const oldDate = new Date('2020-01-01T00:00:00.000Z');
 
+    const MECHANIC = 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+    // Da atribuição em diante a OS sempre tem mecânico; sem ele ela não sai de
+    // RECEIVED, então os cenários de transição partem já atribuídos.
     const restoredAt = (status: ServiceOrderStatus) =>
       ServiceOrder.restore(
         'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-        validProps({ status, createdAt: oldDate, updatedAt: oldDate }),
+        validProps({
+          status,
+          mechanicId: status === ServiceOrderStatus.RECEIVED ? null : MECHANIC,
+          createdAt: oldDate,
+          updatedAt: oldDate,
+        }),
       );
 
     it.each([
       [
         ServiceOrderStatus.RECEIVED,
-        (os: ServiceOrder) => os.startDiagnosis(),
+        (os: ServiceOrder) => os.assignToMechanic(MECHANIC),
         ServiceOrderStatus.IN_DIAGNOSIS,
       ],
       [
@@ -151,12 +160,12 @@ describe('ServiceOrder', () => {
       ],
       [
         ServiceOrderStatus.AWAITING_APPROVAL,
-        (os: ServiceOrder) => os.startProgress(),
+        (os: ServiceOrder) => os.registerPartsDispatched(),
         ServiceOrderStatus.IN_PROGRESS,
       ],
       [
         ServiceOrderStatus.AWAITING_PARTS,
-        (os: ServiceOrder) => os.startProgress(),
+        (os: ServiceOrder) => os.registerPartsDispatched(),
         ServiceOrderStatus.IN_PROGRESS,
       ],
       [
@@ -188,32 +197,44 @@ describe('ServiceOrder', () => {
 
     it.each([
       [ServiceOrderStatus.RECEIVED, (os: ServiceOrder) => os.awaitApproval()],
-      [ServiceOrderStatus.RECEIVED, (os: ServiceOrder) => os.startProgress()],
+      [
+        ServiceOrderStatus.RECEIVED,
+        (os: ServiceOrder) => os.registerPartsDispatched(),
+      ],
       [ServiceOrderStatus.RECEIVED, (os: ServiceOrder) => os.complete()],
       [
         ServiceOrderStatus.IN_DIAGNOSIS,
-        (os: ServiceOrder) => os.startDiagnosis(),
+        (os: ServiceOrder) => os.assignToMechanic(MECHANIC),
       ],
       [
         ServiceOrderStatus.IN_DIAGNOSIS,
-        (os: ServiceOrder) => os.startProgress(),
+        (os: ServiceOrder) => os.registerPartsDispatched(),
       ],
       [
         ServiceOrderStatus.AWAITING_APPROVAL,
-        (os: ServiceOrder) => os.startDiagnosis(),
+        (os: ServiceOrder) => os.assignToMechanic(MECHANIC),
       ],
       [
         ServiceOrderStatus.AWAITING_PARTS,
         (os: ServiceOrder) => os.awaitApproval(),
       ],
       [ServiceOrderStatus.IN_PROGRESS, (os: ServiceOrder) => os.awaitParts()],
-      [ServiceOrderStatus.COMPLETED, (os: ServiceOrder) => os.startDiagnosis()],
+      [
+        ServiceOrderStatus.COMPLETED,
+        (os: ServiceOrder) => os.assignToMechanic(MECHANIC),
+      ],
       [ServiceOrderStatus.COMPLETED, (os: ServiceOrder) => os.cancel('motivo')],
       [ServiceOrderStatus.RECEIVED, (os: ServiceOrder) => os.deliver()],
       [ServiceOrderStatus.IN_PROGRESS, (os: ServiceOrder) => os.deliver()],
-      [ServiceOrderStatus.DELIVERED, (os: ServiceOrder) => os.startDiagnosis()],
+      [
+        ServiceOrderStatus.DELIVERED,
+        (os: ServiceOrder) => os.assignToMechanic(MECHANIC),
+      ],
       [ServiceOrderStatus.DELIVERED, (os: ServiceOrder) => os.cancel('motivo')],
-      [ServiceOrderStatus.CANCELLED, (os: ServiceOrder) => os.startDiagnosis()],
+      [
+        ServiceOrderStatus.CANCELLED,
+        (os: ServiceOrder) => os.assignToMechanic(MECHANIC),
+      ],
     ])('recusa transição inválida a partir de %s', (from, act) => {
       const os = restoredAt(from);
 
@@ -255,6 +276,131 @@ describe('ServiceOrder', () => {
       const os = restoredAt(ServiceOrderStatus.DELIVERED);
 
       expect(() => os.cancel('motivo')).toThrow(DomainException);
+    });
+  });
+  describe('atribuição ao mecânico', () => {
+    const MECHANIC = 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+    it('move para IN_DIAGNOSIS e inicializa o timer', () => {
+      const os = ServiceOrder.create(validProps());
+
+      expect(os.getAssignedAt()).toBeNull();
+
+      os.assignToMechanic(MECHANIC);
+
+      expect(os.getStatus()).toBe(ServiceOrderStatus.IN_DIAGNOSIS);
+      expect(os.getMechanicId()).toBe(MECHANIC);
+      expect(os.getAssignedAt()).toBeInstanceOf(Date);
+    });
+
+    it('normaliza o id do mecânico e recusa vazio', () => {
+      const os = ServiceOrder.create(validProps());
+      os.assignToMechanic(`  ${MECHANIC}  `);
+
+      expect(os.getMechanicId()).toBe(MECHANIC);
+
+      const outra = ServiceOrder.create(validProps());
+      expect(() => outra.assignToMechanic('   ')).toThrow(
+        'Mecânico da ordem de serviço é obrigatório',
+      );
+    });
+
+    it('recusa reatribuir uma OS que já tem mecânico', () => {
+      const os = ServiceOrder.restore('id', {
+        ...validProps(),
+        status: ServiceOrderStatus.RECEIVED,
+        mechanicId: MECHANIC,
+      });
+
+      expect(() => os.assignToMechanic(MECHANIC)).toThrow(
+        'Ordem de serviço já atribuída a um mecânico',
+      );
+    });
+
+    it('só atribui a partir de RECEBIDA', () => {
+      const os = ServiceOrder.restore('id', {
+        ...validProps(),
+        status: ServiceOrderStatus.IN_PROGRESS,
+      });
+
+      expect(() => os.assignToMechanic(MECHANIC)).toThrow(DomainException);
+    });
+
+    it('tempo de execução conta da atribuição até a finalização', () => {
+      const assignedAt = new Date('2026-01-01T00:00:00.000Z');
+      const os = ServiceOrder.restore('id', {
+        ...validProps(),
+        status: ServiceOrderStatus.COMPLETED,
+        createdAt: new Date('2025-12-01T00:00:00.000Z'),
+        assignedAt,
+        completedAt: new Date('2026-01-01T02:00:00.000Z'),
+      });
+
+      // Se contasse de createdAt daria um mês, não duas horas.
+      expect(os.getExecutionTimeMs()).toBe(2 * 60 * 60 * 1000);
+    });
+
+    it('tempo de execução é nulo sem uma das pontas', () => {
+      const semTimer = ServiceOrder.restore('id', {
+        ...validProps(),
+        status: ServiceOrderStatus.COMPLETED,
+        completedAt: new Date(),
+      });
+
+      expect(semTimer.getExecutionTimeMs()).toBeNull();
+
+      const semFim = ServiceOrder.create(validProps());
+      semFim.assignToMechanic(MECHANIC);
+
+      expect(semFim.getExecutionTimeMs()).toBeNull();
+    });
+  });
+  describe('o furo do atalho', () => {
+    const MECHANIC = 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+    it('OS sem mecânico não entra em execução, mesmo com o status permitindo', () => {
+      // AWAITING_PARTS -> IN_PROGRESS está na tabela de transições, mas a
+      // tabela não pergunta se alguém pegou o serviço.
+      const semDono = ServiceOrder.restore('id', {
+        ...validProps(),
+        status: ServiceOrderStatus.AWAITING_PARTS,
+        mechanicId: null,
+      });
+
+      expect(() => semDono.registerPartsDispatched()).toThrow(
+        'Ordem de serviço sem mecânico responsável não entra em execução',
+      );
+      expect(semDono.getStatus()).toBe(ServiceOrderStatus.AWAITING_PARTS);
+    });
+
+    it('entrar em execução deixa registrado que o estoque atendeu', () => {
+      const os = ServiceOrder.restore('id', {
+        ...validProps(),
+        status: ServiceOrderStatus.AWAITING_PARTS,
+        mechanicId: MECHANIC,
+      });
+
+      expect(os.getPartsDispatchedAt()).toBeNull();
+
+      os.registerPartsDispatched();
+
+      expect(os.getStatus()).toBe(ServiceOrderStatus.IN_PROGRESS);
+      expect(os.getPartsDispatchedAt()).toBeInstanceOf(Date);
+    });
+
+    it('uma OS em execução sempre tem mecânico e atendimento de estoque', () => {
+      const os = ServiceOrder.create(validProps());
+      os.assignToMechanic(MECHANIC);
+      os.awaitApproval();
+      os.awaitParts();
+      os.registerPartsDispatched();
+      os.complete();
+
+      // As três coisas que o carro B não tinha.
+      expect(os.getMechanicId()).toBe(MECHANIC);
+      expect(os.getAssignedAt()).toBeInstanceOf(Date);
+      expect(os.getPartsDispatchedAt()).toBeInstanceOf(Date);
+      expect(os.getExecutionTimeMs()).not.toBeNull();
     });
   });
 });

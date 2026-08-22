@@ -2,17 +2,11 @@ import { randomUUID } from 'crypto';
 
 import { PurchaseOrderItem } from './purchase-order-item.entity';
 
-import {
-  PurchaseOrderStatus,
-} from '../enums/purchase-order-status.enum';
+import { PurchaseOrderStatus } from '../enums/purchase-order-status.enum';
 
-import {
-  PurchaseOrderNumber,
-} from '../value-objects/purchase-order-number.vo';
+import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import {
-  Money,
-} from '../value-objects/money.vo';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 import { DomainException } from '../../../shared/domain/domain.exception';
 
@@ -34,16 +28,13 @@ export interface PurchaseOrderProps {
 export class PurchaseOrder {
   private readonly id: string;
 
-  private readonly number:
-    PurchaseOrderNumber;
+  private readonly number: PurchaseOrderNumber;
 
   private readonly supplier: string;
 
-  private status:
-    PurchaseOrderStatus;
+  private status: PurchaseOrderStatus;
 
-  private readonly items:
-    PurchaseOrderItem[];
+  private readonly items: PurchaseOrderItem[];
 
   private readonly createdAt: Date;
 
@@ -51,44 +42,29 @@ export class PurchaseOrder {
 
   private deliveredAt?: Date;
 
-  constructor(
-    props: PurchaseOrderProps,
-  ) {
+  constructor(props: PurchaseOrderProps) {
     if (!props.supplier?.trim()) {
-      throw new DomainException(
-        'O fornecedor deve ser informado',
-      );
+      throw new DomainException('O fornecedor deve ser informado');
     }
 
-    this.id =
-      props.id ?? randomUUID();
+    this.id = props.id ?? randomUUID();
 
-    this.number =
-      props.number;
+    this.number = props.number;
 
-    this.supplier =
-      props.supplier.trim();
+    this.supplier = props.supplier.trim();
 
-    this.status =
-      props.status ??
-      PurchaseOrderStatus.NECESSITA_COMPRA;
+    this.status = props.status ?? PurchaseOrderStatus.NEEDS_PURCHASE;
 
-    this.items =
-      props.items ?? [];
+    this.items = props.items ?? [];
 
-    this.createdAt =
-      props.createdAt ?? new Date();
+    this.createdAt = props.createdAt ?? new Date();
 
-    this.updatedAt =
-      props.updatedAt ?? new Date();
+    this.updatedAt = props.updatedAt ?? new Date();
 
-    this.deliveredAt =
-      props.deliveredAt;
+    this.deliveredAt = props.deliveredAt;
   }
 
-  addItem(
-    item: PurchaseOrderItem,
-  ): void {
+  addItem(item: PurchaseOrderItem): void {
     this.ensureEditable();
 
     this.items.push(item);
@@ -96,21 +72,13 @@ export class PurchaseOrder {
     this.touch();
   }
 
-  removeItem(
-    itemId: string,
-  ): void {
+  removeItem(itemId: string): void {
     this.ensureEditable();
 
-    const index =
-      this.items.findIndex(
-        (item) =>
-          item.getId() === itemId,
-      );
+    const index = this.items.findIndex((item) => item.getId() === itemId);
 
     if (index === -1) {
-      throw new DomainException(
-        'Item não encontrado no pedido',
-      );
+      throw new DomainException('Item não encontrado no pedido');
     }
 
     this.items.splice(index, 1);
@@ -119,12 +87,9 @@ export class PurchaseOrder {
   }
 
   registerPurchase(): void {
-    if (
-      this.status !==
-      PurchaseOrderStatus.NECESSITA_COMPRA
-    ) {
+    if (this.status !== PurchaseOrderStatus.NEEDS_PURCHASE) {
       throw new DomainException(
-        'Somente pedidos em NECESSITA_COMPRA podem registrar a compra',
+        'Somente pedidos em NEEDS_PURCHASE podem registrar a compra',
       );
     }
 
@@ -134,49 +99,34 @@ export class PurchaseOrder {
       );
     }
 
-    this.status =
-      PurchaseOrderStatus
-        .AGUARDANDO_ENTREGA;
+    this.status = PurchaseOrderStatus.AWAITING_DELIVERY;
 
     this.touch();
   }
 
   markAsDelivered(): void {
-    if (
-      this.status !==
-      PurchaseOrderStatus
-        .AGUARDANDO_ENTREGA
-    ) {
+    if (this.status !== PurchaseOrderStatus.AWAITING_DELIVERY) {
       throw new DomainException(
         'Somente pedidos aguardando entrega podem ser marcados como entregues',
       );
     }
 
-    this.status =
-      PurchaseOrderStatus.ENTREGUE;
+    this.status = PurchaseOrderStatus.DELIVERED;
 
-    this.deliveredAt =
-      new Date();
+    this.deliveredAt = new Date();
 
     this.touch();
   }
 
   getTotal(): Money {
     return this.items.reduce(
-      (total, item) =>
-        total.add(
-          item.getSubtotal(),
-        ),
+      (total, item) => total.add(item.getSubtotal()),
       Money.fromCents(0),
     );
   }
 
   private ensureEditable(): void {
-    if (
-      this.status !==
-      PurchaseOrderStatus
-        .NECESSITA_COMPRA
-    ) {
+    if (this.status !== PurchaseOrderStatus.NEEDS_PURCHASE) {
       throw new DomainException(
         'Não é possível alterar os itens após o registro da compra',
       );
@@ -184,16 +134,14 @@ export class PurchaseOrder {
   }
 
   private touch(): void {
-    this.updatedAt =
-      new Date();
+    this.updatedAt = new Date();
   }
 
   getId(): string {
     return this.id;
   }
 
-  getNumber():
-    PurchaseOrderNumber {
+  getNumber(): PurchaseOrderNumber {
     return this.number;
   }
 
@@ -201,13 +149,11 @@ export class PurchaseOrder {
     return this.supplier;
   }
 
-  getStatus():
-    PurchaseOrderStatus {
+  getStatus(): PurchaseOrderStatus {
     return this.status;
   }
 
-  getItems():
-    readonly PurchaseOrderItem[] {
+  getItems(): readonly PurchaseOrderItem[] {
     return this.items;
   }
 
@@ -219,8 +165,7 @@ export class PurchaseOrder {
     return this.updatedAt;
   }
 
-  getDeliveredAt():
-    Date | undefined {
+  getDeliveredAt(): Date | undefined {
     return this.deliveredAt;
   }
 }

@@ -11,12 +11,12 @@ describe('prisma-errors', () => {
     });
 
     it.each([
-      [{ code: 'P2003' }, 'outro código do Prisma'],
-      [new Error('boom'), 'erro comum'],
-      [null, 'nulo'],
-      [undefined, 'indefinido'],
-      ['P2002', 'string solta'],
-    ])('não reconhece %p (%s)', (input) => {
+      { input: { code: 'P2003' }, label: 'outro código do Prisma' },
+      { input: new Error('boom'), label: 'erro comum' },
+      { input: null, label: 'nulo' },
+      { input: undefined, label: 'indefinido' },
+      { input: 'P2002', label: 'string solta' },
+    ])('não reconhece $label', ({ input }) => {
       expect(isUniqueViolation(input)).toBe(false);
     });
   });
@@ -61,11 +61,14 @@ describe('prisma-errors', () => {
     });
 
     it.each([
-      [{ code: 'P2002' }, 'sem meta'],
-      [{ code: 'P2002', meta: {} }, 'sem target'],
-      [{ code: 'P2002', meta: { target: 7 } }, 'target de tipo inesperado'],
-      [null, 'nulo'],
-    ])('devolve lista vazia para %p (%s)', (input) => {
+      { input: { code: 'P2002' }, label: 'sem meta' },
+      { input: { code: 'P2002', meta: {} }, label: 'sem target' },
+      {
+        input: { code: 'P2002', meta: { target: 7 } },
+        label: 'target de tipo inesperado',
+      },
+      { input: null, label: 'nulo' },
+    ])('devolve lista vazia para $label', ({ input }) => {
       expect(uniqueViolationFields(input)).toEqual([]);
     });
   });

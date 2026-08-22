@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsEnum,
+  IsNumber,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -41,14 +42,16 @@ export class CreatePartDto {
   unit: MeasurementUnit;
 
   @ApiProperty({
-    example: '149.90',
-    type: String,
-    description: 'Non-negative monetary value with up to two decimal places.',
+    example: 149.9,
+    minimum: 0,
+    description:
+      'Valor em decimal, com até duas casas. É convertido para centavos ' +
+      'inteiros no domínio e no banco.',
   })
-  @Transform(trim)
-  @IsString()
-  @IsNotEmpty()
-  unitPrice: string;
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  unitPrice: number;
 
   @ApiProperty({ example: 3, minimum: 0 })
   @Type(() => Number)
@@ -89,15 +92,17 @@ export class UpdatePartDto {
   unit?: MeasurementUnit;
 
   @ApiPropertyOptional({
-    example: '149.90',
-    type: String,
-    description: 'Non-negative monetary value with up to two decimal places.',
+    example: 149.9,
+    minimum: 0,
+    description:
+      'Valor em decimal, com até duas casas. É convertido para centavos ' +
+      'inteiros no domínio e no banco.',
   })
-  @Transform(trim)
-  @IsString()
-  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   @IsOptional()
-  unitPrice?: string;
+  unitPrice?: number;
 
   @ApiPropertyOptional({ example: 3, minimum: 0 })
   @Type(() => Number)
@@ -126,8 +131,8 @@ export class PartResponseDto {
   @ApiProperty({ enum: MeasurementUnit, example: MeasurementUnit.UNIT })
   unit: MeasurementUnit;
 
-  @ApiProperty({ example: '149.90', type: String })
-  unitPrice: string;
+  @ApiProperty({ example: 149.9 })
+  unitPrice: number;
 
   @ApiProperty({ example: 10 })
   quantity: number;

@@ -20,6 +20,11 @@ describe('ServiceOrderMapper', () => {
       description: 'Barulho no motor',
       status: ServiceOrderStatus.RECEIVED,
       cancellationReason: null,
+      mechanicId: null,
+      assignedAt: null,
+      partsDispatchedAt: null,
+      completedAt: null,
+      executionTimeMs: null,
       createdAt: expect.any(Date) as Date,
       updatedAt: expect.any(Date) as Date,
     });

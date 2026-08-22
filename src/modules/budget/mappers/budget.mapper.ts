@@ -4,6 +4,7 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { BudgetResponseDto } from '../dto/budget.dto';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 type BudgetWithItems = {
   id: string;
@@ -17,10 +18,11 @@ type BudgetWithItems = {
   updatedAt: Date;
   items: Array<{
     id: string;
+    partId: string | null;
     description: string;
     type: BudgetItemType;
     quantity: unknown;
-    unitPrice: unknown;
+    unitPriceCents: number;
   }>;
 };
 
@@ -39,6 +41,7 @@ export class BudgetMapper {
       updatedAt: budget.getUpdatedAt(),
       items: budget.getItems().map((item) => ({
         id: item.getId(),
+        partId: item.getPartId(),
         description: item.getDescription(),
         type: item.getType(),
         quantity: item.getQuantity(),
@@ -58,22 +61,37 @@ export class BudgetMapper {
       serviceOrderId: budget.getServiceOrderId(),
       version: budget.getVersion(),
       status: budget.getStatus(),
-      totalAmount: budget.getTotalAmount(),
+      totalCents: Money.fromDecimal(budget.getTotalAmount()).valueInCents,
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
       createdAt: budget.getCreatedAt(),
       updatedAt: budget.getUpdatedAt(),
       items: {
-        create: budget.getItems().map((item) => ({
-          id: item.getId(),
-          description: item.getDescription(),
-          type: item.getType(),
-          quantity: item.getQuantity(),
-          unitPrice: item.getUnitPrice(),
-          subtotal: item.getSubtotal(),
-        })),
+        create: budget
+          .getItems()
+          .map((item) => BudgetMapper.itemToPersistence(item)),
       },
+    };
+  }
+
+  /**
+   * Dinheiro é persistido sempre em centavos inteiros. A API continua em
+   * decimais; a conversão acontece só aqui, na fronteira de persistência.
+   */
+  static itemToPersistence(
+    item: Budget['getItems'] extends never
+      ? never
+      : ReturnType<Budget['getItems']>[number],
+  ) {
+    return {
+      id: item.getId(),
+      partId: item.getPartId(),
+      description: item.getDescription(),
+      type: item.getType(),
+      quantity: item.getQuantity(),
+      unitPriceCents: Money.fromDecimal(item.getUnitPrice()).valueInCents,
+      subtotalCents: Money.fromDecimal(item.getSubtotal()).valueInCents,
     };
   }
 
@@ -89,10 +107,11 @@ export class BudgetMapper {
       updatedAt: record.updatedAt,
       items: record.items.map((item) => ({
         id: item.id,
+        partId: item.partId,
         description: item.description,
         type: item.type,
         quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
+        unitPrice: Money.fromCents(item.unitPriceCents).value,
       })),
     });
   }

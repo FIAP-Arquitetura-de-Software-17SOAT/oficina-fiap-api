@@ -6,6 +6,8 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
+  IsUUID,
   Max,
   IsString,
   Min,
@@ -25,6 +27,16 @@ export class FindBudgetsQueryDto {
 }
 
 export class CreateBudgetItemDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Peca referenciada pelo item. Obrigatorio para itens do tipo PART serem ' +
+      'solicitados ao estoque quando o orcamento for aceito.',
+  })
+  @IsOptional()
+  @IsUUID()
+  partId?: string;
+
   @ApiProperty({ example: 'Oil change' })
   @Transform(trim)
   @IsString()
@@ -66,6 +78,9 @@ export class CreateBudgetDto {
 export class BudgetItemResponseDto {
   @ApiProperty({ format: 'uuid' })
   id: string;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  partId: string | null;
 
   @ApiProperty({ example: 'Oil change' })
   description: string;

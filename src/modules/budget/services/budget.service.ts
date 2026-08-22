@@ -8,6 +8,7 @@ import {
   CreateBudgetItemDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
+import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { Budget } from '../entities/budget.entity';
 import { BudgetRepository } from '../repositories/budget.repository';
 
@@ -15,12 +16,31 @@ import { BudgetRepository } from '../repositories/budget.repository';
 export class BudgetService {
   private static readonly MAX_VERSION_ALLOCATION_ATTEMPTS = 3;
 
-  constructor(private readonly budgetRepository: BudgetRepository) {}
+  // A integracao entre modulos passa pelo controller do modulo alvo, nunca pelo
+  // service ou repositorio dele. Guards do Nest so rodam em requisicao HTTP, entao
+  // a chamada interna nao exige token: a autorizacao ja aconteceu na entrada.
+  constructor(
+    private readonly budgetRepository: BudgetRepository,
+    private readonly serviceOrderController: ServiceOrderController,
+  ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
     const serviceOrderId = this.normalizeServiceOrderId(dto.serviceOrderId);
 
-    return this.createWithNextAvailableVersion(serviceOrderId, dto.items);
+    const budget = await this.createWithNextAvailableVersion(
+      serviceOrderId,
+      dto.items,
+    );
+
+    // Politica do Event Storming: "Quando o orcamento for gerado, o status da OS
+    // sera alterado para aguardando aprovacao". Reparo adicional aprovado durante
+    // a execucao gera outro orcamento, e a OS ja nao esta mais em diagnostico -
+    // nesse caso a transicao nao se aplica e o orcamento segue valido.
+    if (budget.getVersion() === 1) {
+      await this.serviceOrderController.awaitApproval(serviceOrderId);
+    }
+
+    return budget;
   }
 
   async addItem(id: string, dto: CreateBudgetItemDto): Promise<Budget> {
@@ -53,14 +73,45 @@ export class BudgetService {
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.accept();
-    return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
+    const accepted = await this.persistWaitingApprovalDecision(
+      budget,
+      expectedUpdatedAt,
+    );
+
+    await this.requestPartsForAcceptedBudget(accepted);
+
+    return accepted;
   }
 
   async refuse(id: string, dto: RefuseBudgetDto): Promise<Budget> {
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.refuse(dto.reason);
-    return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
+    const refused = await this.persistWaitingApprovalDecision(
+      budget,
+      expectedUpdatedAt,
+    );
+
+    // Politica do Event Storming: "Quando Status do orcamento for alterado para
+    // recusado, encerra a ordem de servico".
+    await this.serviceOrderController.cancel(refused.getServiceOrderId(), {
+      reason: `Orcamento recusado: ${refused.getRefusalReason()}`,
+    });
+
+    return refused;
+  }
+
+  /**
+   * Politicas do Event Storming: "Quando o orcamento for aceito as pecas e
+   * insumos serao solicitados" e "Quando as pecas forem solicitadas o status da
+   * OS sera alterado para aguardando pecas".
+   *
+   * O board nao bifurca aqui: todo orcamento aceito passa pela solicitacao de
+   * pecas. Um orcamento so de servicos nao tem o que baixar, e o despacho
+   * resolve isso liberando a OS direto para execucao.
+   */
+  private async requestPartsForAcceptedBudget(budget: Budget): Promise<void> {
+    await this.serviceOrderController.awaitParts(budget.getServiceOrderId());
   }
 
   async findById(id: string): Promise<Budget> {

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { Money as SharedMoney } from '../../../shared/domain/value-objects/money.vo';
 import { Injectable } from '@nestjs/common';
 import {
   StockMovementType as PrismaStockMovementType,
@@ -53,8 +55,9 @@ export class StockMovementRepository {
       return await this.prisma.$transaction(async (transaction) => {
         const movement = await transaction.stockMovement.create({
           data: {
+            id: randomUUID(),
             idempotencyKey: input.idempotencyKey,
-            type: input.type as PrismaStockMovementType,
+            type: input.type,
             quantity: input.quantity,
             partId: input.partId,
           },
@@ -159,7 +162,7 @@ export class StockMovementRepository {
       description: row.description ?? undefined,
       type: row.type as PartType,
       unit: row.unit as MeasurementUnit,
-      unitPrice: row.unitPrice.toString(),
+      unitPrice: SharedMoney.fromCents(row.unitPriceCents).value,
       quantity: row.quantity,
       minimumQuantity: row.minimumQuantity,
       createdAt: row.createdAt,
