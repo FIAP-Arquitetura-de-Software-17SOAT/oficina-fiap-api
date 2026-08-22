@@ -1,29 +1,32 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
-import { PaymentAmount } from '../value-objects/payment-amount.vo';
-import { Payment } from './payment.entity';
-
-export interface RestorePaymentProps {
-  id: string;
-  amountInCents: number;
-  method: PaymentMethod;
-  paidAt: Date;
-  createdAt: Date;
-}
 
 export interface BillingProps {
   serviceOrderId: string;
-  totalAmountInCents: number;
+  budgetId: string;
+  amount: Money;
   status?: BillingStatus;
-  payments?: RestorePaymentProps[];
+  paymentLink?: string | null;
+  gatewayTransactionId?: string | null;
+  paymentMethod?: PaymentMethod | null;
+  generatedAt?: Date;
+  paidAt?: Date | null;
+  expiresAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
+export interface GeneratePaymentLinkProps {
+  paymentLink: string;
+  gatewayTransactionId: string;
+  expiresAt?: Date | null;
+}
+
 export interface RegisterPaymentProps {
-  amount: PaymentAmount;
+  gatewayTransactionId: string;
   method: PaymentMethod;
   paidAt?: Date;
 }
@@ -31,30 +34,38 @@ export interface RegisterPaymentProps {
 export class Billing {
   private readonly id: string;
   private readonly serviceOrderId: string;
-  private readonly totalAmountInCents: number;
+  private readonly budgetId: string;
+  private readonly amount: Money;
   private status: BillingStatus;
-  private readonly payments: Payment[];
+  private paymentLink: string | null;
+  private gatewayTransactionId: string | null;
+  private paymentMethod: PaymentMethod | null;
+  private readonly generatedAt: Date;
+  private paidAt: Date | null;
+  private expiresAt: Date | null;
   private readonly createdAt: Date;
   private updatedAt: Date;
 
   private constructor(id: string, props: BillingProps) {
     this.id = id;
-    this.serviceOrderId = this.validateServiceOrderId(props.serviceOrderId);
-    this.totalAmountInCents = this.validateTotal(props.totalAmountInCents);
-    this.status = props.status ?? BillingStatus.OPEN;
-    this.payments = (props.payments ?? []).map((payment) =>
-      Payment.restore(payment.id, {
-        amount: PaymentAmount.fromCents(payment.amountInCents),
-        method: payment.method,
-        paidAt: payment.paidAt,
-        createdAt: payment.createdAt,
-      }),
+    this.serviceOrderId = this.validateRequiredId(
+      props.serviceOrderId,
+      'Service order is required',
     );
+    this.budgetId = this.validateRequiredId(props.budgetId, 'Budget is required');
+    if (props.amount.valueInCents <= 0) {
+      throw new DomainException('Billing amount must be greater than zero');
+    }
+    this.amount = props.amount;
+    this.status = props.status ?? BillingStatus.PENDING;
+    this.paymentLink = props.paymentLink ?? null;
+    this.gatewayTransactionId = props.gatewayTransactionId ?? null;
+    this.paymentMethod = props.paymentMethod ?? null;
+    this.generatedAt = props.generatedAt ?? new Date();
+    this.paidAt = props.paidAt ?? null;
+    this.expiresAt = props.expiresAt ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
-
-    this.assertPaidAmountDoesNotExceedTotal();
-    this.refreshStatus();
   }
 
   static create(props: BillingProps): Billing {
@@ -65,115 +76,86 @@ export class Billing {
     return new Billing(id, props);
   }
 
-  registerPayment(props: RegisterPaymentProps): Payment {
-    if (this.status === BillingStatus.CANCELLED) {
-      throw new DomainException('Cancelled billing cannot receive payments');
+  generatePaymentLink(props: GeneratePaymentLinkProps): void {
+    if (this.status !== BillingStatus.PENDING) {
+      throw new DomainException(
+        'Payment link can only be generated for pending billing',
+      );
     }
-
-    if (props.amount.valueInCents > this.getBalanceAmountInCents()) {
-      throw new DomainException('Payment amount exceeds billing balance');
-    }
-
-    const payment = Payment.create({
-      amount: props.amount,
-      method: props.method,
-      paidAt: props.paidAt,
-    });
-
-    this.payments.push(payment);
-    this.refreshStatus();
-    this.touch();
-
-    return payment;
-  }
-
-  cancel(): void {
-    if (this.status === BillingStatus.PAID) {
-      throw new DomainException('Paid billing cannot be cancelled');
-    }
-
-    this.status = BillingStatus.CANCELLED;
-    this.touch();
-  }
-
-  getId(): string {
-    return this.id;
-  }
-
-  getServiceOrderId(): string {
-    return this.serviceOrderId;
-  }
-
-  getTotalAmountInCents(): number {
-    return this.totalAmountInCents;
-  }
-
-  getPaidAmountInCents(): number {
-    return this.payments.reduce(
-      (total, payment) => total + payment.getAmount().valueInCents,
-      0,
+    this.paymentLink = this.validatePaymentLink(props.paymentLink);
+    this.gatewayTransactionId = this.validateRequiredId(
+      props.gatewayTransactionId,
+      'Gateway transaction is required',
     );
+    this.expiresAt = props.expiresAt ?? null;
+    this.status = BillingStatus.WAITING_PAYMENT;
+    this.touch();
   }
 
-  getBalanceAmountInCents(): number {
-    return this.totalAmountInCents - this.getPaidAmountInCents();
+  registerPayment(props: RegisterPaymentProps): boolean {
+    const gatewayTransactionId = this.validateRequiredId(
+      props.gatewayTransactionId,
+      'Gateway transaction is required',
+    );
+    if (this.status === BillingStatus.PAID) {
+      if (this.gatewayTransactionId === gatewayTransactionId) return false;
+      throw new DomainException('Paid billing is terminal');
+    }
+    if (this.status !== BillingStatus.WAITING_PAYMENT) {
+      throw new DomainException('Payment can only be registered while waiting payment');
+    }
+    if (this.gatewayTransactionId !== gatewayTransactionId) {
+      throw new DomainException('Gateway transaction does not match billing');
+    }
+    this.paymentMethod = props.method;
+    this.paidAt = props.paidAt ?? new Date();
+    this.status = BillingStatus.PAID;
+    this.touch();
+    return true;
   }
 
-  getStatus(): BillingStatus {
-    return this.status;
+  expire(now = new Date()): void {
+    if (this.status === BillingStatus.PAID) {
+      throw new DomainException('Paid billing is terminal');
+    }
+    if (this.status === BillingStatus.EXPIRED) return;
+    if (this.expiresAt && now.getTime() < this.expiresAt.getTime()) {
+      throw new DomainException('Billing payment link has not expired yet');
+    }
+    this.status = BillingStatus.EXPIRED;
+    this.touch();
   }
 
-  getPayments(): Payment[] {
-    return [...this.payments];
-  }
+  getId(): string { return this.id; }
+  getServiceOrderId(): string { return this.serviceOrderId; }
+  getBudgetId(): string { return this.budgetId; }
+  getAmount(): Money { return this.amount; }
+  getStatus(): BillingStatus { return this.status; }
+  getPaymentLink(): string | null { return this.paymentLink; }
+  getGatewayTransactionId(): string | null { return this.gatewayTransactionId; }
+  getPaymentMethod(): PaymentMethod | null { return this.paymentMethod; }
+  getGeneratedAt(): Date { return this.generatedAt; }
+  getPaidAt(): Date | null { return this.paidAt; }
+  getExpiresAt(): Date | null { return this.expiresAt; }
+  getCreatedAt(): Date { return this.createdAt; }
+  getUpdatedAt(): Date { return this.updatedAt; }
 
-  getCreatedAt(): Date {
-    return this.createdAt;
-  }
-
-  getUpdatedAt(): Date {
-    return this.updatedAt;
-  }
-
-  private validateServiceOrderId(serviceOrderId: string): string {
-    const trimmed = (serviceOrderId ?? '').trim();
-    if (!trimmed) throw new DomainException('Service order is required');
+  private validateRequiredId(value: string, message: string): string {
+    const trimmed = (value ?? '').trim();
+    if (!trimmed) throw new DomainException(message);
     return trimmed;
   }
 
-  private validateTotal(totalAmountInCents: number): number {
-    if (!Number.isInteger(totalAmountInCents) || totalAmountInCents <= 0) {
-      throw new DomainException('Billing total must be greater than zero');
-    }
-    return totalAmountInCents;
-  }
-
-  private assertPaidAmountDoesNotExceedTotal(): void {
-    if (this.getPaidAmountInCents() > this.totalAmountInCents) {
-      throw new DomainException('Payment amount exceeds billing balance');
-    }
-  }
-
-  private refreshStatus(): void {
-    if (this.status === BillingStatus.CANCELLED) return;
-
-    const paidAmount = this.getPaidAmountInCents();
-    if (paidAmount === 0) {
-      this.status = BillingStatus.OPEN;
-      return;
-    }
-
-    this.status =
-      paidAmount === this.totalAmountInCents
-        ? BillingStatus.PAID
-        : BillingStatus.PARTIALLY_PAID;
+  private validatePaymentLink(value: string): string {
+    const trimmed = (value ?? '').trim();
+    if (!trimmed) throw new DomainException('Payment link is required');
+    return trimmed;
   }
 
   private touch(): void {
     const now = new Date();
-    this.updatedAt =
-      now.getTime() > this.updatedAt.getTime()
-        ? now
-        : new Date(this.updatedAt.getTime() + 1);
+    this.updatedAt = now.getTime() > this.updatedAt.getTime()
+      ? now
+      : new Date(this.updatedAt.getTime() + 1);
   }
 }

@@ -1,128 +1,123 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
-import { PaymentAmount } from '../value-objects/payment-amount.vo';
 import { Billing } from './billing.entity';
 
 const serviceOrderId = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+const budgetId = 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
 describe('Billing', () => {
-  it('creates an open billing with no payments', () => {
+  it('creates a pending billing with positive money', () => {
     const billing = Billing.create({
       serviceOrderId,
-      totalAmountInCents: 15000,
+      budgetId,
+      amount: Money.fromCents(15000),
     });
 
-    expect(billing.getId()).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
     expect(billing.getServiceOrderId()).toBe(serviceOrderId);
-    expect(billing.getTotalAmountInCents()).toBe(15000);
-    expect(billing.getPaidAmountInCents()).toBe(0);
-    expect(billing.getBalanceAmountInCents()).toBe(15000);
-    expect(billing.getStatus()).toBe(BillingStatus.OPEN);
+    expect(billing.getBudgetId()).toBe(budgetId);
+    expect(billing.getAmount().valueInCents).toBe(15000);
+    expect(billing.getStatus()).toBe(BillingStatus.PENDING);
+    expect(billing.getPaymentLink()).toBeNull();
   });
 
-  it('rejects empty service order id', () => {
+  it('rejects zero-value billing', () => {
     expect(() =>
-      Billing.create({ serviceOrderId: '   ', totalAmountInCents: 100 }),
-    ).toThrow(DomainException);
+      Billing.create({
+        serviceOrderId,
+        budgetId,
+        amount: Money.fromCents(0),
+      }),
+    ).toThrow(new DomainException('Billing amount must be greater than zero'));
   });
 
-  it('rejects non-positive total', () => {
-    expect(() =>
-      Billing.create({ serviceOrderId, totalAmountInCents: 0 }),
-    ).toThrow('Billing total must be greater than zero');
-  });
-
-  it('registers a partial payment', () => {
+  it('moves pending billing to waiting payment with link data', () => {
     const billing = Billing.create({
       serviceOrderId,
-      totalAmountInCents: 15000,
+      budgetId,
+      amount: Money.fromCents(15000),
+    });
+    const expiresAt = new Date('2026-08-23T10:00:00.000Z');
+
+    billing.generatePaymentLink({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt,
     });
 
-    const payment = billing.registerPayment({
-      amount: PaymentAmount.fromDecimal(50),
-      method: PaymentMethod.PIX,
-    });
-
-    expect(payment.getAmount().valueInCents).toBe(5000);
-    expect(billing.getPaidAmountInCents()).toBe(5000);
-    expect(billing.getBalanceAmountInCents()).toBe(10000);
-    expect(billing.getStatus()).toBe(BillingStatus.PARTIALLY_PAID);
+    expect(billing.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(billing.getPaymentLink()).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_123',
+    );
+    expect(billing.getGatewayTransactionId()).toBe('cs_test_123');
+    expect(billing.getExpiresAt()).toBe(expiresAt);
   });
 
-  it('registers the final payment and marks billing as paid', () => {
+  it('registers payment once for the same gateway transaction', () => {
     const billing = Billing.create({
       serviceOrderId,
-      totalAmountInCents: 15000,
+      budgetId,
+      amount: Money.fromCents(15000),
+    });
+    billing.generatePaymentLink({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
     });
 
-    billing.registerPayment({
-      amount: PaymentAmount.fromCents(10000),
-      method: PaymentMethod.CREDIT_CARD,
+    const first = billing.registerPayment({
+      gatewayTransactionId: 'cs_test_123',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
     });
-    billing.registerPayment({
-      amount: PaymentAmount.fromCents(5000),
-      method: PaymentMethod.CASH,
+    const second = billing.registerPayment({
+      gatewayTransactionId: 'cs_test_123',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:01:00.000Z'),
     });
 
-    expect(billing.getPaidAmountInCents()).toBe(15000);
-    expect(billing.getBalanceAmountInCents()).toBe(0);
+    expect(first).toBe(true);
+    expect(second).toBe(false);
     expect(billing.getStatus()).toBe(BillingStatus.PAID);
+    expect(billing.getPaymentMethod()).toBe(PaymentMethod.CARD);
+    expect(billing.getPaidAt()?.toISOString()).toBe('2026-08-22T10:00:00.000Z');
   });
 
-  it('rejects overpayment', () => {
-    const billing = Billing.create({
+  it('rejects a different transaction after payment', () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
       serviceOrderId,
-      totalAmountInCents: 15000,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.PAID,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      paymentMethod: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
     });
 
     expect(() =>
       billing.registerPayment({
-        amount: PaymentAmount.fromCents(15001),
-        method: PaymentMethod.PIX,
+        gatewayTransactionId: 'cs_test_other',
+        method: PaymentMethod.CARD,
       }),
-    ).toThrow('Payment amount exceeds billing balance');
+    ).toThrow('Paid billing is terminal');
   });
 
-  it('rejects payment when cancelled', () => {
+  it('expires unpaid billing before payment', () => {
     const billing = Billing.create({
       serviceOrderId,
-      totalAmountInCents: 15000,
+      budgetId,
+      amount: Money.fromCents(15000),
+    });
+    billing.generatePaymentLink({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
     });
 
-    billing.cancel();
+    billing.expire(new Date('2026-08-23T10:01:00.000Z'));
 
-    expect(() =>
-      billing.registerPayment({
-        amount: PaymentAmount.fromCents(100),
-        method: PaymentMethod.PIX,
-      }),
-    ).toThrow('Cancelled billing cannot receive payments');
-  });
-
-  it('restores with existing payments and derived status', () => {
-    const billing = Billing.restore('aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
-      serviceOrderId,
-      totalAmountInCents: 15000,
-      status: BillingStatus.PARTIALLY_PAID,
-      payments: [
-        {
-          id: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-          amountInCents: 5000,
-          method: PaymentMethod.PIX,
-          paidAt: new Date('2026-08-20T10:00:00.000Z'),
-          createdAt: new Date('2026-08-20T10:00:00.000Z'),
-        },
-      ],
-      createdAt: new Date('2026-08-20T10:00:00.000Z'),
-      updatedAt: new Date('2026-08-20T10:00:00.000Z'),
-    });
-
-    expect(billing.getId()).toBe('aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c');
-    expect(billing.getPaidAmountInCents()).toBe(5000);
-    expect(billing.getBalanceAmountInCents()).toBe(10000);
-    expect(billing.getPayments()).toHaveLength(1);
+    expect(billing.getStatus()).toBe(BillingStatus.EXPIRED);
   });
 });
