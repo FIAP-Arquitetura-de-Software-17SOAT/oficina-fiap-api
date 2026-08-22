@@ -191,7 +191,7 @@ describe('ServiceOrder (integração)', () => {
       expect(response.body.status).toBe('COMPLETED');
     });
 
-    it('does not expose the legacy delivery path for an unpaid completed service order', async () => {
+    it('delivers a completed service order through the service-order controller', async () => {
       const clientId = await createClient();
       const { body: created } = await open(openPayload(clientId)).expect(201);
 
@@ -200,12 +200,9 @@ describe('ServiceOrder (integração)', () => {
       await advance(created.id, 'start-progress').expect(200);
       await advance(created.id, 'complete').expect(200);
 
-      await advance(created.id, 'deliver').expect(404);
+      const response = await advance(created.id, 'deliver').expect(200);
 
-      const response = await request(http)
-        .get(`/api/v1/service-order/${created.id}`)
-        .expect(200);
-      expect(response.body.status).toBe('COMPLETED');
+      expect(response.body.status).toBe('DELIVERED');
     });
 
     it('percorre o fluxo com peças até COMPLETED', async () => {

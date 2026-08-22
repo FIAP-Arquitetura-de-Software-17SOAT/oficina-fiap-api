@@ -225,6 +225,7 @@ describe('Swagger', () => {
         '/api/v1/service-order/{id}/await-parts',
         '/api/v1/service-order/{id}/start-progress',
         '/api/v1/service-order/{id}/complete',
+        '/api/v1/service-order/{id}/deliver',
         '/api/v1/service-order/{id}/cancel',
       ]),
     );
@@ -244,6 +245,7 @@ describe('Swagger', () => {
       'await-parts',
       'start-progress',
       'complete',
+      'deliver',
       'cancel',
     ]) {
       expect(

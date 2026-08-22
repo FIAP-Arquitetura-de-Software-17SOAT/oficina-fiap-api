@@ -210,17 +210,13 @@ describe('Billing (integracao)', () => {
     expect(paid.body.balanceAmount).toBe(0);
   });
 
-  it('blocks delivery before payment and allows after payment', async () => {
+  it('blocks billing delivery before payment and allows after payment', async () => {
     const { serviceOrderId } =
       await createCompletedServiceOrderWithAcceptedBudget();
     const billing = await request(http)
       .post('/api/v1/billings')
       .send({ serviceOrderId })
       .expect(201);
-
-    await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
-      .expect(404);
 
     await request(http)
       .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)
