@@ -38,6 +38,7 @@ describe('StripePaymentGateway', () => {
     expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'payment',
+        payment_method_types: ['card'],
         client_reference_id: 'billing-1',
         metadata: {
           billingId: 'billing-1',
@@ -60,11 +61,28 @@ describe('StripePaymentGateway', () => {
     });
   });
 
+  it('rejects a Checkout Session without a payment URL', async () => {
+    mockCreateCheckoutSession.mockResolvedValue({
+      id: 'cs_test_123',
+      url: null,
+      expires_at: 1787479200,
+    });
+    const gateway = new StripePaymentGateway();
+
+    await expect(
+      gateway.createPaymentLink({
+        billingId: 'billing-1',
+        serviceOrderId: 'service-order-1',
+        amountInCents: 15000,
+      }),
+    ).rejects.toThrow('Stripe Checkout Session URL is required');
+  });
+
   it('maps a completed Checkout Session webhook to a card payment', async () => {
     mockConstructEvent.mockReturnValue({
       type: 'checkout.session.completed',
       created: 1787392800,
-      data: { object: { id: 'cs_test_123' } },
+      data: { object: { id: 'cs_test_123', payment_status: 'paid' } },
     });
     const gateway = new StripePaymentGateway();
 
@@ -84,6 +102,25 @@ describe('StripePaymentGateway', () => {
       'stripe-signature',
       'whsec_test_123',
     );
+  });
+
+  it('ignores a completed Checkout Session when payment is not paid', async () => {
+    mockConstructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      created: 1787392800,
+      data: { object: { id: 'cs_test_123', payment_status: 'unpaid' } },
+    });
+    const gateway = new StripePaymentGateway();
+
+    await expect(
+      gateway.parsePaymentWebhook({
+        payload: Buffer.from('{}'),
+        signature: 'stripe-signature',
+      }),
+    ).resolves.toEqual({
+      type: 'ignored',
+      reason: 'Checkout Session payment is not paid',
+    });
   });
 
   it('rejects a live Stripe secret key', () => {

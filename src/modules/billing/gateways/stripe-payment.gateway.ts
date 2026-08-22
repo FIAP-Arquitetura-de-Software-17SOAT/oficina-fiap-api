@@ -32,6 +32,7 @@ export class StripePaymentGateway extends PaymentGateway {
   ): Promise<CreatePaymentLinkResult> {
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',
+      payment_method_types: ['card'],
       success_url: this.successUrl,
       cancel_url: this.cancelUrl,
       client_reference_id: input.billingId,
@@ -53,8 +54,12 @@ export class StripePaymentGateway extends PaymentGateway {
       ],
     });
 
+    if (!session.url) {
+      throw new Error('Stripe Checkout Session URL is required');
+    }
+
     return {
-      paymentLink: session.url!,
+      paymentLink: session.url,
       gatewayTransactionId: session.id,
       expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : null,
     };
@@ -74,6 +79,10 @@ export class StripePaymentGateway extends PaymentGateway {
     }
 
     const session = event.data.object as Stripe.Checkout.Session;
+    if (session.payment_status !== 'paid') {
+      return { type: 'ignored', reason: 'Checkout Session payment is not paid' };
+    }
+
     return {
       type: 'payment_confirmed',
       gatewayTransactionId: session.id,
