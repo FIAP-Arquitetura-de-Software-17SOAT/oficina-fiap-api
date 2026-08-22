@@ -1,25 +1,23 @@
 import { BillingResponseDto } from '../dto/billing.dto';
-import { Billing, BillingProps } from '../entities/billing.entity';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
 
 type BillingRecord = {
   id: string;
   serviceOrderId: string;
+  budgetId: string;
   status: string;
-  totalCents: number;
-  paidCents: number;
-  balanceCents: number;
+  amountCents: number;
+  paymentLink: string | null;
+  gatewayTransactionId: string | null;
+  paymentMethod: string | null;
+  generatedAt: Date;
+  paidAt: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  payments: Array<{
-    id: string;
-    billingId: string;
-    amountCents: number;
-    method: string;
-    paidAt: Date;
-    createdAt: Date;
-  }>;
 };
 
 export class BillingMapper {
@@ -27,41 +25,35 @@ export class BillingMapper {
     return {
       id: billing.getId(),
       serviceOrderId: billing.getServiceOrderId(),
+      budgetId: billing.getBudgetId(),
       status: billing.getStatus(),
-      totalCents: billing.getTotalAmountInCents(),
-      paidCents: billing.getPaidAmountInCents(),
-      balanceCents: billing.getBalanceAmountInCents(),
+      amountCents: billing.getAmount().valueInCents,
+      paymentLink: billing.getPaymentLink(),
+      gatewayTransactionId: billing.getGatewayTransactionId(),
+      paymentMethod: billing.getPaymentMethod(),
+      generatedAt: billing.getGeneratedAt(),
+      paidAt: billing.getPaidAt(),
+      expiresAt: billing.getExpiresAt(),
       createdAt: billing.getCreatedAt(),
       updatedAt: billing.getUpdatedAt(),
-      payments: {
-        create: billing.getPayments().map((payment) => ({
-          id: payment.getId(),
-          amountCents: payment.getAmount().valueInCents,
-          method: payment.getMethod(),
-          paidAt: payment.getPaidAt(),
-          createdAt: payment.getCreatedAt(),
-        })),
-      },
     };
   }
 
   static toDomain(record: BillingRecord): Billing {
-    const props: BillingProps = {
+    return Billing.restore(record.id, {
       serviceOrderId: record.serviceOrderId,
-      totalAmountInCents: record.totalCents,
+      budgetId: record.budgetId,
+      amount: Money.fromCents(record.amountCents),
       status: record.status as BillingStatus,
-      payments: record.payments.map((payment) => ({
-        id: payment.id,
-        amountInCents: payment.amountCents,
-        method: payment.method as PaymentMethod,
-        paidAt: payment.paidAt,
-        createdAt: payment.createdAt,
-      })),
+      paymentLink: record.paymentLink,
+      gatewayTransactionId: record.gatewayTransactionId,
+      paymentMethod: record.paymentMethod as PaymentMethod | null,
+      generatedAt: record.generatedAt,
+      paidAt: record.paidAt,
+      expiresAt: record.expiresAt,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
-    };
-
-    return Billing.restore(record.id, props);
+    });
   }
 
   static toResponse(billing: Billing): BillingResponseDto {

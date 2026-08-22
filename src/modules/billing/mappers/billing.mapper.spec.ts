@@ -1,56 +1,56 @@
+import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
-import { PaymentAmount } from '../value-objects/payment-amount.vo';
-import { Billing } from '../entities/billing.entity';
 import { BillingMapper } from './billing.mapper';
 
+const serviceOrderId = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+const budgetId = 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+const generatedAt = new Date('2026-08-22T10:00:00.000Z');
+const expiresAt = new Date('2026-08-23T10:00:00.000Z');
+
 describe('BillingMapper', () => {
-  it('maps domain to response with decimal amounts', () => {
-    const billing = Billing.create({
-      serviceOrderId: 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-      totalAmountInCents: 12000,
-    });
-    billing.registerPayment({
-      amount: PaymentAmount.fromCents(7000),
-      method: PaymentMethod.PIX,
+  it('maps gateway-backed billing to persistence', () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt,
     });
 
-    const response = BillingMapper.toResponse(billing);
-
-    expect(response).toMatchObject({
-      id: billing.getId(),
-      serviceOrderId: billing.getServiceOrderId(),
-      status: BillingStatus.PARTIALLY_PAID,
-      totalAmount: 120,
-      paidAmount: 70,
-      balanceAmount: 50,
+    expect(BillingMapper.toPersistence(billing)).toMatchObject({
+      serviceOrderId,
+      budgetId,
+      amountCents: 15000,
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
     });
-    expect(response.payments).toHaveLength(1);
   });
 
-  it('maps persistence record to domain', () => {
+  it('maps gateway-backed persistence record to domain', () => {
     const billing = BillingMapper.toDomain({
-      id: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-      serviceOrderId: 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      id: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      serviceOrderId,
+      budgetId,
+      amountCents: 15000,
       status: BillingStatus.PAID,
-      totalCents: 12000,
-      paidCents: 12000,
-      balanceCents: 0,
-      createdAt: new Date('2026-08-20T10:00:00.000Z'),
-      updatedAt: new Date('2026-08-20T10:00:00.000Z'),
-      payments: [
-        {
-          id: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-          billingId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-          amountCents: 12000,
-          method: PaymentMethod.CASH,
-          paidAt: new Date('2026-08-20T10:00:00.000Z'),
-          createdAt: new Date('2026-08-20T10:00:00.000Z'),
-        },
-      ],
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      paymentMethod: PaymentMethod.CARD,
+      generatedAt,
+      paidAt: generatedAt,
+      expiresAt,
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
     });
 
-    expect(billing.getStatus()).toBe(BillingStatus.PAID);
-    expect(billing.getBalanceAmountInCents()).toBe(0);
+    expect(billing.getAmount().valueInCents).toBe(15000);
+    expect(billing.getBudgetId()).toBe(budgetId);
+    expect(billing.getPaymentMethod()).toBe(PaymentMethod.CARD);
+    expect(billing.getPaidAt()).toBe(generatedAt);
   });
 });

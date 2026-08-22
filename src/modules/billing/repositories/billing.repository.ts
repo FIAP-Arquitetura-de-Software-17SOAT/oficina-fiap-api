@@ -10,7 +10,6 @@ export class BillingRepository {
   async create(billing: Billing): Promise<Billing> {
     const created = await this.prisma.billing.create({
       data: BillingMapper.toPersistence(billing),
-      include: { payments: true },
     });
 
     return BillingMapper.toDomain(created);
@@ -19,7 +18,6 @@ export class BillingRepository {
   async findById(id: string): Promise<Billing | null> {
     const record = await this.prisma.billing.findUnique({
       where: { id },
-      include: { payments: true },
     });
 
     return record ? BillingMapper.toDomain(record) : null;
@@ -28,7 +26,6 @@ export class BillingRepository {
   async findByServiceOrderId(serviceOrderId: string): Promise<Billing | null> {
     const record = await this.prisma.billing.findUnique({
       where: { serviceOrderId },
-      include: { payments: true },
     });
 
     return record ? BillingMapper.toDomain(record) : null;
@@ -36,7 +33,6 @@ export class BillingRepository {
 
   async findAll(): Promise<Billing[]> {
     const records = await this.prisma.billing.findMany({
-      include: { payments: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -52,9 +48,13 @@ export class BillingRepository {
         where: { id: billing.getId(), updatedAt: expectedUpdatedAt },
         data: {
           status: billing.getStatus(),
-          totalCents: billing.getTotalAmountInCents(),
-          paidCents: billing.getPaidAmountInCents(),
-          balanceCents: billing.getBalanceAmountInCents(),
+          amountCents: billing.getAmount().valueInCents,
+          paymentLink: billing.getPaymentLink(),
+          gatewayTransactionId: billing.getGatewayTransactionId(),
+          paymentMethod: billing.getPaymentMethod(),
+          generatedAt: billing.getGeneratedAt(),
+          paidAt: billing.getPaidAt(),
+          expiresAt: billing.getExpiresAt(),
           updatedAt: billing.getUpdatedAt(),
         },
       });
@@ -63,24 +63,8 @@ export class BillingRepository {
         return null;
       }
 
-      await tx.billingPayment.deleteMany({
-        where: { billingId: billing.getId() },
-      });
-
-      await tx.billingPayment.createMany({
-        data: billing.getPayments().map((payment) => ({
-          id: payment.getId(),
-          billingId: billing.getId(),
-          amountCents: payment.getAmount().valueInCents,
-          method: payment.getMethod(),
-          paidAt: payment.getPaidAt(),
-          createdAt: payment.getCreatedAt(),
-        })),
-      });
-
       return tx.billing.findUnique({
         where: { id: billing.getId() },
-        include: { payments: true },
       });
     });
 
