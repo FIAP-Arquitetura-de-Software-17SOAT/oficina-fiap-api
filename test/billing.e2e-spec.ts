@@ -90,27 +90,35 @@ describe('Billing (integracao)', () => {
       .send()
       .expect(200);
 
-    const budget = await request(http)
-      .post('/api/v1/budgets')
-      .send({
-        serviceOrderId: serviceOrder.body.id,
-        items: [
-          {
-            description: 'Servico',
-            type: 'SERVICE',
-            quantity: 1,
-            unitPrice: 150,
-          },
-        ],
-      })
-      .expect(201);
+    async function createAndAcceptBudget(
+      description: string,
+      unitPrice: number,
+    ) {
+      const budget = await request(http)
+        .post('/api/v1/budgets')
+        .send({
+          serviceOrderId: serviceOrder.body.id,
+          items: [
+            {
+              description,
+              type: 'SERVICE',
+              quantity: 1,
+              unitPrice,
+            },
+          ],
+        })
+        .expect(201);
 
-    await request(http)
-      .post(`/api/v1/budgets/${budget.body.id}/send`)
-      .expect(200);
-    await request(http)
-      .post(`/api/v1/budgets/${budget.body.id}/accept`)
-      .expect(200);
+      await request(http)
+        .post(`/api/v1/budgets/${budget.body.id}/send`)
+        .expect(200);
+      return request(http)
+        .post(`/api/v1/budgets/${budget.body.id}/accept`)
+        .expect(200);
+    }
+
+    await createAndAcceptBudget('Servico inicial', 100);
+    const latestBudget = await createAndAcceptBudget('Servico atualizado', 150);
     await request(http)
       .patch(`/api/v1/service-order/${serviceOrder.body.id}/start-progress`)
       .send()
@@ -120,11 +128,15 @@ describe('Billing (integracao)', () => {
       .send()
       .expect(200);
 
-    return serviceOrder.body.id as string;
+    return {
+      serviceOrderId: serviceOrder.body.id as string,
+      latestBudget: latestBudget.body,
+    };
   }
 
-  it('generates billing from completed service order and accepted budget', async () => {
-    const serviceOrderId = await createCompletedServiceOrderWithAcceptedBudget();
+  it('generates billing from the latest accepted budget without changing it', async () => {
+    const { serviceOrderId, latestBudget } =
+      await createCompletedServiceOrderWithAcceptedBudget();
 
     const response = await request(http)
       .post('/api/v1/billings')
@@ -139,10 +151,32 @@ describe('Billing (integracao)', () => {
       balanceAmount: 150,
       payments: [],
     });
+
+    const persistedBudget = await request(http)
+      .get(`/api/v1/budgets/${latestBudget.id}`)
+      .expect(200);
+
+    expect(persistedBudget.body).toMatchObject({
+      id: latestBudget.id,
+      version: 2,
+      status: 'ACCEPTED',
+      totalAmount: 150,
+      items: [
+        {
+          id: latestBudget.items[0].id,
+          description: 'Servico atualizado',
+          type: 'SERVICE',
+          quantity: 1,
+          unitPrice: 150,
+          subtotal: 150,
+        },
+      ],
+    });
   });
 
   it('registers partial and final payments', async () => {
-    const serviceOrderId = await createCompletedServiceOrderWithAcceptedBudget();
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
     const billing = await request(http)
       .post('/api/v1/billings')
       .send({ serviceOrderId })
@@ -166,7 +200,8 @@ describe('Billing (integracao)', () => {
   });
 
   it('blocks delivery before payment and allows after payment', async () => {
-    const serviceOrderId = await createCompletedServiceOrderWithAcceptedBudget();
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
     const billing = await request(http)
       .post('/api/v1/billings')
       .send({ serviceOrderId })
