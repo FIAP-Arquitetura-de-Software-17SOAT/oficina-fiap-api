@@ -123,6 +123,21 @@ enum BudgetItemType {
   PART
 }
 
+enum BillingStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  BANK_TRANSFER
+}
+
 model Budget {
   id             String       @id @db.Uuid
   serviceOrderId String       @db.Uuid
@@ -158,6 +173,37 @@ model BudgetItem {
   @@map("budget_item")
 }
 
+model Billing {
+  id             String        @id @db.Uuid
+  serviceOrderId String        @unique @db.Uuid
+  status         BillingStatus
+  totalCents     Int
+  paidCents      Int
+  balanceCents   Int
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  serviceOrder ServiceOrder     @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  payments     BillingPayment[]
+
+  @@index([status])
+  @@map("billing")
+}
+
+model BillingPayment {
+  id          String        @id @db.Uuid
+  billingId   String        @db.Uuid
+  amountCents Int
+  method      PaymentMethod
+  paidAt      DateTime
+  createdAt   DateTime      @default(now())
+
+  billing Billing @relation(fields: [billingId], references: [id], onDelete: Cascade)
+
+  @@index([billingId])
+  @@map("billing_payment")
+}
+
 model ServiceOrder {
   id                 String             @id @db.Uuid
   clientId           String             @db.Uuid
@@ -173,6 +219,7 @@ model ServiceOrder {
   client  Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   budgets Budget[]
+  billing Billing?
 
   @@index([clientId])
   @@index([vehicleId])
