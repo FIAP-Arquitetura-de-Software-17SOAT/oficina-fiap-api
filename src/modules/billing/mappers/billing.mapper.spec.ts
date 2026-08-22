@@ -18,16 +18,28 @@ describe('BillingMapper', () => {
       status: BillingStatus.WAITING_PAYMENT,
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
       gatewayTransactionId: 'cs_test_123',
+      paymentMethod: null,
+      generatedAt,
+      paidAt: null,
       expiresAt,
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
     });
 
-    expect(BillingMapper.toPersistence(billing)).toMatchObject({
+    expect(BillingMapper.toPersistence(billing)).toEqual({
+      id: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       serviceOrderId,
       budgetId,
       amountCents: 15000,
       status: BillingStatus.WAITING_PAYMENT,
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
       gatewayTransactionId: 'cs_test_123',
+      paymentMethod: null,
+      generatedAt,
+      paidAt: null,
+      expiresAt,
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
     });
   });
 

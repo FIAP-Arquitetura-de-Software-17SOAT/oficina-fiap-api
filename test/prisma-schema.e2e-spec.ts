@@ -5,6 +5,13 @@ describe('Prisma schema contracts', () => {
   const schema = readFileSync(join(__dirname, '../prisma/schema.prisma'), {
     encoding: 'utf8',
   });
+  const billingMigration = readFileSync(
+    join(
+      __dirname,
+      '../prisma/migrations/20260822010000_align_billing_gateway/migration.sql',
+    ),
+    { encoding: 'utf8' },
+  );
 
   it('keeps Budget.serviceOrderId as an external string reference', () => {
     const budgetModel = schema.match(/model Budget \{[\s\S]*?\n\}/)?.[0];
@@ -31,5 +38,16 @@ describe('Prisma schema contracts', () => {
     expect(billingModel).toContain('expiresAt            DateTime?');
     expect(billingModel).not.toContain('payments     BillingPayment[]');
     expect(schema).not.toContain('model BillingPayment');
+  });
+
+  it('backfills legacy billings before enforcing gateway billing requirements', () => {
+    expect(billingMigration).toContain('ADD COLUMN "budgetId" UUID,');
+    expect(billingMigration).toContain('ADD COLUMN "amountCents" INTEGER,');
+    expect(billingMigration).toContain('AND "budget"."status" = \'ACCEPTED\'');
+    expect(billingMigration).toContain('SET "budgetId" = (');
+    expect(billingMigration).toContain('SET "amountCents" = "billing"."totalCents"');
+    expect(billingMigration).toContain('Cannot align billing gateway');
+    expect(billingMigration).toContain('ALTER COLUMN "budgetId" SET NOT NULL');
+    expect(billingMigration).toContain('ALTER COLUMN "amountCents" SET NOT NULL');
   });
 });

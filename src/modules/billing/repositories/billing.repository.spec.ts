@@ -66,13 +66,21 @@ describe('BillingRepository', () => {
     await repository.create(billing);
 
     expect(prisma.billing.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: {
         id: row.id,
         serviceOrderId: row.serviceOrderId,
         budgetId: row.budgetId,
+        status: BillingStatus.WAITING_PAYMENT,
         amountCents: row.amountCents,
+        paymentLink: row.paymentLink,
         gatewayTransactionId: row.gatewayTransactionId,
-      }),
+        paymentMethod: null,
+        generatedAt,
+        paidAt: null,
+        expiresAt,
+        createdAt: generatedAt,
+        updatedAt: generatedAt,
+      },
     });
   });
 
@@ -122,12 +130,17 @@ describe('BillingRepository', () => {
 
     expect(transaction.billing.updateMany).toHaveBeenCalledWith({
       where: { id: row.id, updatedAt: row.updatedAt },
-      data: expect.objectContaining({
+      data: {
         status: BillingStatus.PAID,
         amountCents: row.amountCents,
+        paymentLink: row.paymentLink,
+        gatewayTransactionId: row.gatewayTransactionId,
         paymentMethod: PaymentMethod.CARD,
+        generatedAt,
         paidAt: generatedAt,
-      }),
+        expiresAt,
+        updatedAt: billing.getUpdatedAt(),
+      },
     });
     expect(updated?.getStatus()).toBe(BillingStatus.PAID);
   });
