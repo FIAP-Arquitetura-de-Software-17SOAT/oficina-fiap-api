@@ -38,6 +38,9 @@ export class BillingService {
       await this.billingRepository.findByServiceOrderId(serviceOrderId);
 
     if (existing) {
+      if (existing.getStatus() === BillingStatus.PENDING) {
+        return this.createAndPersistPaymentLink(existing);
+      }
       throw new ConflictException('Billing already exists for service order');
     }
 
@@ -59,14 +62,7 @@ export class BillingService {
 
     try {
       const created = await this.billingRepository.create(billing);
-      const link = await this.paymentGateway.createPaymentLink({
-        billingId: created.getId(),
-        serviceOrderId,
-        amountInCents: created.getAmount().valueInCents,
-      });
-      const expectedUpdatedAt = new Date(created.getUpdatedAt());
-      created.generatePaymentLink(link);
-      return await this.persistUpdatedBilling(created, expectedUpdatedAt);
+      return await this.createAndPersistPaymentLink(created);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ConflictException('Billing already exists for service order');
@@ -161,5 +157,18 @@ export class BillingService {
     }
 
     return updated;
+  }
+
+  private async createAndPersistPaymentLink(
+    billing: Billing,
+  ): Promise<Billing> {
+    const link = await this.paymentGateway.createPaymentLink({
+      billingId: billing.getId(),
+      serviceOrderId: billing.getServiceOrderId(),
+      amountInCents: billing.getAmount().valueInCents,
+    });
+    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
+    billing.generatePaymentLink(link);
+    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
   }
 }

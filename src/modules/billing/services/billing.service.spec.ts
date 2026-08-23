@@ -116,6 +116,37 @@ describe('BillingService', () => {
     expect(repository.update).toHaveBeenCalledWith(billing, createdAt);
   });
 
+  it('retries payment link generation for a pending billing', async () => {
+    const updatedAt = new Date('2026-08-22T09:00:00.000Z');
+    const pendingBilling = Billing.restore(
+      'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      {
+        serviceOrderId,
+        budgetId,
+        amount: Money.fromCents(15000),
+        createdAt: updatedAt,
+        updatedAt,
+      },
+    );
+    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
+    repository.findByServiceOrderId.mockResolvedValue(pendingBilling);
+    repository.update.mockImplementation(async (billing) => billing);
+    paymentGateway.createPaymentLink.mockResolvedValue({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_retry',
+      gatewayTransactionId: 'cs_test_retry',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+    });
+
+    const billing = await service.generateForServiceOrder({ serviceOrderId });
+
+    expect(billing.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(billing.getPaymentLink()).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_retry',
+    );
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.update).toHaveBeenCalledWith(billing, updatedAt);
+  });
+
   it('handles duplicated Stripe webhook idempotently', async () => {
     const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
       serviceOrderId,
