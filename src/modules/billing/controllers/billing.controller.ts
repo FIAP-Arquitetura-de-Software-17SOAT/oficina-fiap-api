@@ -16,6 +16,7 @@ import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -23,6 +24,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import {
   BillingResponseDto,
@@ -45,6 +47,8 @@ export class BillingController {
   @ApiCreatedResponse({ type: BillingResponseDto })
   @ApiConflictResponse({ description: 'Service order cannot be billed' })
   @ApiNotFoundResponse({ description: 'Service order not found' })
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async generate(@Body() dto: GenerateBillingDto): Promise<BillingResponseDto> {
     return BillingMapper.toResponse(
       await this.billingService.generateForServiceOrder(dto),
@@ -54,6 +58,8 @@ export class BillingController {
   @Get()
   @ApiOperation({ summary: 'Lista cobrancas ou busca por ordem de servico' })
   @ApiOkResponse({ type: BillingResponseDto, isArray: true })
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async findAll(
     @Query() query: FindBillingQueryDto,
   ): Promise<BillingResponseDto[]> {
@@ -72,6 +78,8 @@ export class BillingController {
   @ApiOperation({ summary: 'Busca uma cobranca por id' })
   @ApiOkResponse({ type: BillingResponseDto })
   @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BillingResponseDto> {
@@ -101,6 +109,8 @@ export class BillingController {
   @ApiOperation({ summary: 'Expira uma cobranca aguardando pagamento' })
   @ApiOkResponse({ type: BillingResponseDto })
   @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async expire(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BillingResponseDto> {
@@ -116,6 +126,8 @@ export class BillingController {
   })
   @ApiConflictResponse({ description: 'Paid billing is terminal' })
   @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async renewPaymentLink(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BillingResponseDto> {
@@ -130,6 +142,8 @@ export class BillingController {
   @ApiNoContentResponse({ description: 'Service order delivered' })
   @ApiConflictResponse({ description: 'Billing must be paid before delivery' })
   @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async deliverServiceOrder(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {

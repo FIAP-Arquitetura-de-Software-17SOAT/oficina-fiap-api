@@ -194,6 +194,16 @@ describe('Swagger', () => {
     expect(document.paths['/api/v1/service-order'].get!.security).toEqual([
       { bearer: [] },
     ]);
+    expect(document.paths['/api/v1/billings'].post!.security).toEqual([
+      { bearer: [] },
+    ]);
+    expect(
+      document.paths['/api/v1/billings/{id}/renew-payment-link'].post!
+        .security,
+    ).toEqual([{ bearer: [] }]);
+    expect(
+      document.paths['/api/v1/billings/stripe/webhook'].post!.security,
+    ).toBeUndefined();
     expect(document.paths['/api/v1/auth/login'].post!.security).toBeUndefined();
     expect(document.paths['/api/v1/health'].get!.security).toBeUndefined();
   });
@@ -282,7 +292,7 @@ describe('Swagger', () => {
 
     expect(renew.summary).toBe('Renova link de pagamento vencido com multa');
     expect(Object.keys(renew.responses)).toEqual(
-      expect.arrayContaining(['200', '400', '404', '409']),
+      expect.arrayContaining(['200', '400', '401', '404', '409']),
     );
   });
 
