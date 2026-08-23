@@ -102,7 +102,7 @@ describe('BillingService', () => {
     ]);
     repository.findByServiceOrderId.mockResolvedValue(null);
     repository.create.mockResolvedValue(created);
-    repository.update.mockImplementation(async (billing) => billing);
+    repository.update.mockImplementation((billing) => Promise.resolve(billing));
     paymentGateway.createPaymentLink.mockResolvedValue({
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
       gatewayTransactionId: 'cs_test_123',
@@ -115,12 +115,16 @@ describe('BillingService', () => {
     expect(billing.getPaymentLink()).toBe(
       'https://checkout.stripe.com/c/pay/cs_test_123',
     );
-    expect(paymentGateway.createPaymentLink).toHaveBeenCalledWith({
-      billingId: billing.getId(),
-      serviceOrderId,
-      amountInCents: 15000,
-    });
-    expect(repository.update).toHaveBeenCalledWith(billing, createdAt);
+    expect(paymentGateway.createPaymentLink.mock.calls).toEqual([
+      [
+        {
+          billingId: billing.getId(),
+          serviceOrderId,
+          amountInCents: 15000,
+        },
+      ],
+    ]);
+    expect(repository.update.mock.calls).toEqual([[billing, createdAt]]);
   });
 
   it('retries payment link generation for a pending billing', async () => {
@@ -137,7 +141,7 @@ describe('BillingService', () => {
     );
     serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
     repository.findByServiceOrderId.mockResolvedValue(pendingBilling);
-    repository.update.mockImplementation(async (billing) => billing);
+    repository.update.mockImplementation((billing) => Promise.resolve(billing));
     paymentGateway.createPaymentLink.mockResolvedValue({
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_retry',
       gatewayTransactionId: 'cs_test_retry',
@@ -150,8 +154,8 @@ describe('BillingService', () => {
     expect(billing.getPaymentLink()).toBe(
       'https://checkout.stripe.com/c/pay/cs_test_retry',
     );
-    expect(repository.create).not.toHaveBeenCalled();
-    expect(repository.update).toHaveBeenCalledWith(billing, updatedAt);
+    expect(repository.create.mock.calls).toHaveLength(0);
+    expect(repository.update.mock.calls).toEqual([[billing, updatedAt]]);
   });
 
   it('recovers a pending billing after gateway link creation fails', async () => {
@@ -171,7 +175,7 @@ describe('BillingService', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(created);
     repository.create.mockResolvedValue(created);
-    repository.update.mockImplementation(async (billing) => billing);
+    repository.update.mockImplementation((billing) => Promise.resolve(billing));
     paymentGateway.createPaymentLink
       .mockRejectedValueOnce(new Error('Stripe unavailable'))
       .mockResolvedValueOnce({
@@ -191,8 +195,8 @@ describe('BillingService', () => {
     expect(recovered.getPaymentLink()).toBe(
       'https://checkout.stripe.com/c/pay/cs_test_recovered',
     );
-    expect(repository.create).toHaveBeenCalledTimes(1);
-    expect(repository.update).toHaveBeenCalledWith(recovered, createdAt);
+    expect(repository.create.mock.calls).toHaveLength(1);
+    expect(repository.update.mock.calls).toEqual([[recovered, createdAt]]);
   });
 
   it('retries the same persisted billing after Stripe succeeds but persistence loses a race', async () => {
@@ -221,7 +225,7 @@ describe('BillingService', () => {
     repository.create.mockResolvedValue(created);
     repository.update
       .mockResolvedValueOnce(null)
-      .mockImplementationOnce(async (billing) => billing);
+      .mockImplementationOnce((billing) => Promise.resolve(billing));
     paymentGateway.createPaymentLink.mockResolvedValue({
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_stable',
       gatewayTransactionId: 'cs_test_stable',
@@ -236,8 +240,8 @@ describe('BillingService', () => {
 
     expect(retried.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
     expect(retried.getGatewayTransactionId()).toBe('cs_test_stable');
-    expect(repository.create).toHaveBeenCalledTimes(1);
-    expect(paymentGateway.createPaymentLink).toHaveBeenCalledTimes(2);
+    expect(repository.create.mock.calls).toHaveLength(1);
+    expect(paymentGateway.createPaymentLink.mock.calls).toHaveLength(2);
   });
 
   it('handles duplicated Stripe webhook idempotently', async () => {
@@ -250,7 +254,7 @@ describe('BillingService', () => {
       gatewayTransactionId: 'cs_test_123',
     });
     repository.findByGatewayTransactionId.mockResolvedValue(billing);
-    repository.update.mockImplementation(async (updated) => updated);
+    repository.update.mockImplementation((updated) => Promise.resolve(updated));
     paymentGateway.parsePaymentWebhook.mockResolvedValue({
       type: 'payment_confirmed',
       gatewayTransactionId: 'cs_test_123',
@@ -261,7 +265,7 @@ describe('BillingService', () => {
     await service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature');
     await service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature');
 
-    expect(repository.update).toHaveBeenCalledTimes(1);
+    expect(repository.update.mock.calls).toHaveLength(1);
   });
 
   it('accepts concurrent duplicate webhooks when another request already stored the payment', async () => {
@@ -296,7 +300,7 @@ describe('BillingService', () => {
       .mockResolvedValueOnce(staleSecondRead)
       .mockResolvedValueOnce(storedPaid);
     repository.update
-      .mockImplementationOnce(async (billing) => billing)
+      .mockImplementationOnce((billing) => Promise.resolve(billing))
       .mockResolvedValueOnce(null);
     paymentGateway.parsePaymentWebhook.mockResolvedValue({
       type: 'payment_confirmed',
@@ -312,8 +316,8 @@ describe('BillingService', () => {
       ]),
     ).resolves.toEqual([undefined, undefined]);
 
-    expect(repository.update).toHaveBeenCalledTimes(2);
-    expect(repository.findByGatewayTransactionId).toHaveBeenCalledTimes(3);
+    expect(repository.update.mock.calls).toHaveLength(2);
+    expect(repository.findByGatewayTransactionId.mock.calls).toHaveLength(3);
   });
 
   it('translates an invalid Stripe webhook signature to bad request', async () => {
@@ -337,7 +341,7 @@ describe('BillingService', () => {
       expiresAt: new Date('2026-08-21T10:00:00.000Z'),
     });
     repository.findById.mockResolvedValue(billing);
-    repository.update.mockImplementation(async (updated) => updated);
+    repository.update.mockImplementation((updated) => Promise.resolve(updated));
 
     const expired = await service.expire(billing.getId());
 

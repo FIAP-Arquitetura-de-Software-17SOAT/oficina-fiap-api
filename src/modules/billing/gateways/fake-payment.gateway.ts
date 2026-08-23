@@ -9,24 +9,26 @@ import {
 export class FakePaymentGateway extends PaymentGateway {
   private webhookResults: PaymentWebhookResult[] = [];
 
-  async createPaymentLink(
+  createPaymentLink(
     input: CreatePaymentLinkInput,
   ): Promise<CreatePaymentLinkResult> {
-    return {
+    return Promise.resolve({
       paymentLink: `https://fake.stripe.test/checkout/${input.billingId}`,
       gatewayTransactionId: `fake_session_${input.billingId}`,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    };
+    });
   }
 
-  async parsePaymentWebhook(
-    _input: ParsePaymentWebhookInput,
+  parsePaymentWebhook(
+    input: ParsePaymentWebhookInput,
   ): Promise<PaymentWebhookResult> {
-    return (
+    void input;
+
+    return Promise.resolve(
       this.webhookResults.shift() ?? {
         type: 'ignored',
         reason: 'No fake webhook event queued',
-      }
+      },
     );
   }
 

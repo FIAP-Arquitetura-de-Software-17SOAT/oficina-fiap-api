@@ -137,7 +137,9 @@ describe('BillingRepository', () => {
         }),
       },
     };
-    prisma.$transaction.mockImplementation(async (fn) => fn(transaction));
+    prisma.$transaction.mockImplementation((fn) =>
+      Promise.resolve(fn(transaction) as Promise<Billing | null>),
+    );
 
     const updated = await repository.update(billing, row.updatedAt);
 
@@ -174,7 +176,9 @@ describe('BillingRepository', () => {
     const transaction = {
       billing: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     };
-    prisma.$transaction.mockImplementation(async (fn) => fn(transaction));
+    prisma.$transaction.mockImplementation((fn) =>
+      Promise.resolve(fn(transaction) as Promise<Billing | null>),
+    );
 
     await expect(repository.update(billing, row.updatedAt)).resolves.toBeNull();
     expect(transaction.billing.updateMany).toHaveBeenCalledWith(

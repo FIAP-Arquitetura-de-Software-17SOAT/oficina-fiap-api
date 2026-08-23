@@ -1,5 +1,4 @@
 import { Billing } from '../src/modules/billing/entities/billing.entity';
-import { BillingStatus } from '../src/modules/billing/enums/billing-status.enum';
 
 export class InMemoryBillingRepository {
   private readonly billings = new Map<string, Billing>();

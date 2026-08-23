@@ -158,6 +158,7 @@ describe('Billing (integracao)', () => {
       paymentMethod: null,
       paidAt: null,
     });
+    expect(response.body.id).not.toBe(serviceOrderId);
 
     const persistedBudget = await request(http)
       .get(`/api/v1/budgets/${latestBudget.id}`)

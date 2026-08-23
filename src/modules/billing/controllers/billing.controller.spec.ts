@@ -34,9 +34,9 @@ describe('BillingController', () => {
 
     const response = await controller.generate({ serviceOrderId });
 
-    expect(service.generateForServiceOrder).toHaveBeenCalledWith({
-      serviceOrderId,
-    });
+    expect(service.generateForServiceOrder.mock.calls).toEqual([
+      [{ serviceOrderId }],
+    ]);
     expect(response.amount).toBe(120);
   });
 
@@ -45,10 +45,9 @@ describe('BillingController', () => {
 
     await controller.handleStripeWebhook(request as never, 'stripe-signature');
 
-    expect(service.handlePaymentWebhook).toHaveBeenCalledWith(
-      request.rawBody,
-      'stripe-signature',
-    );
+    expect(service.handlePaymentWebhook.mock.calls).toEqual([
+      [request.rawBody, 'stripe-signature'],
+    ]);
   });
 
   it.each([undefined, '', '   '])(
@@ -59,7 +58,7 @@ describe('BillingController', () => {
       await expect(
         controller.handleStripeWebhook(request as never, signature as never),
       ).rejects.toThrow(BadRequestException);
-      expect(service.handlePaymentWebhook).not.toHaveBeenCalled();
+      expect(service.handlePaymentWebhook.mock.calls).toHaveLength(0);
     },
   );
 
@@ -74,7 +73,7 @@ describe('BillingController', () => {
 
     const response = await controller.expire(billing.getId());
 
-    expect(service.expire).toHaveBeenCalledWith(billing.getId());
+    expect(service.expire.mock.calls).toEqual([[billing.getId()]]);
     expect(response.status).toBe(BillingStatus.EXPIRED);
   });
 });

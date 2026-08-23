@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 describe('Prisma schema contracts', () => {
@@ -124,5 +124,26 @@ describe('Prisma schema contracts', () => {
 
     expect(normalizedMigration.startsWith('BEGIN;')).toBe(true);
     expect(normalizedMigration.endsWith('COMMIT;')).toBe(true);
+  });
+
+  it('backfills legacy billing ids that reused the service order id', () => {
+    const migrationFile = readdirSync(
+      join(__dirname, '../prisma/migrations'),
+    ).find((directory) => directory.endsWith('_separate_billing_ids'));
+
+    expect(migrationFile).toBeDefined();
+
+    const migration = readFileSync(
+      join(
+        __dirname,
+        '../prisma/migrations',
+        migrationFile as string,
+        'migration.sql',
+      ),
+      { encoding: 'utf8' },
+    );
+
+    expect(migration).toContain('WHERE "id" = "serviceOrderId"');
+    expect(migration).toContain('SET "id" = gen_random_uuid()');
   });
 });

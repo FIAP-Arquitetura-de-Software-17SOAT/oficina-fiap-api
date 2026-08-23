@@ -71,7 +71,7 @@ export class StripePaymentGateway extends PaymentGateway {
     };
   }
 
-  async parsePaymentWebhook(
+  parsePaymentWebhook(
     input: ParsePaymentWebhookInput,
   ): Promise<PaymentWebhookResult> {
     let event: Stripe.Event;
@@ -83,32 +83,34 @@ export class StripePaymentGateway extends PaymentGateway {
       );
     } catch (error) {
       if (isStripeSignatureVerificationError(error)) {
-        throw new InvalidPaymentWebhookSignatureError();
+        return Promise.reject(new InvalidPaymentWebhookSignatureError());
       }
-      throw error;
+      return Promise.reject(
+        error instanceof Error ? error : new Error('Stripe webhook failed'),
+      );
     }
 
     if (event.type !== 'checkout.session.completed') {
-      return {
+      return Promise.resolve({
         type: 'ignored',
         reason: `Unsupported Stripe event: ${event.type}`,
-      };
+      });
     }
 
     const session = event.data.object;
     if (session.payment_status !== 'paid') {
-      return {
+      return Promise.resolve({
         type: 'ignored',
         reason: 'Checkout Session payment is not paid',
-      };
+      });
     }
 
-    return {
+    return Promise.resolve({
       type: 'payment_confirmed',
       gatewayTransactionId: session.id,
       method: PaymentMethod.CARD,
       paidAt: new Date(event.created * 1000),
-    };
+    });
   }
 }
 
