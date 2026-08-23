@@ -71,6 +71,9 @@ export class BillingMapper {
       budgetId: billing.getBudgetId(),
       status: billing.getStatus(),
       amount: billing.getAmount().value,
+      amountDue: penalty
+        ? penalty.getTotalAmount().value
+        : billing.getAmount().value,
       paymentLink: billing.getPaymentLink(),
       gatewayTransactionId: billing.getGatewayTransactionId(),
       paymentMethod: billing.getPaymentMethod(),

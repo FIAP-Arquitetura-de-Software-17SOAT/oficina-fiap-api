@@ -62,6 +62,12 @@ export class BillingResponseDto {
   @ApiProperty({ example: 120 })
   amount: number;
 
+  @ApiProperty({
+    description: 'Current payable amount, including penalty when overdue',
+    example: 124,
+  })
+  amountDue: number;
+
   @ApiPropertyOptional({
     example: 'https://checkout.stripe.com/c/pay/cs_test_123',
   })

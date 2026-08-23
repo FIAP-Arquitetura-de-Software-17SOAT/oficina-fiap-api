@@ -81,7 +81,11 @@ describe('BillingMapper', () => {
     });
     const calculatedAt = new Date('2026-08-21T10:00:00.000Z');
 
-    expect(BillingMapper.toResponse(billing, calculatedAt).penalty).toEqual({
+    const response = BillingMapper.toResponse(billing, calculatedAt);
+
+    expect(response.amount).toBe(100);
+    expect(response.amountDue).toBe(102.03);
+    expect(response.penalty).toEqual({
       originalAmount: 100,
       fixedPenaltyAmount: 2,
       interestAmount: 0.03,
@@ -89,5 +93,29 @@ describe('BillingMapper', () => {
       totalAmount: 102.03,
       calculatedAt,
     });
+  });
+
+  it('uses the original amount as amount due when billing is not overdue', () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(10000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      generatedAt,
+      expiresAt: new Date('2026-08-22T10:00:00.000Z'),
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    });
+
+    const response = BillingMapper.toResponse(
+      billing,
+      new Date('2026-08-21T10:00:00.000Z'),
+    );
+
+    expect(response.amount).toBe(100);
+    expect(response.amountDue).toBe(100);
+    expect(response.penalty).toBeNull();
   });
 });
