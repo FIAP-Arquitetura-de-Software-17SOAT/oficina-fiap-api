@@ -35,8 +35,8 @@ export class Penalty {
     }
 
     const originalCents = props.originalAmount.valueInCents;
-    const fixedPenaltyCents = Math.round(originalCents * FIXED_PENALTY_RATE);
-    const interestCents = Math.round(
+    const fixedPenaltyCents = Math.floor(originalCents * FIXED_PENALTY_RATE);
+    const interestCents = Math.floor(
       originalCents *
         MONTHLY_INTEREST_RATE *
         (overdueDays / COMMERCIAL_MONTH_DAYS),
@@ -88,5 +88,5 @@ function calculateOverdueDays(
 ): number {
   if (!expiresAt || calculatedAt.getTime() <= expiresAt.getTime()) return 0;
 
-  return Math.ceil((calculatedAt.getTime() - expiresAt.getTime()) / DAY_IN_MS);
+  return Math.floor((calculatedAt.getTime() - expiresAt.getTime()) / DAY_IN_MS);
 }

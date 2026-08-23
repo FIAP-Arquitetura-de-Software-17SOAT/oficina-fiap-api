@@ -31,6 +31,17 @@ describe('Penalty', () => {
     expect(penalty.getTotalAmount().valueInCents).toBe(10203);
   });
 
+  it('does not count an incomplete overdue day', () => {
+    const penalty = Penalty.calculate({
+      originalAmount,
+      expiresAt,
+      calculatedAt: new Date('2026-08-21T09:59:59.999Z'),
+    });
+
+    expect(penalty.getOverdueDays()).toBe(0);
+    expect(penalty.getTotalAmount().valueInCents).toBe(10000);
+  });
+
   it('applies one month of simple interest after thirty overdue days', () => {
     const penalty = Penalty.calculate({
       originalAmount,
@@ -44,15 +55,26 @@ describe('Penalty', () => {
     expect(penalty.getTotalAmount().valueInCents).toBe(10300);
   });
 
-  it('rounds penalty values to whole cents', () => {
+  it('does not count an incomplete fortieth overdue day', () => {
+    const penalty = Penalty.calculate({
+      originalAmount,
+      expiresAt,
+      calculatedAt: new Date('2026-09-29T09:59:59.999Z'),
+    });
+
+    expect(penalty.getOverdueDays()).toBe(39);
+    expect(penalty.getInterestAmount().valueInCents).toBe(130);
+  });
+
+  it('truncates penalty values to whole cents', () => {
     const penalty = Penalty.calculate({
       originalAmount: Money.fromCents(9999),
       expiresAt,
       calculatedAt: new Date('2026-08-21T10:00:00.000Z'),
     });
 
-    expect(penalty.getFixedPenaltyAmount().valueInCents).toBe(200);
+    expect(penalty.getFixedPenaltyAmount().valueInCents).toBe(199);
     expect(penalty.getInterestAmount().valueInCents).toBe(3);
-    expect(penalty.getTotalAmount().valueInCents).toBe(10202);
+    expect(penalty.getTotalAmount().valueInCents).toBe(10201);
   });
 });
