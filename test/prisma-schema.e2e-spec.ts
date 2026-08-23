@@ -110,7 +110,10 @@ describe('Prisma schema contracts', () => {
     expect(billingMigration).toContain('DISTINCT ON ("billingId")');
     expect(billingMigration).toContain(`WHEN 'CREDIT_CARD' THEN 'CARD'`);
     expect(billingMigration).toContain(`WHEN 'DEBIT_CARD' THEN 'CARD'`);
-    expect(billingMigration).toContain(`WHEN 'BANK_TRANSFER' THEN 'CARD'`);
+    expect(billingMigration).toContain(`WHEN 'BANK_TRANSFER' THEN NULL`);
+    expect(billingMigration).not.toContain(
+      `WHEN 'BANK_TRANSFER' THEN 'CARD'`,
+    );
     expect(billingMigration).toContain(`WHEN 'PIX' THEN 'PIX'`);
     expect(billingMigration).toContain(`WHEN 'CASH' THEN 'CASH'`);
     expect(billingMigration).toContain('"paidAt" = latest_payment."paidAt"');

@@ -56,7 +56,7 @@ SET "paymentMethod" = (
       CASE latest_payment."method"::text
         WHEN 'CREDIT_CARD' THEN 'CARD'
         WHEN 'DEBIT_CARD' THEN 'CARD'
-        WHEN 'BANK_TRANSFER' THEN 'CARD'
+        WHEN 'BANK_TRANSFER' THEN NULL
         WHEN 'PIX' THEN 'PIX'
         WHEN 'CASH' THEN 'CASH'
       END
