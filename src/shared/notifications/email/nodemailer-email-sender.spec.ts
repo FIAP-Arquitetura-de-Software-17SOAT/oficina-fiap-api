@@ -2,12 +2,17 @@ import { ConfigService } from '@nestjs/config';
 import { EmailMessage } from './email-sender';
 import { NodemailerEmailSender } from './nodemailer-email-sender';
 
+const mockSendMail = jest.fn().mockResolvedValue(undefined);
+const mockCreateTransport = jest.fn().mockReturnValue({
+  sendMail: mockSendMail,
+});
+
+jest.mock('nodemailer', () => ({
+  createTransport: mockCreateTransport,
+}));
+
 describe('NodemailerEmailSender', () => {
   it('sends rendered fields with the configured sender address', async () => {
-    const sendMail = jest.fn().mockResolvedValue(undefined);
-    const createTransport = jest.fn().mockReturnValue({ sendMail });
-    jest.mock('nodemailer', () => ({ createTransport }));
-
     const config = {
       get: jest.fn((key: string) =>
         ({
@@ -28,7 +33,7 @@ describe('NodemailerEmailSender', () => {
 
     await sender.send(message);
 
-    expect(sendMail).toHaveBeenCalledWith({
+    expect(mockSendMail).toHaveBeenCalledWith({
       from: 'Oficina <oficina@example.com>',
       ...message,
     });
