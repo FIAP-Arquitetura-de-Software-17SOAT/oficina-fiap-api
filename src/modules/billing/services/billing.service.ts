@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -12,7 +13,10 @@ import { ServiceOrderService } from '../../service-order/services/service-order.
 import { GenerateBillingDto } from '../dto/billing.dto';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
-import { PaymentGateway } from '../gateways/payment-gateway';
+import {
+  InvalidPaymentWebhookSignatureError,
+  PaymentGateway,
+} from '../gateways/payment-gateway';
 import { BillingRepository } from '../repositories/billing.repository';
 
 @Injectable()
@@ -26,7 +30,8 @@ export class BillingService {
 
   async generateForServiceOrder(dto: GenerateBillingDto): Promise<Billing> {
     const serviceOrderId = dto.serviceOrderId.trim();
-    const serviceOrder = await this.serviceOrderService.findById(serviceOrderId);
+    const serviceOrder =
+      await this.serviceOrderService.findById(serviceOrderId);
 
     if (serviceOrder.getStatus() !== ServiceOrderStatus.COMPLETED) {
       throw new ConflictException(
@@ -111,10 +116,18 @@ export class BillingService {
     payload: Buffer | string,
     signature: string,
   ): Promise<void> {
-    const event = await this.paymentGateway.parsePaymentWebhook({
-      payload,
-      signature,
-    });
+    let event;
+    try {
+      event = await this.paymentGateway.parsePaymentWebhook({
+        payload,
+        signature,
+      });
+    } catch (error) {
+      if (error instanceof InvalidPaymentWebhookSignatureError) {
+        throw new BadRequestException('Invalid Stripe webhook signature');
+      }
+      throw error;
+    }
     if (event.type === 'ignored') return;
 
     const billing = await this.billingRepository.findByGatewayTransactionId(
@@ -130,7 +143,23 @@ export class BillingService {
     });
     if (!changed) return;
 
-    await this.persistUpdatedBilling(billing, expectedUpdatedAt);
+    const updated = await this.billingRepository.update(
+      billing,
+      expectedUpdatedAt,
+    );
+    if (updated) return;
+
+    const stored = await this.billingRepository.findByGatewayTransactionId(
+      event.gatewayTransactionId,
+    );
+    if (
+      stored?.getStatus() === BillingStatus.PAID &&
+      stored.getGatewayTransactionId() === event.gatewayTransactionId
+    ) {
+      return;
+    }
+
+    throw new ConflictException('Billing was changed by another request');
   }
 
   async deliverServiceOrder(id: string): Promise<void> {

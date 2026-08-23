@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import {
   Budget,
@@ -12,7 +16,10 @@ import { ServiceOrderService } from '../../service-order/services/service-order.
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
-import { PaymentGateway } from '../gateways/payment-gateway';
+import {
+  InvalidPaymentWebhookSignatureError,
+  PaymentGateway,
+} from '../gateways/payment-gateway';
 import { BillingRepository } from '../repositories/billing.repository';
 import { BillingService } from './billing.service';
 
@@ -157,7 +164,9 @@ describe('BillingService', () => {
       updatedAt: createdAt,
     });
     serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
-    budgetService.findByServiceOrderId.mockResolvedValue([acceptedBudget(1, 150)]);
+    budgetService.findByServiceOrderId.mockResolvedValue([
+      acceptedBudget(1, 150),
+    ]);
     repository.findByServiceOrderId
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(created);
@@ -171,9 +180,9 @@ describe('BillingService', () => {
         expiresAt: new Date('2026-08-23T10:00:00.000Z'),
       });
 
-    await expect(service.generateForServiceOrder({ serviceOrderId })).rejects.toThrow(
-      'Stripe unavailable',
-    );
+    await expect(
+      service.generateForServiceOrder({ serviceOrderId }),
+    ).rejects.toThrow('Stripe unavailable');
     expect(created.getStatus()).toBe(BillingStatus.PENDING);
 
     const recovered = await service.generateForServiceOrder({ serviceOrderId });
@@ -184,6 +193,51 @@ describe('BillingService', () => {
     );
     expect(repository.create).toHaveBeenCalledTimes(1);
     expect(repository.update).toHaveBeenCalledWith(recovered, createdAt);
+  });
+
+  it('retries the same persisted billing after Stripe succeeds but persistence loses a race', async () => {
+    const updatedAt = new Date('2026-08-22T09:00:00.000Z');
+    const created = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      createdAt: updatedAt,
+      updatedAt,
+    });
+    const persistedPending = Billing.restore(created.getId(), {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      createdAt: updatedAt,
+      updatedAt,
+    });
+    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
+    budgetService.findByServiceOrderId.mockResolvedValue([
+      acceptedBudget(1, 150),
+    ]);
+    repository.findByServiceOrderId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(persistedPending);
+    repository.create.mockResolvedValue(created);
+    repository.update
+      .mockResolvedValueOnce(null)
+      .mockImplementationOnce(async (billing) => billing);
+    paymentGateway.createPaymentLink.mockResolvedValue({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_stable',
+      gatewayTransactionId: 'cs_test_stable',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+    });
+
+    await expect(
+      service.generateForServiceOrder({ serviceOrderId }),
+    ).rejects.toThrow('Billing was changed by another request');
+
+    const retried = await service.generateForServiceOrder({ serviceOrderId });
+
+    expect(retried.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(retried.getGatewayTransactionId()).toBe('cs_test_stable');
+    expect(repository.create).toHaveBeenCalledTimes(1);
+    expect(paymentGateway.createPaymentLink).toHaveBeenCalledTimes(2);
   });
 
   it('handles duplicated Stripe webhook idempotently', async () => {
@@ -208,6 +262,68 @@ describe('BillingService', () => {
     await service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature');
 
     expect(repository.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts concurrent duplicate webhooks when another request already stored the payment', async () => {
+    const updatedAt = new Date('2026-08-22T09:00:00.000Z');
+    const waitingBilling = () =>
+      Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+        serviceOrderId,
+        budgetId,
+        amount: Money.fromCents(15000),
+        status: BillingStatus.WAITING_PAYMENT,
+        paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+        gatewayTransactionId: 'cs_test_123',
+        createdAt: updatedAt,
+        updatedAt,
+      });
+    const firstRead = waitingBilling();
+    const staleSecondRead = waitingBilling();
+    const storedPaid = Billing.restore(firstRead.getId(), {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.PAID,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      paymentMethod: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+      createdAt: updatedAt,
+      updatedAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+    repository.findByGatewayTransactionId
+      .mockResolvedValueOnce(firstRead)
+      .mockResolvedValueOnce(staleSecondRead)
+      .mockResolvedValueOnce(storedPaid);
+    repository.update
+      .mockImplementationOnce(async (billing) => billing)
+      .mockResolvedValueOnce(null);
+    paymentGateway.parsePaymentWebhook.mockResolvedValue({
+      type: 'payment_confirmed',
+      gatewayTransactionId: 'cs_test_123',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    await expect(
+      Promise.all([
+        service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
+        service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
+      ]),
+    ).resolves.toEqual([undefined, undefined]);
+
+    expect(repository.update).toHaveBeenCalledTimes(2);
+    expect(repository.findByGatewayTransactionId).toHaveBeenCalledTimes(3);
+  });
+
+  it('translates an invalid Stripe webhook signature to bad request', async () => {
+    paymentGateway.parsePaymentWebhook.mockRejectedValue(
+      new InvalidPaymentWebhookSignatureError(),
+    );
+
+    await expect(
+      service.handlePaymentWebhook(Buffer.from('{}'), 'invalid-signature'),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('expires a billing payment link', async () => {
@@ -252,8 +368,8 @@ describe('BillingService', () => {
       }),
     );
 
-    await expect(service.generateForServiceOrder({ serviceOrderId })).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.generateForServiceOrder({ serviceOrderId }),
+    ).rejects.toThrow(ConflictException);
   });
 });

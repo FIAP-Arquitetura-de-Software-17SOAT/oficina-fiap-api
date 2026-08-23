@@ -1,4 +1,5 @@
 import { PaymentMethod } from '../enums/payment-method.enum';
+import { InvalidPaymentWebhookSignatureError } from './payment-gateway';
 import { StripePaymentGateway } from './stripe-payment.gateway';
 
 const mockCreateCheckoutSession = jest.fn();
@@ -53,6 +54,7 @@ describe('StripePaymentGateway', () => {
           }),
         ],
       }),
+      { idempotencyKey: 'billing-payment-link:billing-1' },
     );
     expect(result).toEqual({
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
@@ -121,6 +123,36 @@ describe('StripePaymentGateway', () => {
       type: 'ignored',
       reason: 'Checkout Session payment is not paid',
     });
+  });
+
+  it('translates Stripe signature verification failures', async () => {
+    mockConstructEvent.mockImplementation(() => {
+      throw Object.assign(new Error('No signatures found'), {
+        type: 'StripeSignatureVerificationError',
+      });
+    });
+    const gateway = new StripePaymentGateway();
+
+    await expect(
+      gateway.parsePaymentWebhook({
+        payload: Buffer.from('{}'),
+        signature: 'invalid-signature',
+      }),
+    ).rejects.toThrow(InvalidPaymentWebhookSignatureError);
+  });
+
+  it('does not hide non-signature Stripe failures', async () => {
+    mockConstructEvent.mockImplementation(() => {
+      throw new Error('Stripe unavailable');
+    });
+    const gateway = new StripePaymentGateway();
+
+    await expect(
+      gateway.parsePaymentWebhook({
+        payload: Buffer.from('{}'),
+        signature: 'stripe-signature',
+      }),
+    ).rejects.toThrow('Stripe unavailable');
   });
 
   it('rejects a live Stripe secret key', () => {

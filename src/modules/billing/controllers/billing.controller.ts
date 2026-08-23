@@ -37,7 +37,9 @@ export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Gera uma cobranca para uma ordem de servico concluida' })
+  @ApiOperation({
+    summary: 'Gera uma cobranca para uma ordem de servico concluida',
+  })
   @ApiCreatedResponse({ type: BillingResponseDto })
   @ApiConflictResponse({ description: 'Service order cannot be billed' })
   @ApiNotFoundResponse({ description: 'Service order not found' })
@@ -84,6 +86,9 @@ export class BillingController {
   ): Promise<void> {
     if (!request.rawBody) {
       throw new BadRequestException('Raw Stripe webhook body is required');
+    }
+    if (!signature?.trim()) {
+      throw new BadRequestException('Stripe signature header is required');
     }
     await this.billingService.handlePaymentWebhook(request.rawBody, signature);
   }

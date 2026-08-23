@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
@@ -33,7 +34,9 @@ describe('BillingController', () => {
 
     const response = await controller.generate({ serviceOrderId });
 
-    expect(service.generateForServiceOrder).toHaveBeenCalledWith({ serviceOrderId });
+    expect(service.generateForServiceOrder).toHaveBeenCalledWith({
+      serviceOrderId,
+    });
     expect(response.amount).toBe(120);
   });
 
@@ -47,6 +50,18 @@ describe('BillingController', () => {
       'stripe-signature',
     );
   });
+
+  it.each([undefined, '', '   '])(
+    'rejects a missing or blank Stripe signature header: %p',
+    async (signature) => {
+      const request = { rawBody: Buffer.from('{"id":"evt_123"}') };
+
+      await expect(
+        controller.handleStripeWebhook(request as never, signature as never),
+      ).rejects.toThrow(BadRequestException);
+      expect(service.handlePaymentWebhook).not.toHaveBeenCalled();
+    },
+  );
 
   it('expires billing', async () => {
     const billing = Billing.create({

@@ -17,6 +17,13 @@ export interface ParsePaymentWebhookInput {
   signature: string;
 }
 
+export class InvalidPaymentWebhookSignatureError extends Error {
+  constructor() {
+    super('Invalid Stripe webhook signature');
+    this.name = InvalidPaymentWebhookSignatureError.name;
+  }
+}
+
 export type PaymentWebhookResult =
   | {
       type: 'payment_confirmed';

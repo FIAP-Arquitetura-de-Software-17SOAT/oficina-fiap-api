@@ -255,9 +255,12 @@ Use only Stripe test mode keys in local development:
 ```env
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-PAYMENT_SUCCESS_URL=http://localhost:3000/api/v1/billings/payment-success
-PAYMENT_CANCEL_URL=http://localhost:3000/api/v1/billings/payment-cancel
+PAYMENT_SUCCESS_URL=http://localhost:3000/payment/success
+PAYMENT_CANCEL_URL=http://localhost:3000/payment/cancel
 ```
+
+`PAYMENT_SUCCESS_URL` and `PAYMENT_CANCEL_URL` are configurable client/frontend
+routes shown after Stripe Checkout. They are not routes exposed by this API.
 
 For an interactive successful card payment in Stripe Checkout, use card number
 `4242 4242 4242 4242`, any future expiration date, any CVC, and any postal code.
