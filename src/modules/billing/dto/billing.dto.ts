@@ -1,14 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
 
@@ -32,35 +24,6 @@ export class FindBillingQueryDto {
   serviceOrderId?: string;
 }
 
-export class RegisterPaymentDto {
-  @ApiProperty({ example: 120, minimum: 0.01, maximum: 99_999_999.99 })
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Max(99_999_999.99)
-  amount: number;
-
-  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.PIX })
-  @IsEnum(PaymentMethod)
-  method: PaymentMethod;
-}
-
-export class BillingPaymentResponseDto {
-  @ApiProperty({ format: 'uuid' })
-  id: string;
-
-  @ApiProperty({ example: 120 })
-  amount: number;
-
-  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.PIX })
-  method: PaymentMethod;
-
-  @ApiProperty({ type: String, format: 'date-time' })
-  paidAt: Date;
-
-  @ApiProperty({ type: String, format: 'date-time' })
-  createdAt: Date;
-}
-
 export class BillingResponseDto {
   @ApiProperty({ format: 'uuid' })
   id: string;
@@ -68,17 +31,32 @@ export class BillingResponseDto {
   @ApiProperty({ format: 'uuid' })
   serviceOrderId: string;
 
-  @ApiProperty({ enum: BillingStatus, example: BillingStatus.OPEN })
+  @ApiProperty({ format: 'uuid' })
+  budgetId: string;
+
+  @ApiProperty({ enum: BillingStatus, example: BillingStatus.WAITING_PAYMENT })
   status: BillingStatus;
 
   @ApiProperty({ example: 120 })
-  totalAmount: number;
+  amount: number;
 
-  @ApiProperty({ example: 70 })
-  paidAmount: number;
+  @ApiPropertyOptional({ example: 'https://checkout.stripe.com/c/pay/cs_test_123' })
+  paymentLink: string | null;
 
-  @ApiProperty({ example: 50 })
-  balanceAmount: number;
+  @ApiPropertyOptional({ example: 'cs_test_123' })
+  gatewayTransactionId: string | null;
+
+  @ApiPropertyOptional({ enum: PaymentMethod, example: PaymentMethod.CARD })
+  paymentMethod: PaymentMethod | null;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  generatedAt: Date;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  paidAt: Date | null;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  expiresAt: Date | null;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
@@ -86,6 +64,4 @@ export class BillingResponseDto {
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
 
-  @ApiProperty({ type: [BillingPaymentResponseDto] })
-  payments: BillingPaymentResponseDto[];
 }

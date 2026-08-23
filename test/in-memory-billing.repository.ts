@@ -22,6 +22,16 @@ export class InMemoryBillingRepository {
     return Promise.resolve(billing ? this.clone(billing) : null);
   }
 
+  findByGatewayTransactionId(
+    gatewayTransactionId: string,
+  ): Promise<Billing | null> {
+    const billing = Array.from(this.billings.values()).find(
+      (candidate) =>
+        candidate.getGatewayTransactionId() === gatewayTransactionId,
+    );
+    return Promise.resolve(billing ? this.clone(billing) : null);
+  }
+
   findAll(): Promise<Billing[]> {
     return Promise.resolve(
       Array.from(this.billings.values()).sort(
@@ -48,15 +58,17 @@ export class InMemoryBillingRepository {
   private clone(billing: Billing): Billing {
     return Billing.restore(billing.getId(), {
       serviceOrderId: billing.getServiceOrderId(),
-      totalAmountInCents: billing.getTotalAmountInCents(),
+      budgetId: billing.getBudgetId(),
+      amount: billing.getAmount(),
       status: billing.getStatus() as BillingStatus,
-      payments: billing.getPayments().map((payment) => ({
-        id: payment.getId(),
-        amountInCents: payment.getAmount().valueInCents,
-        method: payment.getMethod(),
-        paidAt: new Date(payment.getPaidAt()),
-        createdAt: new Date(payment.getCreatedAt()),
-      })),
+      paymentLink: billing.getPaymentLink(),
+      gatewayTransactionId: billing.getGatewayTransactionId(),
+      paymentMethod: billing.getPaymentMethod(),
+      generatedAt: new Date(billing.getGeneratedAt()),
+      paidAt: billing.getPaidAt() ? new Date(billing.getPaidAt()!) : null,
+      expiresAt: billing.getExpiresAt()
+        ? new Date(billing.getExpiresAt()!)
+        : null,
       createdAt: new Date(billing.getCreatedAt()),
       updatedAt: new Date(billing.getUpdatedAt()),
     });

@@ -31,6 +31,16 @@ export class BillingRepository {
     return record ? BillingMapper.toDomain(record) : null;
   }
 
+  async findByGatewayTransactionId(
+    gatewayTransactionId: string,
+  ): Promise<Billing | null> {
+    const record = await this.prisma.billing.findUnique({
+      where: { gatewayTransactionId },
+    });
+
+    return record ? BillingMapper.toDomain(record) : null;
+  }
+
   async findAll(): Promise<Billing[]> {
     const records = await this.prisma.billing.findMany({
       orderBy: { createdAt: 'desc' },

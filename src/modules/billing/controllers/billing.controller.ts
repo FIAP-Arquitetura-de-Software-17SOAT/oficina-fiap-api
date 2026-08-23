@@ -1,16 +1,20 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import {
-  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -23,7 +27,6 @@ import {
   BillingResponseDto,
   FindBillingQueryDto,
   GenerateBillingDto,
-  RegisterPaymentDto,
 } from '../dto/billing.dto';
 import { BillingMapper } from '../mappers/billing.mapper';
 import { BillingService } from '../services/billing.service';
@@ -71,30 +74,29 @@ export class BillingController {
     return BillingMapper.toResponse(await this.billingService.findById(id));
   }
 
-  @Post(':id/payments')
-  @ApiOperation({ summary: 'Registra pagamento na cobranca' })
-  @ApiCreatedResponse({ type: BillingResponseDto })
-  @ApiBadRequestResponse({ description: 'Payment amount is invalid' })
-  @ApiNotFoundResponse({ description: 'Billing not found' })
-  async registerPayment(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: RegisterPaymentDto,
-  ): Promise<BillingResponseDto> {
-    return BillingMapper.toResponse(
-      await this.billingService.registerPayment(id, dto),
-    );
+  @Post('stripe/webhook')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Processa o webhook de pagamento do Stripe' })
+  @ApiNoContentResponse({ description: 'Stripe webhook processed' })
+  async handleStripeWebhook(
+    @Req() request: RawBodyRequest<Request>,
+    @Headers('stripe-signature') signature: string,
+  ): Promise<void> {
+    if (!request.rawBody) {
+      throw new BadRequestException('Raw Stripe webhook body is required');
+    }
+    await this.billingService.handlePaymentWebhook(request.rawBody, signature);
   }
 
-  @Post(':id/cancel')
+  @Post(':id/expire')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Cancela uma cobranca aberta ou parcialmente paga' })
+  @ApiOperation({ summary: 'Expira uma cobranca aguardando pagamento' })
   @ApiOkResponse({ type: BillingResponseDto })
-  @ApiBadRequestResponse({ description: 'Billing status is invalid' })
   @ApiNotFoundResponse({ description: 'Billing not found' })
-  async cancel(
+  async expire(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BillingResponseDto> {
-    return BillingMapper.toResponse(await this.billingService.cancel(id));
+    return BillingMapper.toResponse(await this.billingService.expire(id));
   }
 
   @Post(':id/deliver-service-order')

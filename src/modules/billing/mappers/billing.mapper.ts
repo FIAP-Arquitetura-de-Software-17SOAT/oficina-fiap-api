@@ -60,19 +60,17 @@ export class BillingMapper {
     return {
       id: billing.getId(),
       serviceOrderId: billing.getServiceOrderId(),
+      budgetId: billing.getBudgetId(),
       status: billing.getStatus(),
-      totalAmount: billing.getTotalAmountInCents() / 100,
-      paidAmount: billing.getPaidAmountInCents() / 100,
-      balanceAmount: billing.getBalanceAmountInCents() / 100,
+      amount: billing.getAmount().value,
+      paymentLink: billing.getPaymentLink(),
+      gatewayTransactionId: billing.getGatewayTransactionId(),
+      paymentMethod: billing.getPaymentMethod(),
+      generatedAt: billing.getGeneratedAt(),
+      paidAt: billing.getPaidAt(),
+      expiresAt: billing.getExpiresAt(),
       createdAt: billing.getCreatedAt(),
       updatedAt: billing.getUpdatedAt(),
-      payments: billing.getPayments().map((payment) => ({
-        id: payment.getId(),
-        amount: payment.getAmount().value,
-        method: payment.getMethod(),
-        paidAt: payment.getPaidAt(),
-        createdAt: payment.getCreatedAt(),
-      })),
     };
   }
 

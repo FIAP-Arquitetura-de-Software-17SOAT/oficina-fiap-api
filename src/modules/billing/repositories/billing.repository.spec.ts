@@ -95,6 +95,19 @@ describe('BillingRepository', () => {
     expect(billing?.getGatewayTransactionId()).toBe(row.gatewayTransactionId);
   });
 
+  it('finds billing by gateway transaction id for payment webhooks', async () => {
+    prisma.billing.findUnique.mockResolvedValue(row);
+
+    const billing = await repository.findByGatewayTransactionId(
+      row.gatewayTransactionId,
+    );
+
+    expect(prisma.billing.findUnique).toHaveBeenCalledWith({
+      where: { gatewayTransactionId: row.gatewayTransactionId },
+    });
+    expect(billing?.getId()).toBe(row.id);
+  });
+
   it('updates gateway payment fields with optimistic concurrency', async () => {
     const billing = Billing.restore(row.id, {
       serviceOrderId: row.serviceOrderId,

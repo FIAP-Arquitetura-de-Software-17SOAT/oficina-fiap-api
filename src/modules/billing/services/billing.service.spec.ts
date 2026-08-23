@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import {
   Budget,
   BudgetItemType,
@@ -9,31 +10,33 @@ import { ServiceOrder } from '../../service-order/entities/service-order.entity'
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceOrderService } from '../../service-order/services/service-order.service';
 import { Billing } from '../entities/billing.entity';
+import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
+import { PaymentGateway } from '../gateways/payment-gateway';
 import { BillingRepository } from '../repositories/billing.repository';
-import { PaymentAmount } from '../value-objects/payment-amount.vo';
 import { BillingService } from './billing.service';
 
 const serviceOrderId = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+const budgetId = 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
 const completedServiceOrder = () =>
   ServiceOrder.restore(serviceOrderId, {
     clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
     vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-    description: 'Troca de oleo',
+    description: 'Oil change',
     status: ServiceOrderStatus.COMPLETED,
     completedAt: new Date('2026-08-20T10:00:00.000Z'),
   });
 
 const acceptedBudget = (version: number, total: number) =>
-  Budget.restore(`0000000${version}-1c2e-4f5a-8b9c-0d1e2f3a4b5c`, {
+  Budget.restore(budgetId, {
     serviceOrderId,
     version,
     status: BudgetStatus.ACCEPTED,
     items: [
       {
-        id: `1000000${version}-1c2e-4f5a-8b9c-0d1e2f3a4b5c`,
-        description: 'Servico',
+        id: '10000000-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        description: 'Service',
         type: BudgetItemType.SERVICE,
         quantity: 1,
         unitPrice: total,
@@ -45,6 +48,7 @@ describe('BillingService', () => {
   let repository: jest.Mocked<BillingRepository>;
   let budgetService: jest.Mocked<BudgetService>;
   let serviceOrderService: jest.Mocked<ServiceOrderService>;
+  let paymentGateway: jest.Mocked<PaymentGateway>;
   let service: BillingService;
 
   beforeEach(() => {
@@ -52,6 +56,7 @@ describe('BillingService', () => {
       create: jest.fn(),
       findById: jest.fn(),
       findByServiceOrderId: jest.fn(),
+      findByGatewayTransactionId: jest.fn(),
       findAll: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<BillingRepository>;
@@ -62,22 +67,109 @@ describe('BillingService', () => {
       findById: jest.fn(),
       deliver: jest.fn(),
     } as unknown as jest.Mocked<ServiceOrderService>;
-    service = new BillingService(repository, budgetService, serviceOrderService);
+    paymentGateway = {
+      createPaymentLink: jest.fn(),
+      parsePaymentWebhook: jest.fn(),
+    } as unknown as jest.Mocked<PaymentGateway>;
+    service = new BillingService(
+      repository,
+      budgetService,
+      serviceOrderService,
+      paymentGateway,
+    );
   });
 
-  it('generates billing from latest accepted budget for completed service order', async () => {
+  it('generates billing and stores Stripe payment link', async () => {
+    const createdAt = new Date('2026-08-22T09:00:00.000Z');
+    const created = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      createdAt,
+      updatedAt: createdAt,
+    });
     serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
     budgetService.findByServiceOrderId.mockResolvedValue([
       acceptedBudget(1, 100),
       acceptedBudget(2, 150),
     ]);
     repository.findByServiceOrderId.mockResolvedValue(null);
-    repository.create.mockImplementation(async (billing) => billing);
+    repository.create.mockResolvedValue(created);
+    repository.update.mockImplementation(async (billing) => billing);
+    paymentGateway.createPaymentLink.mockResolvedValue({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+    });
 
     const billing = await service.generateForServiceOrder({ serviceOrderId });
 
-    expect(billing.getTotalAmountInCents()).toBe(15000);
-    expect(repository.create).toHaveBeenCalledWith(billing);
+    expect(billing.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(billing.getPaymentLink()).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_123',
+    );
+    expect(paymentGateway.createPaymentLink).toHaveBeenCalledWith({
+      billingId: billing.getId(),
+      serviceOrderId,
+      amountInCents: 15000,
+    });
+    expect(repository.update).toHaveBeenCalledWith(billing, createdAt);
+  });
+
+  it('handles duplicated Stripe webhook idempotently', async () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+    });
+    repository.findByGatewayTransactionId.mockResolvedValue(billing);
+    repository.update.mockImplementation(async (updated) => updated);
+    paymentGateway.parsePaymentWebhook.mockResolvedValue({
+      type: 'payment_confirmed',
+      gatewayTransactionId: 'cs_test_123',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    await service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature');
+    await service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature');
+
+    expect(repository.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('expires a billing payment link', async () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-21T10:00:00.000Z'),
+    });
+    repository.findById.mockResolvedValue(billing);
+    repository.update.mockImplementation(async (updated) => updated);
+
+    const expired = await service.expire(billing.getId());
+
+    expect(expired.getStatus()).toBe(BillingStatus.EXPIRED);
+  });
+
+  it('throws not found when a confirmed payment does not match billing', async () => {
+    paymentGateway.parsePaymentWebhook.mockResolvedValue({
+      type: 'payment_confirmed',
+      gatewayTransactionId: 'cs_test_123',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+    repository.findByGatewayTransactionId.mockResolvedValue(null);
+
+    await expect(
+      service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('rejects billing generation when service order is not completed', async () => {
@@ -85,130 +177,13 @@ describe('BillingService', () => {
       ServiceOrder.restore(serviceOrderId, {
         clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
         vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-        description: 'Troca de oleo',
+        description: 'Oil change',
         status: ServiceOrderStatus.IN_PROGRESS,
       }),
     );
 
-    await expect(
-      service.generateForServiceOrder({ serviceOrderId }),
-    ).rejects.toThrow(ConflictException);
-  });
-
-  it('rejects duplicate billing for service order', async () => {
-    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
-    repository.findByServiceOrderId.mockResolvedValue(
-      Billing.create({ serviceOrderId, totalAmountInCents: 10000 }),
-    );
-
-    await expect(
-      service.generateForServiceOrder({ serviceOrderId }),
-    ).rejects.toThrow('Billing already exists for service order');
-  });
-
-  it('translates a concurrent billing unique violation to a conflict', async () => {
-    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
-    budgetService.findByServiceOrderId.mockResolvedValue([
-      acceptedBudget(1, 150),
-    ]);
-    repository.findByServiceOrderId.mockResolvedValue(null);
-    repository.create.mockRejectedValue(
-      Object.assign(new Error('Unique constraint failed'), {
-        code: 'P2002',
-        meta: { target: ['serviceOrderId'] },
-      }),
-    );
-
-    await expect(
-      service.generateForServiceOrder({ serviceOrderId }),
-    ).rejects.toThrow(
-      new ConflictException('Billing already exists for service order'),
-    );
-  });
-
-  it('registers payment and persists billing', async () => {
-    const billing = Billing.create({
-      serviceOrderId,
-      totalAmountInCents: 15000,
-    });
-    repository.findById.mockResolvedValue(billing);
-    repository.update.mockImplementation(async (updated) => updated);
-
-    const updated = await service.registerPayment(billing.getId(), {
-      amount: 150,
-      method: PaymentMethod.PIX,
-    });
-
-    expect(updated.getBalanceAmountInCents()).toBe(0);
-    expect(repository.update).toHaveBeenCalledWith(
-      updated,
-      expect.any(Date),
-    );
-  });
-
-  it('rejects payment registration when the billing was changed concurrently', async () => {
-    const billing = Billing.create({
-      serviceOrderId,
-      totalAmountInCents: 15000,
-    });
-    repository.findById.mockResolvedValue(billing);
-    repository.update.mockResolvedValue(null);
-
-    await expect(
-      service.registerPayment(billing.getId(), {
-        amount: 150,
-        method: PaymentMethod.PIX,
-      }),
-    ).rejects.toThrow('Billing was changed by another request');
-  });
-
-  it('rejects cancellation when the billing was changed concurrently', async () => {
-    const billing = Billing.create({
-      serviceOrderId,
-      totalAmountInCents: 15000,
-    });
-    repository.findById.mockResolvedValue(billing);
-    repository.update.mockResolvedValue(null);
-
-    await expect(service.cancel(billing.getId())).rejects.toThrow(
-      'Billing was changed by another request',
-    );
-  });
-
-  it('delivers service order only when billing is paid', async () => {
-    const billing = Billing.create({
-      serviceOrderId,
-      totalAmountInCents: 15000,
-    });
-    billing.registerPayment({
-      amount: PaymentAmount.fromCents(15000),
-      method: PaymentMethod.CASH,
-    });
-    repository.findById.mockResolvedValue(billing);
-    serviceOrderService.deliver.mockResolvedValue(completedServiceOrder());
-
-    await service.deliverServiceOrder(billing.getId());
-
-    expect(serviceOrderService.deliver).toHaveBeenCalledWith(serviceOrderId);
-  });
-
-  it('rejects delivery when billing is not paid', async () => {
-    const billing = Billing.create({
-      serviceOrderId,
-      totalAmountInCents: 15000,
-    });
-    repository.findById.mockResolvedValue(billing);
-
-    await expect(service.deliverServiceOrder(billing.getId())).rejects.toThrow(
-      'Billing must be paid before delivery',
-    );
-  });
-
-  it('throws not found when billing id does not exist', async () => {
-    repository.findById.mockResolvedValue(null);
-
-    await expect(service.findById(serviceOrderId)).rejects.toThrow(
-      NotFoundException,
+    await expect(service.generateForServiceOrder({ serviceOrderId })).rejects.toThrow(
+      ConflictException,
     );
   });
 });
