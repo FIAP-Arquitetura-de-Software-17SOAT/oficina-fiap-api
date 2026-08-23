@@ -8,6 +8,7 @@ import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum'
 import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
 import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
 import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
+import { BillingService } from '../src/modules/billing/services/billing.service';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -244,6 +245,45 @@ describe('Billing (integracao)', () => {
 
     expect(paid.body.status).toBe('PAID');
     expect(paid.body.paidAt).toBe('2026-08-22T10:00:00.000Z');
+  });
+
+  it('reconciles an original Checkout Session after payment-link renewal', async () => {
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
+    const billing = await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId })
+      .expect(201);
+    const originalSessionId = billing.body.gatewayTransactionId as string;
+
+    const renewed = await app
+      .get(BillingService)
+      .renewPaymentLink(
+        billing.body.id as string,
+        new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+      );
+
+    expect(renewed.getGatewayTransactionId()).not.toBe(originalSessionId);
+
+    const gateway = app.get(PaymentGateway);
+    gateway.queueWebhookResult({
+      type: 'payment_confirmed',
+      gatewayTransactionId: originalSessionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    await request(http)
+      .post('/api/v1/billings/stripe/webhook')
+      .set('stripe-signature', 'fake-signature')
+      .send({ id: 'evt_original_session_paid' })
+      .expect(204);
+
+    const paid = await request(http)
+      .get(`/api/v1/billings/${billing.body.id}`)
+      .expect(200);
+
+    expect(paid.body.status).toBe('PAID');
   });
 
   it('blocks billing delivery before payment and allows after payment', async () => {

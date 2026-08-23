@@ -131,13 +131,13 @@ export class BillingService {
       amountInCents: penalty.getTotalAmount().valueInCents,
       idempotencyKey: this.createPaymentLinkIdempotencyKey(billing.getId()),
     });
-    billing.renewPaymentLink(link, now);
-
-    return this.persistUpdatedBilling(
-      billing,
-      expectedUpdatedAt,
+    await this.billingRepository.registerCheckoutSession(
+      billing.getId(),
       link.gatewayTransactionId,
     );
+    billing.renewPaymentLink(link, now);
+
+    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
   }
 
   async handlePaymentWebhook(
@@ -203,12 +203,10 @@ export class BillingService {
   private async persistUpdatedBilling(
     billing: Billing,
     expectedUpdatedAt: Date,
-    checkoutSessionGatewayTransactionId?: string,
   ): Promise<Billing> {
     const updated = await this.billingRepository.update(
       billing,
       expectedUpdatedAt,
-      checkoutSessionGatewayTransactionId,
     );
 
     if (!updated) {
@@ -227,13 +225,13 @@ export class BillingService {
       amountInCents: billing.getAmount().valueInCents,
       idempotencyKey: this.createPaymentLinkIdempotencyKey(billing.getId()),
     });
-    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
-    billing.generatePaymentLink(link);
-    return this.persistUpdatedBilling(
-      billing,
-      expectedUpdatedAt,
+    await this.billingRepository.registerCheckoutSession(
+      billing.getId(),
       link.gatewayTransactionId,
     );
+    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
+    billing.generatePaymentLink(link);
+    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
   }
 
   private createPaymentLinkIdempotencyKey(billingId: string): string {

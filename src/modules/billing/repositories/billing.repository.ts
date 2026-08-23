@@ -50,10 +50,20 @@ export class BillingRepository {
     return records.map((record) => BillingMapper.toDomain(record));
   }
 
+  async registerCheckoutSession(
+    billingId: string,
+    gatewayTransactionId: string,
+  ): Promise<void> {
+    await this.prisma.billingCheckoutSession.upsert({
+      where: { gatewayTransactionId },
+      update: {},
+      create: { billingId, gatewayTransactionId },
+    });
+  }
+
   async update(
     billing: Billing,
     expectedUpdatedAt: Date,
-    checkoutSessionGatewayTransactionId?: string,
   ): Promise<Billing | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.billing.updateMany({
@@ -73,15 +83,6 @@ export class BillingRepository {
 
       if (result.count === 0) {
         return null;
-      }
-
-      if (checkoutSessionGatewayTransactionId) {
-        await tx.billingCheckoutSession.create({
-          data: {
-            billingId: billing.getId(),
-            gatewayTransactionId: checkoutSessionGatewayTransactionId,
-          },
-        });
       }
 
       return tx.billing.findUnique({

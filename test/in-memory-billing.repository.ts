@@ -2,6 +2,7 @@ import { Billing } from '../src/modules/billing/entities/billing.entity';
 
 export class InMemoryBillingRepository {
   private readonly billings = new Map<string, Billing>();
+  private readonly checkoutSessionBillingIds = new Map<string, string>();
 
   create(billing: Billing): Promise<Billing> {
     const persisted = this.clone(billing);
@@ -24,11 +25,19 @@ export class InMemoryBillingRepository {
   findByGatewayTransactionId(
     gatewayTransactionId: string,
   ): Promise<Billing | null> {
-    const billing = Array.from(this.billings.values()).find(
-      (candidate) =>
-        candidate.getGatewayTransactionId() === gatewayTransactionId,
+    const billingId = this.checkoutSessionBillingIds.get(
+      gatewayTransactionId,
     );
+    const billing = billingId ? this.billings.get(billingId) : undefined;
     return Promise.resolve(billing ? this.clone(billing) : null);
+  }
+
+  registerCheckoutSession(
+    billingId: string,
+    gatewayTransactionId: string,
+  ): Promise<void> {
+    this.checkoutSessionBillingIds.set(gatewayTransactionId, billingId);
+    return Promise.resolve();
   }
 
   findAll(): Promise<Billing[]> {

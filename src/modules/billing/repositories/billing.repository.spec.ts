@@ -34,6 +34,7 @@ describe('BillingRepository', () => {
     billingCheckoutSession: {
       findUnique: jest.Mock;
       create: jest.Mock;
+      upsert: jest.Mock;
     };
     $transaction: jest.Mock;
   };
@@ -50,6 +51,7 @@ describe('BillingRepository', () => {
       billingCheckoutSession: {
         findUnique: jest.fn(),
         create: jest.fn(),
+        upsert: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -115,6 +117,24 @@ describe('BillingRepository', () => {
       include: { billing: true },
     });
     expect(billing?.getId()).toBe(row.id);
+  });
+
+  it('registers checkout sessions before billing state changes', async () => {
+    prisma.billingCheckoutSession.upsert.mockResolvedValue({});
+
+    await repository.registerCheckoutSession(
+      row.id,
+      row.gatewayTransactionId,
+    );
+
+    expect(prisma.billingCheckoutSession.upsert).toHaveBeenCalledWith({
+      where: { gatewayTransactionId: row.gatewayTransactionId },
+      update: {},
+      create: {
+        billingId: row.id,
+        gatewayTransactionId: row.gatewayTransactionId,
+      },
+    });
   });
 
   it('updates gateway payment fields with optimistic concurrency', async () => {

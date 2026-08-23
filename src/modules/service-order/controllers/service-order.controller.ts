@@ -107,9 +107,9 @@ export class ServiceOrderController {
   })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
   @ApiBadRequestResponse({
-    description: 'Transição inválida ou OS já atribuída',
+    description: 'Invalid status transition or service order already assigned',
   })
-  @ApiConflictResponse({ description: 'Mecânico já tem uma OS em aberto' })
+  @ApiConflictResponse({ description: 'Mechanic already has an open service order' })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async assignToMechanic(
     @Param('id', ParseUUIDPipe) id: string,
@@ -156,7 +156,7 @@ export class ServiceOrderController {
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Finaliza a OS' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
+  @ApiBadRequestResponse({ description: 'Invalid status transition' })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async complete(
     @Param('id', ParseUUIDPipe) id: string,
@@ -170,7 +170,7 @@ export class ServiceOrderController {
   @ApiOperation({ summary: 'Cancela a OS' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
   @ApiBadRequestResponse({
-    description: 'Transição de status inválida ou motivo ausente',
+    description: 'Invalid status transition or missing cancellation reason',
   })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async cancel(

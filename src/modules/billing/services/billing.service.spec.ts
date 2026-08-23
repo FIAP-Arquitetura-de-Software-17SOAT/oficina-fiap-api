@@ -65,6 +65,7 @@ describe('BillingService', () => {
       findByServiceOrderId: jest.fn(),
       findByGatewayTransactionId: jest.fn(),
       findAll: jest.fn(),
+      registerCheckoutSession: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<BillingRepository>;
     budgetService = {
@@ -127,8 +128,9 @@ describe('BillingService', () => {
         },
       ],
     ]);
-    expect(repository.update.mock.calls).toEqual([
-      [billing, createdAt, 'cs_test_123'],
+    expect(repository.update.mock.calls).toEqual([[billing, createdAt]]);
+    expect(repository.registerCheckoutSession.mock.calls).toEqual([
+      [billing.getId(), 'cs_test_123'],
     ]);
   });
 
@@ -160,8 +162,9 @@ describe('BillingService', () => {
       'https://checkout.stripe.com/c/pay/cs_test_retry',
     );
     expect(repository.create.mock.calls).toHaveLength(0);
-    expect(repository.update.mock.calls).toEqual([
-      [billing, updatedAt, 'cs_test_retry'],
+    expect(repository.update.mock.calls).toEqual([[billing, updatedAt]]);
+    expect(repository.registerCheckoutSession.mock.calls).toEqual([
+      [billing.getId(), 'cs_test_retry'],
     ]);
   });
 
@@ -203,8 +206,9 @@ describe('BillingService', () => {
       'https://checkout.stripe.com/c/pay/cs_test_recovered',
     );
     expect(repository.create.mock.calls).toHaveLength(1);
-    expect(repository.update.mock.calls).toEqual([
-      [recovered, createdAt, 'cs_test_recovered'],
+    expect(repository.update.mock.calls).toEqual([[recovered, createdAt]]);
+    expect(repository.registerCheckoutSession.mock.calls).toEqual([
+      [recovered.getId(), 'cs_test_recovered'],
     ]);
   });
 
@@ -235,11 +239,17 @@ describe('BillingService', () => {
     repository.update
       .mockResolvedValueOnce(null)
       .mockImplementationOnce((billing) => Promise.resolve(billing));
-    paymentGateway.createPaymentLink.mockResolvedValue({
-      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_stable',
-      gatewayTransactionId: 'cs_test_stable',
-      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
-    });
+    paymentGateway.createPaymentLink
+      .mockResolvedValueOnce({
+        paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_first',
+        gatewayTransactionId: 'cs_test_first',
+        expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({
+        paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_second',
+        gatewayTransactionId: 'cs_test_second',
+        expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+      });
 
     await expect(
       service.generateForServiceOrder({ serviceOrderId }),
@@ -248,9 +258,13 @@ describe('BillingService', () => {
     const retried = await service.generateForServiceOrder({ serviceOrderId });
 
     expect(retried.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
-    expect(retried.getGatewayTransactionId()).toBe('cs_test_stable');
+    expect(retried.getGatewayTransactionId()).toBe('cs_test_second');
     expect(repository.create.mock.calls).toHaveLength(1);
     expect(paymentGateway.createPaymentLink.mock.calls).toHaveLength(2);
+    expect(repository.registerCheckoutSession.mock.calls).toEqual([
+      [created.getId(), 'cs_test_first'],
+      [created.getId(), 'cs_test_second'],
+    ]);
   });
 
   it('handles duplicated Stripe webhook idempotently', async () => {
@@ -399,8 +413,9 @@ describe('BillingService', () => {
         },
       ],
     ]);
-    expect(repository.update.mock.calls).toEqual([
-      [renewed, updatedAt, 'cs_test_renewed'],
+    expect(repository.update.mock.calls).toEqual([[renewed, updatedAt]]);
+    expect(repository.registerCheckoutSession.mock.calls).toEqual([
+      [renewed.getId(), 'cs_test_renewed'],
     ]);
   });
 
