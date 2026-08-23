@@ -1,11 +1,13 @@
+import { Inject, Injectable } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { EmailSender } from './email-sender';
 import { EmailModule } from './email.module';
 import { NodemailerEmailSender } from './nodemailer-email-sender';
 
+@Injectable()
 class EmailConsumer {
-  constructor(readonly sender: EmailSender) {}
+  constructor(@Inject(EmailSender) readonly sender: EmailSender) {}
 }
 
 describe('EmailModule', () => {
