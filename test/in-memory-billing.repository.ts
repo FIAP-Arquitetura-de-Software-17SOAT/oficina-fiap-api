@@ -1,8 +1,13 @@
 import { Billing } from '../src/modules/billing/entities/billing.entity';
+import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
 
 export class InMemoryBillingRepository {
   private readonly billings = new Map<string, Billing>();
   private readonly checkoutSessionBillingIds = new Map<string, string>();
+  private readonly checkoutSessionPayments = new Map<
+    string,
+    { paymentMethod: PaymentMethod; paidAt: Date }
+  >();
 
   create(billing: Billing): Promise<Billing> {
     const persisted = this.clone(billing);
@@ -25,9 +30,7 @@ export class InMemoryBillingRepository {
   findByGatewayTransactionId(
     gatewayTransactionId: string,
   ): Promise<Billing | null> {
-    const billingId = this.checkoutSessionBillingIds.get(
-      gatewayTransactionId,
-    );
+    const billingId = this.checkoutSessionBillingIds.get(gatewayTransactionId);
     const billing = billingId ? this.billings.get(billingId) : undefined;
     return Promise.resolve(billing ? this.clone(billing) : null);
   }
@@ -37,6 +40,20 @@ export class InMemoryBillingRepository {
     gatewayTransactionId: string,
   ): Promise<void> {
     this.checkoutSessionBillingIds.set(gatewayTransactionId, billingId);
+    return Promise.resolve();
+  }
+
+  recordCheckoutSessionPayment(
+    gatewayTransactionId: string,
+    paymentMethod: PaymentMethod,
+    paidAt: Date,
+  ): Promise<void> {
+    if (!this.checkoutSessionPayments.has(gatewayTransactionId)) {
+      this.checkoutSessionPayments.set(gatewayTransactionId, {
+        paymentMethod,
+        paidAt: new Date(paidAt),
+      });
+    }
     return Promise.resolve();
   }
 

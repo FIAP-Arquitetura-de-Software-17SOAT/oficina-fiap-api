@@ -212,7 +212,7 @@ describe('Billing (integracao)', () => {
       .send({ serviceOrderId })
       .expect(201);
 
-    const gateway = app.get(PaymentGateway);
+    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,
@@ -265,7 +265,7 @@ describe('Billing (integracao)', () => {
 
     expect(renewed.getGatewayTransactionId()).not.toBe(originalSessionId);
 
-    const gateway = app.get(PaymentGateway);
+    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: originalSessionId,
@@ -302,7 +302,7 @@ describe('Billing (integracao)', () => {
       .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
       .expect(404);
 
-    const gateway = app.get(PaymentGateway);
+    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,

@@ -66,6 +66,7 @@ describe('BillingService', () => {
       findByGatewayTransactionId: jest.fn(),
       findAll: jest.fn(),
       registerCheckoutSession: jest.fn(),
+      recordCheckoutSessionPayment: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<BillingRepository>;
     budgetService = {
@@ -302,6 +303,36 @@ describe('BillingService', () => {
     await service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature');
 
     expect(repository.update.mock.calls).toHaveLength(1);
+  });
+
+  it('records payment from a distinct known Checkout Session after billing is paid', async () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.PAID,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_current',
+      gatewayTransactionId: 'cs_test_current',
+      paymentMethod: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+    const oldSessionPaidAt = new Date('2026-08-22T10:01:00.000Z');
+    repository.findByGatewayTransactionId.mockResolvedValue(billing);
+    paymentGateway.parsePaymentWebhook.mockResolvedValue({
+      type: 'payment_confirmed',
+      gatewayTransactionId: 'cs_test_old',
+      method: PaymentMethod.CARD,
+      paidAt: oldSessionPaidAt,
+    });
+
+    await expect(
+      service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
+    ).resolves.toBeUndefined();
+
+    expect(repository.recordCheckoutSessionPayment.mock.calls).toEqual([
+      ['cs_test_old', PaymentMethod.CARD, oldSessionPaidAt],
+    ]);
+    expect(repository.update.mock.calls).toHaveLength(0);
   });
 
   it('accepts concurrent duplicate webhooks when another request already stored the payment', async () => {

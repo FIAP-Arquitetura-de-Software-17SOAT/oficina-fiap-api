@@ -35,6 +35,7 @@ describe('BillingRepository', () => {
       findUnique: jest.Mock;
       create: jest.Mock;
       upsert: jest.Mock;
+      updateMany: jest.Mock;
     };
     $transaction: jest.Mock;
   };
@@ -52,6 +53,7 @@ describe('BillingRepository', () => {
         findUnique: jest.fn(),
         create: jest.fn(),
         upsert: jest.fn(),
+        updateMany: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -106,7 +108,9 @@ describe('BillingRepository', () => {
   });
 
   it('finds billing by gateway transaction id for payment webhooks', async () => {
-    prisma.billingCheckoutSession.findUnique.mockResolvedValue({ billing: row });
+    prisma.billingCheckoutSession.findUnique.mockResolvedValue({
+      billing: row,
+    });
 
     const billing = await repository.findByGatewayTransactionId(
       row.gatewayTransactionId,
@@ -122,10 +126,7 @@ describe('BillingRepository', () => {
   it('registers checkout sessions before billing state changes', async () => {
     prisma.billingCheckoutSession.upsert.mockResolvedValue({});
 
-    await repository.registerCheckoutSession(
-      row.id,
-      row.gatewayTransactionId,
-    );
+    await repository.registerCheckoutSession(row.id, row.gatewayTransactionId);
 
     expect(prisma.billingCheckoutSession.upsert).toHaveBeenCalledWith({
       where: { gatewayTransactionId: row.gatewayTransactionId },
@@ -134,6 +135,21 @@ describe('BillingRepository', () => {
         billingId: row.id,
         gatewayTransactionId: row.gatewayTransactionId,
       },
+    });
+  });
+
+  it('records each checkout session payment only once', async () => {
+    prisma.billingCheckoutSession.updateMany.mockResolvedValue({ count: 1 });
+
+    await repository.recordCheckoutSessionPayment(
+      row.gatewayTransactionId,
+      PaymentMethod.CARD,
+      generatedAt,
+    );
+
+    expect(prisma.billingCheckoutSession.updateMany).toHaveBeenCalledWith({
+      where: { gatewayTransactionId: row.gatewayTransactionId, paidAt: null },
+      data: { paymentMethod: PaymentMethod.CARD, paidAt: generatedAt },
     });
   });
 

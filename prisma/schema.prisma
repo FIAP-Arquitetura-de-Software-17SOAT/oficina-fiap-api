@@ -246,10 +246,12 @@ model Billing {
 }
 
 model BillingCheckoutSession {
-  id                   String   @id @default(uuid()) @db.Uuid
-  billingId            String   @db.Uuid
-  gatewayTransactionId String   @unique
-  createdAt            DateTime @default(now())
+  id                   String         @id @default(uuid()) @db.Uuid
+  billingId            String         @db.Uuid
+  gatewayTransactionId String         @unique
+  paymentMethod        PaymentMethod?
+  paidAt               DateTime?
+  createdAt            DateTime       @default(now())
 
   billing Billing @relation(fields: [billingId], references: [id], onDelete: Cascade)
 

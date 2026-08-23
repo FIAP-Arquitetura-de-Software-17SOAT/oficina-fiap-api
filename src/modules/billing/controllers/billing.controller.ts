@@ -30,6 +30,7 @@ import {
 } from '../dto/billing.dto';
 import { BillingMapper } from '../mappers/billing.mapper';
 import { BillingService } from '../services/billing.service';
+import { Public } from '../../../shared/http/auth/public.decorator';
 
 @ApiTags('billings')
 @Controller('billings')
@@ -77,6 +78,7 @@ export class BillingController {
   }
 
   @Post('stripe/webhook')
+  @Public()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Processa o webhook de pagamento do Stripe' })
   @ApiNoContentResponse({ description: 'Stripe webhook processed' })

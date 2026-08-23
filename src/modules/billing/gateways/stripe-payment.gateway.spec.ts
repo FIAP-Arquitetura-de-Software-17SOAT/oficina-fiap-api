@@ -77,6 +77,7 @@ describe('StripePaymentGateway', () => {
         billingId: 'billing-1',
         serviceOrderId: 'service-order-1',
         amountInCents: 15000,
+        idempotencyKey: 'billing-payment-link:billing-1:attempt-2',
       }),
     ).rejects.toThrow('Stripe Checkout Session URL is required');
   });

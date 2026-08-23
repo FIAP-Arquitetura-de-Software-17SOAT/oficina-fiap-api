@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { Billing } from '../entities/billing.entity';
+import { PaymentMethod } from '../enums/payment-method.enum';
 import { BillingMapper } from '../mappers/billing.mapper';
 
 @Injectable()
@@ -34,12 +35,16 @@ export class BillingRepository {
   async findByGatewayTransactionId(
     gatewayTransactionId: string,
   ): Promise<Billing | null> {
-    const checkoutSession = await this.prisma.billingCheckoutSession.findUnique({
-      where: { gatewayTransactionId },
-      include: { billing: true },
-    });
+    const checkoutSession = await this.prisma.billingCheckoutSession.findUnique(
+      {
+        where: { gatewayTransactionId },
+        include: { billing: true },
+      },
+    );
 
-    return checkoutSession ? BillingMapper.toDomain(checkoutSession.billing) : null;
+    return checkoutSession
+      ? BillingMapper.toDomain(checkoutSession.billing)
+      : null;
   }
 
   async findAll(): Promise<Billing[]> {
@@ -58,6 +63,17 @@ export class BillingRepository {
       where: { gatewayTransactionId },
       update: {},
       create: { billingId, gatewayTransactionId },
+    });
+  }
+
+  async recordCheckoutSessionPayment(
+    gatewayTransactionId: string,
+    paymentMethod: PaymentMethod,
+    paidAt: Date,
+  ): Promise<void> {
+    await this.prisma.billingCheckoutSession.updateMany({
+      where: { gatewayTransactionId, paidAt: null },
+      data: { paymentMethod, paidAt },
     });
   }
 

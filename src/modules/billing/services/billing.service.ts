@@ -163,6 +163,12 @@ export class BillingService {
     );
     if (!billing) throw new NotFoundException('Billing not found');
 
+    await this.billingRepository.recordCheckoutSessionPayment(
+      event.gatewayTransactionId,
+      event.method,
+      event.paidAt,
+    );
+
     const expectedUpdatedAt = new Date(billing.getUpdatedAt());
     const changed = billing.registerPayment(
       {
