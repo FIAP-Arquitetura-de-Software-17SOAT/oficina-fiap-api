@@ -95,7 +95,7 @@ export class StripePaymentGateway extends PaymentGateway {
       };
     }
 
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object;
     if (session.payment_status !== 'paid') {
       return {
         type: 'ignored',

@@ -52,7 +52,10 @@ export class Billing {
       props.serviceOrderId,
       'Service order is required',
     );
-    this.budgetId = this.validateRequiredId(props.budgetId, 'Budget is required');
+    this.budgetId = this.validateRequiredId(
+      props.budgetId,
+      'Budget is required',
+    );
     if (props.amount.valueInCents <= 0) {
       throw new DomainException('Billing amount must be greater than zero');
     }
@@ -102,7 +105,9 @@ export class Billing {
       throw new DomainException('Paid billing is terminal');
     }
     if (this.status !== BillingStatus.WAITING_PAYMENT) {
-      throw new DomainException('Payment can only be registered while waiting payment');
+      throw new DomainException(
+        'Payment can only be registered while waiting payment',
+      );
     }
     if (this.gatewayTransactionId !== gatewayTransactionId) {
       throw new DomainException('Gateway transaction does not match billing');
@@ -126,19 +131,45 @@ export class Billing {
     this.touch();
   }
 
-  getId(): string { return this.id; }
-  getServiceOrderId(): string { return this.serviceOrderId; }
-  getBudgetId(): string { return this.budgetId; }
-  getAmount(): Money { return this.amount; }
-  getStatus(): BillingStatus { return this.status; }
-  getPaymentLink(): string | null { return this.paymentLink; }
-  getGatewayTransactionId(): string | null { return this.gatewayTransactionId; }
-  getPaymentMethod(): PaymentMethod | null { return this.paymentMethod; }
-  getGeneratedAt(): Date { return this.generatedAt; }
-  getPaidAt(): Date | null { return this.paidAt; }
-  getExpiresAt(): Date | null { return this.expiresAt; }
-  getCreatedAt(): Date { return this.createdAt; }
-  getUpdatedAt(): Date { return this.updatedAt; }
+  getId(): string {
+    return this.id;
+  }
+  getServiceOrderId(): string {
+    return this.serviceOrderId;
+  }
+  getBudgetId(): string {
+    return this.budgetId;
+  }
+  getAmount(): Money {
+    return this.amount;
+  }
+  getStatus(): BillingStatus {
+    return this.status;
+  }
+  getPaymentLink(): string | null {
+    return this.paymentLink;
+  }
+  getGatewayTransactionId(): string | null {
+    return this.gatewayTransactionId;
+  }
+  getPaymentMethod(): PaymentMethod | null {
+    return this.paymentMethod;
+  }
+  getGeneratedAt(): Date {
+    return this.generatedAt;
+  }
+  getPaidAt(): Date | null {
+    return this.paidAt;
+  }
+  getExpiresAt(): Date | null {
+    return this.expiresAt;
+  }
+  getCreatedAt(): Date {
+    return this.createdAt;
+  }
+  getUpdatedAt(): Date {
+    return this.updatedAt;
+  }
 
   private validateRequiredId(value: string, message: string): string {
     const trimmed = (value ?? '').trim();
@@ -154,8 +185,9 @@ export class Billing {
 
   private touch(): void {
     const now = new Date();
-    this.updatedAt = now.getTime() > this.updatedAt.getTime()
-      ? now
-      : new Date(this.updatedAt.getTime() + 1);
+    this.updatedAt =
+      now.getTime() > this.updatedAt.getTime()
+        ? now
+        : new Date(this.updatedAt.getTime() + 1);
   }
 }

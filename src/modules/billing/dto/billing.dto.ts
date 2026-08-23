@@ -40,7 +40,9 @@ export class BillingResponseDto {
   @ApiProperty({ example: 120 })
   amount: number;
 
-  @ApiPropertyOptional({ example: 'https://checkout.stripe.com/c/pay/cs_test_123' })
+  @ApiPropertyOptional({
+    example: 'https://checkout.stripe.com/c/pay/cs_test_123',
+  })
   paymentLink: string | null;
 
   @ApiPropertyOptional({ example: 'cs_test_123' })
@@ -63,5 +65,4 @@ export class BillingResponseDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
-
 }

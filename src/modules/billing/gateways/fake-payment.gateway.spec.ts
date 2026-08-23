@@ -28,7 +28,10 @@ describe('FakePaymentGateway', () => {
     });
 
     await expect(
-      gateway.parsePaymentWebhook({ payload: Buffer.from('{}'), signature: 'test' }),
+      gateway.parsePaymentWebhook({
+        payload: Buffer.from('{}'),
+        signature: 'test',
+      }),
     ).resolves.toMatchObject({ type: 'payment_confirmed' });
   });
 });

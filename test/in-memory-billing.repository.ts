@@ -17,8 +17,8 @@ export class InMemoryBillingRepository {
 
   findByServiceOrderId(serviceOrderId: string): Promise<Billing | null> {
     const billing = Array.from(this.billings.values()).find(
-        (billing) => billing.getServiceOrderId() === serviceOrderId,
-      );
+      (billing) => billing.getServiceOrderId() === serviceOrderId,
+    );
     return Promise.resolve(billing ? this.clone(billing) : null);
   }
 
@@ -34,9 +34,9 @@ export class InMemoryBillingRepository {
 
   findAll(): Promise<Billing[]> {
     return Promise.resolve(
-      Array.from(this.billings.values()).sort(
-        (a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime(),
-      ).map((billing) => this.clone(billing)),
+      Array.from(this.billings.values())
+        .sort((a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime())
+        .map((billing) => this.clone(billing)),
     );
   }
 
@@ -60,7 +60,7 @@ export class InMemoryBillingRepository {
       serviceOrderId: billing.getServiceOrderId(),
       budgetId: billing.getBudgetId(),
       amount: billing.getAmount(),
-      status: billing.getStatus() as BillingStatus,
+      status: billing.getStatus(),
       paymentLink: billing.getPaymentLink(),
       gatewayTransactionId: billing.getGatewayTransactionId(),
       paymentMethod: billing.getPaymentMethod(),

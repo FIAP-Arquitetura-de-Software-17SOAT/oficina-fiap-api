@@ -22,10 +22,12 @@ export class FakePaymentGateway extends PaymentGateway {
   async parsePaymentWebhook(
     _input: ParsePaymentWebhookInput,
   ): Promise<PaymentWebhookResult> {
-    return this.webhookResults.shift() ?? {
-      type: 'ignored',
-      reason: 'No fake webhook event queued',
-    };
+    return (
+      this.webhookResults.shift() ?? {
+        type: 'ignored',
+        reason: 'No fake webhook event queued',
+      }
+    );
   }
 
   queueWebhookResult(result: PaymentWebhookResult): void {

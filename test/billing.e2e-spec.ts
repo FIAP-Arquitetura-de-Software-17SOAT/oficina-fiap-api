@@ -152,7 +152,9 @@ describe('Billing (integracao)', () => {
       budgetId: latestBudget.id,
       status: 'WAITING_PAYMENT',
       amount: 150,
-      paymentLink: expect.stringContaining('https://fake.stripe.test/checkout/'),
+      paymentLink: expect.stringContaining(
+        'https://fake.stripe.test/checkout/',
+      ),
       paymentMethod: null,
       paidAt: null,
     });
@@ -187,7 +189,7 @@ describe('Billing (integracao)', () => {
       .send({ serviceOrderId })
       .expect(201);
 
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway = app.get(PaymentGateway);
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,
@@ -234,7 +236,7 @@ describe('Billing (integracao)', () => {
       .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)
       .expect(409);
 
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway = app.get(PaymentGateway);
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,

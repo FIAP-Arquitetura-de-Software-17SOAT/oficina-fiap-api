@@ -171,7 +171,9 @@ describe('BillingRepository', () => {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
-    const transaction = { billing: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) } };
+    const transaction = {
+      billing: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    };
     prisma.$transaction.mockImplementation(async (fn) => fn(transaction));
 
     await expect(repository.update(billing, row.updatedAt)).resolves.toBeNull();

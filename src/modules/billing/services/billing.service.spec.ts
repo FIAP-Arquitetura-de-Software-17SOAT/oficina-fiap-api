@@ -77,7 +77,7 @@ describe('BillingService', () => {
     paymentGateway = {
       createPaymentLink: jest.fn(),
       parsePaymentWebhook: jest.fn(),
-    } as unknown as jest.Mocked<PaymentGateway>;
+    };
     service = new BillingService(
       repository,
       budgetService,
