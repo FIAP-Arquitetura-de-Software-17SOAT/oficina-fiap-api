@@ -31,6 +31,10 @@ describe('BillingRepository', () => {
       findMany: jest.Mock;
       updateMany: jest.Mock;
     };
+    billingCheckoutSession: {
+      findUnique: jest.Mock;
+      create: jest.Mock;
+    };
     $transaction: jest.Mock;
   };
   let repository: BillingRepository;
@@ -42,6 +46,10 @@ describe('BillingRepository', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
         updateMany: jest.fn(),
+      },
+      billingCheckoutSession: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -96,14 +104,15 @@ describe('BillingRepository', () => {
   });
 
   it('finds billing by gateway transaction id for payment webhooks', async () => {
-    prisma.billing.findUnique.mockResolvedValue(row);
+    prisma.billingCheckoutSession.findUnique.mockResolvedValue({ billing: row });
 
     const billing = await repository.findByGatewayTransactionId(
       row.gatewayTransactionId,
     );
 
-    expect(prisma.billing.findUnique).toHaveBeenCalledWith({
+    expect(prisma.billingCheckoutSession.findUnique).toHaveBeenCalledWith({
       where: { gatewayTransactionId: row.gatewayTransactionId },
+      include: { billing: true },
     });
     expect(billing?.getId()).toBe(row.id);
   });

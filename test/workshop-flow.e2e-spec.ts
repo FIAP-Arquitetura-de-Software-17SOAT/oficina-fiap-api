@@ -227,10 +227,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
     await request(http)
       .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
-      .expect(200)
-      .expect(({ body }) => {
-        expect(body.status).toBe('DELIVERED');
-      });
+      .expect(404);
 
     await request(http)
       .get('/api/v1/service-order/metrics/average-execution-time')

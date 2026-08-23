@@ -13,8 +13,8 @@ export class FakePaymentGateway extends PaymentGateway {
     input: CreatePaymentLinkInput,
   ): Promise<CreatePaymentLinkResult> {
     return Promise.resolve({
-      paymentLink: `https://fake.stripe.test/checkout/${input.billingId}`,
-      gatewayTransactionId: `fake_session_${input.billingId}`,
+      paymentLink: `https://fake.stripe.test/checkout/${input.idempotencyKey}`,
+      gatewayTransactionId: `fake_session_${input.idempotencyKey}`,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
   }

@@ -113,13 +113,21 @@ export class Billing {
     this.touch();
   }
 
-  registerPayment(props: RegisterPaymentProps): boolean {
+  registerPayment(
+    props: RegisterPaymentProps,
+    isKnownCheckoutSession = false,
+  ): boolean {
     const gatewayTransactionId = this.validateRequiredId(
       props.gatewayTransactionId,
       'Gateway transaction is required',
     );
     if (this.status === BillingStatus.PAID) {
-      if (this.gatewayTransactionId === gatewayTransactionId) return false;
+      if (
+        this.gatewayTransactionId === gatewayTransactionId ||
+        isKnownCheckoutSession
+      ) {
+        return false;
+      }
       throw new DomainException('Paid billing is terminal');
     }
     if (this.status !== BillingStatus.WAITING_PAYMENT) {
@@ -127,7 +135,10 @@ export class Billing {
         'Payment can only be registered while waiting payment',
       );
     }
-    if (this.gatewayTransactionId !== gatewayTransactionId) {
+    if (
+      this.gatewayTransactionId !== gatewayTransactionId &&
+      !isKnownCheckoutSession
+    ) {
       throw new DomainException('Gateway transaction does not match billing');
     }
     this.paymentMethod = props.method;

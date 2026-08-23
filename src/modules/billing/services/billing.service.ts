@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -128,10 +129,15 @@ export class BillingService {
       billingId: billing.getId(),
       serviceOrderId: billing.getServiceOrderId(),
       amountInCents: penalty.getTotalAmount().valueInCents,
+      idempotencyKey: this.createPaymentLinkIdempotencyKey(billing.getId()),
     });
     billing.renewPaymentLink(link, now);
 
-    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
+    return this.persistUpdatedBilling(
+      billing,
+      expectedUpdatedAt,
+      link.gatewayTransactionId,
+    );
   }
 
   async handlePaymentWebhook(
@@ -158,11 +164,14 @@ export class BillingService {
     if (!billing) throw new NotFoundException('Billing not found');
 
     const expectedUpdatedAt = new Date(billing.getUpdatedAt());
-    const changed = billing.registerPayment({
-      gatewayTransactionId: event.gatewayTransactionId,
-      method: event.method,
-      paidAt: event.paidAt,
-    });
+    const changed = billing.registerPayment(
+      {
+        gatewayTransactionId: event.gatewayTransactionId,
+        method: event.method,
+        paidAt: event.paidAt,
+      },
+      true,
+    );
     if (!changed) return;
 
     const updated = await this.billingRepository.update(
@@ -174,10 +183,7 @@ export class BillingService {
     const stored = await this.billingRepository.findByGatewayTransactionId(
       event.gatewayTransactionId,
     );
-    if (
-      stored?.getStatus() === BillingStatus.PAID &&
-      stored.getGatewayTransactionId() === event.gatewayTransactionId
-    ) {
+    if (stored?.getStatus() === BillingStatus.PAID) {
       return;
     }
 
@@ -197,10 +203,12 @@ export class BillingService {
   private async persistUpdatedBilling(
     billing: Billing,
     expectedUpdatedAt: Date,
+    checkoutSessionGatewayTransactionId?: string,
   ): Promise<Billing> {
     const updated = await this.billingRepository.update(
       billing,
       expectedUpdatedAt,
+      checkoutSessionGatewayTransactionId,
     );
 
     if (!updated) {
@@ -217,9 +225,18 @@ export class BillingService {
       billingId: billing.getId(),
       serviceOrderId: billing.getServiceOrderId(),
       amountInCents: billing.getAmount().valueInCents,
+      idempotencyKey: this.createPaymentLinkIdempotencyKey(billing.getId()),
     });
     const expectedUpdatedAt = new Date(billing.getUpdatedAt());
     billing.generatePaymentLink(link);
-    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
+    return this.persistUpdatedBilling(
+      billing,
+      expectedUpdatedAt,
+      link.gatewayTransactionId,
+    );
+  }
+
+  private createPaymentLinkIdempotencyKey(billingId: string): string {
+    return `billing-payment-link:${billingId}:${randomUUID()}`;
   }
 }

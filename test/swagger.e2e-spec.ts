@@ -282,7 +282,6 @@ describe('Swagger', () => {
         '/api/v1/service-order/client/{clientId}',
         '/api/v1/service-order/{id}/assign',
         '/api/v1/service-order/{id}/complete',
-        '/api/v1/service-order/{id}/deliver',
         '/api/v1/service-order/{id}/cancel',
       ]),
     );
@@ -312,7 +311,7 @@ describe('Swagger', () => {
       expect.arrayContaining(['get']),
     );
 
-    for (const action of ['assign', 'complete', 'deliver', 'cancel']) {
+    for (const action of ['assign', 'complete', 'cancel']) {
       expect(
         Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
       ).toEqual(expect.arrayContaining(['patch']));

@@ -55,7 +55,7 @@ export class StripePaymentGateway extends PaymentGateway {
           },
         ],
       },
-      { idempotencyKey: `billing-payment-link:${input.billingId}` },
+      { idempotencyKey: input.idempotencyKey },
     );
 
     if (!session.url) {

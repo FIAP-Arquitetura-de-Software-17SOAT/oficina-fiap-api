@@ -34,11 +34,12 @@ export class BillingRepository {
   async findByGatewayTransactionId(
     gatewayTransactionId: string,
   ): Promise<Billing | null> {
-    const record = await this.prisma.billing.findUnique({
+    const checkoutSession = await this.prisma.billingCheckoutSession.findUnique({
       where: { gatewayTransactionId },
+      include: { billing: true },
     });
 
-    return record ? BillingMapper.toDomain(record) : null;
+    return checkoutSession ? BillingMapper.toDomain(checkoutSession.billing) : null;
   }
 
   async findAll(): Promise<Billing[]> {
@@ -52,6 +53,7 @@ export class BillingRepository {
   async update(
     billing: Billing,
     expectedUpdatedAt: Date,
+    checkoutSessionGatewayTransactionId?: string,
   ): Promise<Billing | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.billing.updateMany({
@@ -71,6 +73,15 @@ export class BillingRepository {
 
       if (result.count === 0) {
         return null;
+      }
+
+      if (checkoutSessionGatewayTransactionId) {
+        await tx.billingCheckoutSession.create({
+          data: {
+            billingId: billing.getId(),
+            gatewayTransactionId: checkoutSessionGatewayTransactionId,
+          },
+        });
       }
 
       return tx.billing.findUnique({

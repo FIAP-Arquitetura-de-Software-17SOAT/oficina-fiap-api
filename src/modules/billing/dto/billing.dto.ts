@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
 
@@ -12,6 +12,7 @@ export class GenerateBillingDto {
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   serviceOrderId: string;
 }
 
@@ -21,6 +22,7 @@ export class FindBillingQueryDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   serviceOrderId?: string;
 }
 

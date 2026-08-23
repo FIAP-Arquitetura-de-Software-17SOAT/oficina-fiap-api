@@ -34,6 +34,7 @@ describe('StripePaymentGateway', () => {
       billingId: 'billing-1',
       serviceOrderId: 'service-order-1',
       amountInCents: 15000,
+      idempotencyKey: 'billing-payment-link:billing-1:attempt-1',
     });
 
     expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
@@ -54,7 +55,7 @@ describe('StripePaymentGateway', () => {
           }),
         ],
       }),
-      { idempotencyKey: 'billing-payment-link:billing-1' },
+      { idempotencyKey: 'billing-payment-link:billing-1:attempt-1' },
     );
     expect(result).toEqual({
       paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',

@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -13,6 +14,7 @@ import { ServiceOrderRepository } from '../src/modules/service-order/repositorie
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
+import { allowAuthenticated } from './allow-authenticated';
 import { InMemoryBillingRepository } from './in-memory-billing.repository';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
 import { InMemoryClientRepository } from './in-memory-client.repository';
@@ -22,11 +24,15 @@ import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 describe('Billing (integracao)', () => {
   let app: INestApplication<App>;
   let http: App;
+  const jwt = new JwtService();
+  let token: string;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule],
+      }),
+    )
       .overrideProvider(PrismaService)
       .useValue({})
       .overrideProvider(ClientRepository)
@@ -48,6 +54,15 @@ describe('Billing (integracao)', () => {
     ) as INestApplication<App>;
     await app.init();
     http = app.getHttpServer();
+    token = await jwt.signAsync(
+      {
+        sub: 'billing-user',
+        role: 'ADMIN',
+        type: 'access',
+        jti: 'billing-jti',
+      },
+      { secret: 'e2e-access-secret', expiresIn: '15m' },
+    );
   });
 
   afterEach(async () => {
@@ -86,12 +101,8 @@ describe('Billing (integracao)', () => {
       .expect(201);
 
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrder.body.id}/start-diagnosis`)
-      .send()
-      .expect(200);
-    await request(http)
-      .patch(`/api/v1/service-order/${serviceOrder.body.id}/await-approval`)
-      .send()
+      .patch(`/api/v1/service-order/${serviceOrder.body.id}/assign`)
+      .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
 
     async function createAndAcceptBudget(
@@ -121,11 +132,10 @@ describe('Billing (integracao)', () => {
         .expect(200);
     }
 
-    await createAndAcceptBudget('Servico inicial', 100);
     const latestBudget = await createAndAcceptBudget('Servico atualizado', 150);
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrder.body.id}/start-progress`)
-      .send()
+      .post(`/api/v1/stock/service-orders/${serviceOrder.body.id}/dispatch`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
     await request(http)
       .patch(`/api/v1/service-order/${serviceOrder.body.id}/complete`)
@@ -166,7 +176,7 @@ describe('Billing (integracao)', () => {
 
     expect(persistedBudget.body).toMatchObject({
       id: latestBudget.id,
-      version: 2,
+      version: 1,
       status: 'ACCEPTED',
       totalAmount: 150,
       items: [
@@ -180,6 +190,17 @@ describe('Billing (integracao)', () => {
         },
       ],
     });
+  });
+
+  it('rejects malformed service order ids before billing lookup', async () => {
+    await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId: 'not-a-uuid' })
+      .expect(400);
+
+    await request(http)
+      .get('/api/v1/billings?serviceOrderId=not-a-uuid')
+      .expect(400);
   });
 
   it('registers a payment webhook once when Stripe retries it', async () => {
@@ -236,6 +257,10 @@ describe('Billing (integracao)', () => {
     await request(http)
       .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)
       .expect(409);
+
+    await request(http)
+      .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
+      .expect(404);
 
     const gateway = app.get(PaymentGateway);
     gateway.queueWebhookResult({

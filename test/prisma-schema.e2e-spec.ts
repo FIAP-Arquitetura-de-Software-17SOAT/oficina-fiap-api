@@ -28,20 +28,14 @@ describe('Prisma schema contracts', () => {
   it('persists gateway-backed billing without BillingPayment rows', () => {
     const billingModel = schema.match(/model Billing \{[\s\S]*?\n\}/)?.[0];
 
-    expect(billingModel).toContain(
-      'budgetId             String        @db.Uuid',
-    );
-    expect(billingModel).toContain('amountCents          Int');
-    expect(billingModel).toContain('paymentLink          String?');
-    expect(billingModel).toContain(
-      'gatewayTransactionId String?       @unique',
-    );
-    expect(billingModel).toContain('paymentMethod        PaymentMethod?');
-    expect(billingModel).toContain(
-      'generatedAt          DateTime      @default(now())',
-    );
-    expect(billingModel).toContain('paidAt               DateTime?');
-    expect(billingModel).toContain('expiresAt            DateTime?');
+    expect(billingModel).toMatch(/budgetId\s+String\s+@db\.Uuid/);
+    expect(billingModel).toMatch(/amountCents\s+Int/);
+    expect(billingModel).toMatch(/paymentLink\s+String\?/);
+    expect(billingModel).toMatch(/gatewayTransactionId\s+String\?\s+@unique/);
+    expect(billingModel).toMatch(/paymentMethod\s+PaymentMethod\?/);
+    expect(billingModel).toMatch(/generatedAt\s+DateTime\s+@default\(now\(\)\)/);
+    expect(billingModel).toMatch(/paidAt\s+DateTime\?/);
+    expect(billingModel).toMatch(/expiresAt\s+DateTime\?/);
     expect(billingModel).not.toContain('payments     BillingPayment[]');
     expect(schema).not.toContain('model BillingPayment');
   });
@@ -145,5 +139,33 @@ describe('Prisma schema contracts', () => {
 
     expect(migration).toContain('WHERE "id" = "serviceOrderId"');
     expect(migration).toContain('SET "id" = gen_random_uuid()');
+  });
+
+  it('keeps a checkout-session history and enforces Billing.budgetId integrity additively', () => {
+    const billingModel = schema.match(/model Billing \{[\s\S]*?\n\}/)?.[0];
+    const budgetModel = schema.match(/model Budget \{[\s\S]*?\n\}/)?.[0];
+    const migrationFile = readdirSync(
+      join(__dirname, '../prisma/migrations'),
+    ).find((directory) => directory.endsWith('_add_billing_checkout_sessions'));
+
+    expect(billingModel).toContain('checkoutSessions BillingCheckoutSession[]');
+    expect(billingModel).toMatch(
+      /budget\s+Budget\s+@relation\(fields: \[budgetId\], references: \[id\], onDelete: Restrict\)/,
+    );
+    expect(budgetModel).toMatch(/billings\s+Billing\[\]/);
+    expect(migrationFile).toBeDefined();
+
+    const migration = readFileSync(
+      join(
+        __dirname,
+        '../prisma/migrations',
+        migrationFile as string,
+        'migration.sql',
+      ),
+      { encoding: 'utf8' },
+    );
+
+    expect(migration).toContain('CREATE TABLE "billing_checkout_session"');
+    expect(migration).toContain('"billing_budgetId_fkey"');
   });
 });

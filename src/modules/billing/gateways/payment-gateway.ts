@@ -4,6 +4,7 @@ export interface CreatePaymentLinkInput {
   billingId: string;
   serviceOrderId: string;
   amountInCents: number;
+  idempotencyKey: string;
 }
 
 export interface CreatePaymentLinkResult {

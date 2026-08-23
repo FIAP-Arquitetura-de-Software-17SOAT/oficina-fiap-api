@@ -166,19 +166,6 @@ export class ServiceOrderController {
     );
   }
 
-  @Patch(':id/deliver')
-  @ApiOperation({ summary: 'Marca a OS como entregue ao cliente' })
-  @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'TransiÃ§Ã£o de status invÃ¡lida' })
-  @ApiNotFoundResponse({ description: 'Service order not found' })
-  async deliver(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.deliver(id),
-    );
-  }
-
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancela a OS' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })

@@ -121,10 +121,15 @@ describe('BillingService', () => {
           billingId: billing.getId(),
           serviceOrderId,
           amountInCents: 15000,
+          idempotencyKey: expect.stringMatching(
+            new RegExp(`^billing-payment-link:${billing.getId()}:`),
+          ),
         },
       ],
     ]);
-    expect(repository.update.mock.calls).toEqual([[billing, createdAt]]);
+    expect(repository.update.mock.calls).toEqual([
+      [billing, createdAt, 'cs_test_123'],
+    ]);
   });
 
   it('retries payment link generation for a pending billing', async () => {
@@ -155,7 +160,9 @@ describe('BillingService', () => {
       'https://checkout.stripe.com/c/pay/cs_test_retry',
     );
     expect(repository.create.mock.calls).toHaveLength(0);
-    expect(repository.update.mock.calls).toEqual([[billing, updatedAt]]);
+    expect(repository.update.mock.calls).toEqual([
+      [billing, updatedAt, 'cs_test_retry'],
+    ]);
   });
 
   it('recovers a pending billing after gateway link creation fails', async () => {
@@ -196,7 +203,9 @@ describe('BillingService', () => {
       'https://checkout.stripe.com/c/pay/cs_test_recovered',
     );
     expect(repository.create.mock.calls).toHaveLength(1);
-    expect(repository.update.mock.calls).toEqual([[recovered, createdAt]]);
+    expect(repository.update.mock.calls).toEqual([
+      [recovered, createdAt, 'cs_test_recovered'],
+    ]);
   });
 
   it('retries the same persisted billing after Stripe succeeds but persistence loses a race', async () => {
@@ -384,10 +393,15 @@ describe('BillingService', () => {
           billingId: billing.getId(),
           serviceOrderId,
           amountInCents: 15305,
+          idempotencyKey: expect.stringMatching(
+            new RegExp(`^billing-payment-link:${billing.getId()}:`),
+          ),
         },
       ],
     ]);
-    expect(repository.update.mock.calls).toEqual([[renewed, updatedAt]]);
+    expect(repository.update.mock.calls).toEqual([
+      [renewed, updatedAt, 'cs_test_renewed'],
+    ]);
   });
 
   it('rejects payment link renewal before expiration', async () => {
@@ -445,6 +459,30 @@ describe('BillingService', () => {
     await expect(
       service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('registers a payment from a checkout session created before renewal', async () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_renewed',
+      gatewayTransactionId: 'cs_test_renewed',
+    });
+    repository.findByGatewayTransactionId.mockResolvedValue(billing);
+    repository.update.mockImplementation((updated) => Promise.resolve(updated));
+    paymentGateway.parsePaymentWebhook.mockResolvedValue({
+      type: 'payment_confirmed',
+      gatewayTransactionId: 'cs_test_original',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    await expect(
+      service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
+    ).resolves.toBeUndefined();
+    expect(billing.getStatus()).toBe(BillingStatus.PAID);
   });
 
   it('rejects billing generation when service order is not completed', async () => {
