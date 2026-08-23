@@ -4,13 +4,23 @@ import { EmailSender } from './email-sender';
 import { EmailModule } from './email.module';
 import { NodemailerEmailSender } from './nodemailer-email-sender';
 
+class EmailConsumer {
+  constructor(readonly sender: EmailSender) {}
+}
+
 describe('EmailModule', () => {
-  it('resolves EmailSender as NodemailerEmailSender', async () => {
-    const module = await Test.createTestingModule({ imports: [EmailModule] })
-      .overrideProvider(ConfigService)
-      .useValue({ get: jest.fn() })
+  it('exports EmailSender for consumers as NodemailerEmailSender', async () => {
+    const module = await Test.createTestingModule({
+      imports: [EmailModule],
+      providers: [
+        { provide: ConfigService, useValue: { get: jest.fn() } },
+        EmailConsumer,
+      ],
+    })
       .compile();
 
-    expect(module.get(EmailSender)).toBeInstanceOf(NodemailerEmailSender);
+    expect(module.get(EmailConsumer).sender).toBeInstanceOf(
+      NodemailerEmailSender,
+    );
   });
 });
