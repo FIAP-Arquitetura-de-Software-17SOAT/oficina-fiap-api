@@ -8,9 +8,16 @@ import {
   BudgetItemType,
 } from '../src/modules/budget/entities/budget.entity';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
+import { InMemoryClientRepository } from './in-memory-client.repository';
+import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
+import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
+import { allowAuthenticated } from './allow-authenticated';
 
 describe('InMemoryBudgetRepository', () => {
   it('does not share mutable budget instances with persisted state', async () => {
@@ -76,33 +83,88 @@ describe('InMemoryBudgetRepository', () => {
 describe('Budget (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
+  // Aceitar ou recusar um orcamento mexe na ordem de servico, entao o cenario
+  // minimo agora inclui cliente, veiculo e uma OS aguardando aprovacao.
+  let serviceOrderId: string;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue({})
-      .overrideProvider(BudgetRepository)
-      .useValue(new InMemoryBudgetRepository())
-      .compile();
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule],
+      })
+        .overrideProvider(PrismaService)
+        .useValue({})
+        .overrideProvider(BudgetRepository)
+        .useValue(new InMemoryBudgetRepository())
+        .overrideProvider(ClientRepository)
+        .useValue(new InMemoryClientRepository())
+        .overrideProvider(VehicleRepository)
+        .useValue(new InMemoryVehicleRepository())
+        .overrideProvider(ServiceOrderRepository)
+        .useValue(new InMemoryServiceOrderRepository()),
+    ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
     http = app.getHttpServer();
+
+    serviceOrderId = await openServiceOrderAwaitingApproval();
   });
 
   afterEach(async () => {
     await app.close();
   });
 
+  const openServiceOrderAwaitingApproval = async (): Promise<string> => {
+    const client = await request(http)
+      .post('/api/v1/client')
+      .send({
+        name: 'Maria Silva',
+        document: '529.982.247-25',
+        email: 'maria@example.com',
+        phone: '(11) 99999-8888',
+      })
+      .expect(201);
+
+    const vehicle = await request(http)
+      .post('/api/v1/vehicle')
+      .send({
+        clientId: client.body.id,
+        plate: 'ABC1D23',
+        brand: 'Fiat',
+        model: 'Argo',
+        year: 2022,
+      })
+      .expect(201);
+
+    const serviceOrder = await request(http)
+      .post('/api/v1/service-order')
+      .send({
+        clientId: client.body.id,
+        vehicleId: vehicle.body.id,
+        description: 'Barulho no motor',
+      })
+      .expect(201);
+
+    const id = serviceOrder.body.id as string;
+
+    // Para em IN_DIAGNOSIS de propósito: quem move a OS para
+    // AWAITING_APPROVAL é a política de geração do orçamento.
+    await request(http)
+      .patch(`/api/v1/service-order/${id}/assign`)
+      .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
+      .expect(200);
+
+    return id;
+  };
+
   const createBudget = async () => {
     const response = await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Oil change',
@@ -130,7 +192,7 @@ describe('Budget (e2e)', () => {
     const create = await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Oil change',
@@ -198,7 +260,7 @@ describe('Budget (e2e)', () => {
       });
 
     await request(http)
-      .get('/api/v1/budgets?serviceOrderId=service-123')
+      .get(`/api/v1/budgets?serviceOrderId=${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveLength(1);
@@ -228,7 +290,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Precision overflow',
@@ -243,7 +305,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post('/api/v1/budgets')
       .send({
-        serviceOrderId: 'service-123',
+        serviceOrderId,
         items: [
           {
             description: 'Range overflow',

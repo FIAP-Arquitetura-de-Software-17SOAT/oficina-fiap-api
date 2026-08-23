@@ -19,6 +19,23 @@ datasource db {
 
 enum Role {
   ADMIN
+  EMPLOYEE
+}
+
+enum PartType {
+  PART
+  SUPPLY
+}
+
+enum MeasurementUnit {
+  UNIT
+  LITER
+  KILOGRAM
+}
+
+enum StockMovementType {
+  IN
+  OUT
 }
 
 model User {
@@ -62,6 +79,37 @@ model Client {
   vehicles      Vehicle[]
 
   @@map("client")
+}
+
+model Part {
+  id              String          @id @db.Uuid
+  code            String          @unique
+  name            String
+  description     String?
+  type            PartType
+  unit            MeasurementUnit
+  unitPriceCents  Int
+  quantity        Int
+  minimumQuantity Int
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  stockMovements  StockMovement[]
+  budgetItems     BudgetItem[]
+
+  @@map("part")
+}
+
+model StockMovement {
+  id             String            @id @db.Uuid
+  idempotencyKey String            @unique
+  type           StockMovementType
+  quantity       Int
+  partId         String            @db.Uuid
+  part           Part              @relation(fields: [partId], references: [id], onDelete: Restrict)
+  createdAt      DateTime          @default(now())
+
+  @@index([partId])
+  @@map("stock_movement")
 }
 
 model PurchaseOrder {
@@ -158,6 +206,7 @@ model Budget {
 model BudgetItem {
   id             String         @id @db.Uuid
   budgetId       String         @db.Uuid
+  partId         String?        @db.Uuid
   description    String
   type           BudgetItemType
   quantity       Decimal        @db.Decimal(10, 2)
@@ -165,7 +214,9 @@ model BudgetItem {
   subtotalCents  Int
 
   budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  part   Part?  @relation(fields: [partId], references: [id], onDelete: Restrict)
 
+  @@index([partId])
   @@map("budget_item")
 }
 
@@ -198,6 +249,13 @@ model ServiceOrder {
   description        String
   status             ServiceOrderStatus
   cancellationReason String?
+  // O mecânico é ator do Event Storming, não agregado: guardamos só o id.
+  mechanicId         String?            @db.Uuid
+  // Início do timer. O tempo de execução é assignedAt -> completedAt.
+  assignedAt         DateTime?
+  // Registro de que o estoque atendeu esta OS. Sem ele a OS não entra em
+  // execução: é o que impede marcar serviço feito sem peça ter saído.
+  partsDispatchedAt  DateTime?
   completedAt        DateTime?
 
   createdAt DateTime @default(now())
@@ -209,6 +267,7 @@ model ServiceOrder {
 
   @@index([clientId])
   @@index([vehicleId])
+  @@index([mechanicId])
   @@map("service_order")
 }
 

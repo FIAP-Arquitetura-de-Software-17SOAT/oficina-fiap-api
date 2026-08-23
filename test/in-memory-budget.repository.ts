@@ -34,6 +34,26 @@ export class InMemoryBudgetRepository {
     );
   }
 
+  private updateWhenStatus(
+    budget: Budget,
+    expectedStatus: BudgetStatus,
+    expectedUpdatedAt: Date,
+  ): Promise<Budget | null> {
+    const stored = this.budgets.get(budget.getId());
+
+    if (
+      !stored ||
+      stored.getStatus() !== expectedStatus ||
+      stored.getUpdatedAt().getTime() !== expectedUpdatedAt.getTime()
+    ) {
+      return Promise.resolve(null);
+    }
+
+    const persisted = this.clone(budget);
+    this.budgets.set(persisted.getId(), persisted);
+    return Promise.resolve(this.clone(persisted));
+  }
+
   findById(id: string): Promise<Budget | null> {
     const budget = this.budgets.get(id);
     return Promise.resolve(budget ? this.clone(budget) : null);
@@ -56,32 +76,13 @@ export class InMemoryBudgetRepository {
     return Promise.resolve(versions.length ? Math.max(...versions) : 0);
   }
 
-  private updateWhenStatus(
-    budget: Budget,
-    expectedStatus: BudgetStatus,
-    expectedUpdatedAt: Date,
-  ): Promise<Budget | null> {
-    const stored = this.budgets.get(budget.getId());
-
-    if (
-      !stored ||
-      stored.getStatus() !== expectedStatus ||
-      stored.getUpdatedAt().getTime() !== expectedUpdatedAt.getTime()
-    ) {
-      return Promise.resolve(null);
-    }
-
-    const persisted = this.clone(budget);
-    this.budgets.set(persisted.getId(), persisted);
-    return Promise.resolve(this.clone(persisted));
-  }
-
   private clone(budget: Budget): Budget {
     return Budget.restore(budget.getId(), {
       serviceOrderId: budget.getServiceOrderId(),
       version: budget.getVersion(),
       items: budget.getItems().map((item) => ({
         id: item.getId(),
+        partId: item.getPartId(),
         description: item.getDescription(),
         type: item.getType(),
         quantity: item.getQuantity(),

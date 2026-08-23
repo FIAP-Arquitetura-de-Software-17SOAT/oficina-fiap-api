@@ -64,6 +64,20 @@ export class PurchaseOrderRepository {
         updatedAt: purchaseOrder.getUpdatedAt(),
 
         deliveredAt: purchaseOrder.getDeliveredAt(),
+
+        // Pedidos abertos pela politica de necessidade de compra ja nascem com
+        // itens; os criados pela API nascem vazios e o map fica sem elementos.
+        items: {
+          create: purchaseOrder.getItems().map((item) => ({
+            id: item.getId(),
+
+            partId: item.getPecaId(),
+
+            quantity: item.getQuantity().value,
+
+            unitPriceCents: item.getUnitPrice().valueInCents,
+          })),
+        },
       },
 
       include: {
@@ -72,6 +86,16 @@ export class PurchaseOrderRepository {
     });
 
     return this.toDomain(row);
+  }
+
+  /**
+   * Base do sequencial de `PC-AAAA-NNNN` nos pedidos abertos automaticamente
+   * pela politica de necessidade de compra.
+   */
+  async countByYear(year: number): Promise<number> {
+    return this.prisma.purchaseOrder.count({
+      where: { number: { startsWith: `PC-${year}-` } },
+    });
   }
 
   async findAll(): Promise<PurchaseOrder[]> {

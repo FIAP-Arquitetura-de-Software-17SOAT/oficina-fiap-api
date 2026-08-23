@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
@@ -17,7 +17,7 @@ export class OpenServiceOrderDto {
   @ApiProperty({
     example: 'a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
     description:
-      'Id do veículo. Não é validado nesta fase (módulo Veículo ainda não existe).',
+      'Id do veículo. Precisa existir e pertencer ao cliente informado.',
   })
   @Transform(trim)
   @IsString()
@@ -29,6 +29,18 @@ export class OpenServiceOrderDto {
   @IsString()
   @IsNotEmpty()
   description: string;
+}
+
+export class AssignMechanicDto {
+  @ApiProperty({
+    format: 'uuid',
+    description:
+      'Id do mecânico que assume a OS. Atribuir move a OS para IN_DIAGNOSIS ' +
+      'e inicia o timer de execução.',
+  })
+  @Transform(trim)
+  @IsUUID()
+  mechanicId: string;
 }
 
 export class CancelServiceOrderDto {
@@ -69,6 +81,37 @@ export class ServiceOrderResponseDto {
   @ApiProperty({ nullable: true, type: String })
   cancellationReason: string | null;
 
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  mechanicId: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description: 'Início do timer: quando a OS foi atribuída ao mecânico.',
+  })
+  assignedAt: Date | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description:
+      'Quando o estoque registrou que atendeu a OS. Nulo enquanto as peças ' +
+      'não forem despachadas — e sem isso a OS não entra em execução.',
+  })
+  partsDispatchedAt: Date | null;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  completedAt: Date | null;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: 'assignedAt até completedAt, em milissegundos.',
+  })
+  executionTimeMs: number | null;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
@@ -81,7 +124,7 @@ export class AverageExecutionTimeResponseDto {
     type: Number,
     nullable: true,
     description:
-      'Tempo médio de execução em milissegundos (createdAt até completedAt) das OS finalizadas. Null se nenhuma OS foi finalizada ainda.',
+      'Tempo médio de execução em milissegundos (assignedAt até completedAt) das OS finalizadas que passaram por atribuição a um mecânico. Null se ainda não há amostra.',
   })
   averageExecutionTimeMs: number | null;
 

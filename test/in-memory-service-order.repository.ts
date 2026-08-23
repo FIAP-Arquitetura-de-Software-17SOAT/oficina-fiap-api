@@ -21,13 +21,43 @@ export class InMemoryServiceOrderRepository {
     );
   }
 
-  findCompleted(): Promise<ServiceOrder[]> {
+  findByClientId(clientId: string): Promise<ServiceOrder[]> {
     return Promise.resolve(
       Array.from(this.serviceOrders.values())
-        .filter((order) => order.getCompletedAt() !== null)
+        .filter((order) => order.getClientId() === clientId)
         .sort(
           (a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime(),
         ),
+    );
+  }
+
+  findCompleted(): Promise<ServiceOrder[]> {
+    return Promise.resolve(
+      Array.from(this.serviceOrders.values())
+        .filter(
+          (order) =>
+            order.getCompletedAt() !== null && order.getAssignedAt() !== null,
+        )
+        .sort(
+          (a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime(),
+        ),
+    );
+  }
+
+  findActiveByMechanicId(mechanicId: string): Promise<ServiceOrder | null> {
+    const active = [
+      'IN_DIAGNOSIS',
+      'AWAITING_APPROVAL',
+      'AWAITING_PARTS',
+      'IN_PROGRESS',
+    ];
+
+    return Promise.resolve(
+      Array.from(this.serviceOrders.values()).find(
+        (order) =>
+          order.getMechanicId() === mechanicId &&
+          active.includes(order.getStatus()),
+      ) ?? null,
     );
   }
 

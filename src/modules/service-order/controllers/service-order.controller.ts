@@ -8,14 +8,18 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import {
+  AssignMechanicDto,
   AverageExecutionTimeResponseDto,
   CancelServiceOrderDto,
   OpenServiceOrderDto,
@@ -23,7 +27,12 @@ import {
 } from '../dto/service-order.dto';
 import { ServiceOrderMapper } from '../mappers/service-order.mapper';
 import { ServiceOrderService } from '../services/service-order.service';
+import { Role } from '../../../../generated/prisma/enums';
+import { Roles } from '../../../shared/http/auth/roles.decorator';
 
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@Roles(Role.ADMIN, Role.EMPLOYEE)
 @ApiTags('service-order')
 @Controller('service-order')
 export class ServiceOrderController {
@@ -60,6 +69,23 @@ export class ServiceOrderController {
     return this.serviceOrderService.getAverageExecutionTime();
   }
 
+  @Get('client/:clientId')
+  @ApiOperation({
+    summary: 'Acompanhamento: ordens de serviço de um cliente',
+    description:
+      'Retorna as OS do cliente, da mais recente para a mais antiga, com o ' +
+      'status atual de cada uma. Lista vazia quando o cliente não tem OS.',
+  })
+  @ApiOkResponse({ type: ServiceOrderResponseDto, isArray: true })
+  @ApiNotFoundResponse({ description: 'Client not found' })
+  async findByClientId(
+    @Param('clientId', ParseUUIDPipe) clientId: string,
+  ): Promise<ServiceOrderResponseDto[]> {
+    return ServiceOrderMapper.toResponseList(
+      await this.serviceOrderService.findByClientId(clientId),
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Busca uma ordem de serviço por id' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
@@ -72,37 +98,43 @@ export class ServiceOrderController {
     );
   }
 
-  @Patch(':id/start-diagnosis')
-  @ApiOperation({ summary: 'Inicia o diagnóstico da OS' })
+  @Patch(':id/assign')
+  @ApiOperation({
+    summary: 'Atribui a OS a um mecânico',
+    description:
+      'Move a OS para IN_DIAGNOSIS e inicia o timer de execução. Um mecânico ' +
+      'não pode assumir outra OS antes de finalizar a atual.',
+  })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
+  @ApiBadRequestResponse({
+    description: 'Transição inválida ou OS já atribuída',
+  })
+  @ApiConflictResponse({ description: 'Mecânico já tem uma OS em aberto' })
   @ApiNotFoundResponse({ description: 'Service order not found' })
-  async startDiagnosis(
+  async assignToMechanic(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignMechanicDto,
   ): Promise<ServiceOrderResponseDto> {
     return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.startDiagnosis(id),
+      await this.serviceOrderService.assignToMechanic(id, dto),
     );
   }
 
-  @Patch(':id/await-approval')
-  @ApiOperation({ summary: 'Coloca a OS aguardando aprovação do orçamento' })
-  @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
-  @ApiNotFoundResponse({ description: 'Service order not found' })
-  async awaitApproval(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ServiceOrderResponseDto> {
+  /**
+   * Sem rota HTTP de propósito. Quem move a OS para AWAITING_APPROVAL é a
+   * política de geração do orçamento, que chama este método.
+   */
+  async awaitApproval(id: string): Promise<ServiceOrderResponseDto> {
     return ServiceOrderMapper.toResponse(
       await this.serviceOrderService.awaitApproval(id),
     );
   }
 
-  @Patch(':id/await-parts')
-  @ApiOperation({ summary: 'Coloca a OS aguardando peças' })
-  @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
-  @ApiNotFoundResponse({ description: 'Service order not found' })
+  /**
+   * Sem rota HTTP de propósito. Quem move a OS para AWAITING_PARTS é a política
+   * de aceite do orçamento, que chama este método. Expor como endpoint criaria
+   * um caminho paralelo ao fluxo.
+   */
   async awaitParts(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ServiceOrderResponseDto> {
@@ -111,16 +143,13 @@ export class ServiceOrderController {
     );
   }
 
-  @Patch(':id/start-progress')
-  @ApiOperation({ summary: 'Inicia a execução do serviço' })
-  @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
-  @ApiNotFoundResponse({ description: 'Service order not found' })
-  async startProgress(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ServiceOrderResponseDto> {
+  /**
+   * Sem rota HTTP de propósito. A OS só entra em execução pelas mãos do
+   * estoque, depois de as peças serem atendidas — ver PartsDispatchService.
+   */
+  async registerPartsDispatched(id: string): Promise<ServiceOrderResponseDto> {
     return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.startProgress(id),
+      await this.serviceOrderService.registerPartsDispatched(id),
     );
   }
 

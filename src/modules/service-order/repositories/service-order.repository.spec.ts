@@ -102,14 +102,14 @@ describe('ServiceOrderRepository', () => {
     expect(serviceOrders[0].getId()).toBe(row.id);
   });
 
-  it('findCompleted filtra pela consulta apenas OS com completedAt preenchido', async () => {
+  it('findCompleted exige completedAt e assignedAt: sem timer não há tempo de execução', async () => {
     const completedRow = { ...row, completedAt: new Date() };
     prisma.serviceOrder.findMany.mockResolvedValue([completedRow]);
 
     const serviceOrders = await repository.findCompleted();
 
     expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith({
-      where: { completedAt: { not: null } },
+      where: { completedAt: { not: null }, assignedAt: { not: null } },
       orderBy: { createdAt: 'desc' },
     });
     expect(serviceOrders).toHaveLength(1);
@@ -144,6 +144,9 @@ describe('ServiceOrderRepository', () => {
     expect(call.data).toEqual({
       status: 'CANCELLED',
       cancellationReason: 'Cliente desistiu',
+      mechanicId: null,
+      assignedAt: null,
+      partsDispatchedAt: null,
       completedAt: null,
       updatedAt: serviceOrder.getUpdatedAt(),
     });

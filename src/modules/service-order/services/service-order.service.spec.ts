@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Client } from '../../client/entities/client.entity';
 import { ClientRepository } from '../../client/repositories/client.repository';
+import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
@@ -14,6 +15,12 @@ const makeServiceOrder = (status = ServiceOrderStatus.RECEIVED) =>
     vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
     description: 'Barulho no motor',
     status,
+    // Depois de RECEIVED a OS sempre tem mecânico: é a atribuição que a tira
+    // de lá, e sem mecânico ela não entra em execução.
+    mechanicId:
+      status === ServiceOrderStatus.RECEIVED
+        ? null
+        : 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
   });
 
 const makeClient = () =>
@@ -31,14 +38,23 @@ describe('ServiceOrderService', () => {
   let service: ServiceOrderService;
   let repository: MockedRepository;
   let clientRepository: MockedClientRepository;
+  let vehicleController: { findById: jest.Mock };
 
   beforeEach(async () => {
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findByClientId: jest.fn(),
       findCompleted: jest.fn(),
+      findActiveByMechanicId: jest.fn().mockResolvedValue(null),
       update: jest.fn(),
+    };
+    // por padrão o veículo existe e pertence ao cliente da OS
+    vehicleController = {
+      findById: jest.fn().mockResolvedValue({
+        clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      }),
     };
     clientRepository = {
       create: jest.fn(),
@@ -55,6 +71,7 @@ describe('ServiceOrderService', () => {
         ServiceOrderService,
         { provide: ServiceOrderRepository, useValue: repository },
         { provide: ClientRepository, useValue: clientRepository },
+        { provide: VehicleController, useValue: vehicleController },
       ],
     }).compile();
 
@@ -62,6 +79,18 @@ describe('ServiceOrderService', () => {
   });
 
   describe('openServiceOrder', () => {
+    it('recusa abrir OS com veículo de outro cliente', async () => {
+      clientRepository.findById.mockResolvedValue({});
+      vehicleController.findById.mockResolvedValue({
+        clientId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      });
+
+      await expect(service.openServiceOrder(dto)).rejects.toThrow(
+        'Vehicle does not belong to the informed client',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
     const dto = {
       clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
@@ -136,14 +165,17 @@ describe('ServiceOrderService', () => {
       });
     });
 
-    it('calcula a média entre createdAt e completedAt das OS finalizadas', async () => {
+    it('calcula a média entre assignedAt e completedAt das OS finalizadas', async () => {
       const createdAt = new Date('2026-01-01T00:00:00.000Z');
+      // O timer começa na atribuição ao mecânico, não na abertura da OS.
+      const assignedAt = new Date('2026-01-01T00:00:00.000Z');
       const completedFast = ServiceOrder.restore('a', {
         clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
         vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
         description: 'x',
         status: ServiceOrderStatus.COMPLETED,
         createdAt,
+        assignedAt,
         completedAt: new Date('2026-01-01T01:00:00.000Z'), // 1h
       });
       const completedSlow = ServiceOrder.restore('b', {
@@ -152,6 +184,7 @@ describe('ServiceOrderService', () => {
         description: 'x',
         status: ServiceOrderStatus.DELIVERED,
         createdAt,
+        assignedAt,
         completedAt: new Date('2026-01-01T03:00:00.000Z'), // 3h
       });
       repository.findCompleted.mockResolvedValue([
@@ -168,11 +201,6 @@ describe('ServiceOrderService', () => {
 
   describe.each([
     [
-      'startDiagnosis',
-      ServiceOrderStatus.RECEIVED,
-      ServiceOrderStatus.IN_DIAGNOSIS,
-    ],
-    [
       'awaitApproval',
       ServiceOrderStatus.IN_DIAGNOSIS,
       ServiceOrderStatus.AWAITING_APPROVAL,
@@ -183,7 +211,7 @@ describe('ServiceOrderService', () => {
       ServiceOrderStatus.AWAITING_PARTS,
     ],
     [
-      'startProgress',
+      'registerPartsDispatched',
       ServiceOrderStatus.AWAITING_PARTS,
       ServiceOrderStatus.IN_PROGRESS,
     ],
@@ -251,6 +279,63 @@ describe('ServiceOrderService', () => {
         service.cancel(serviceOrder.getId(), { reason: '  ' }),
       ).rejects.toThrow(DomainException);
       expect(repository.update).not.toHaveBeenCalled();
+    });
+  });
+  describe('assignToMechanic', () => {
+    const MECHANIC = 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+    it('atribui, inicia o timer e persiste', async () => {
+      const os = makeServiceOrder();
+      repository.findById.mockResolvedValue(os);
+      repository.findActiveByMechanicId.mockResolvedValue(null);
+      repository.update.mockImplementation((entity: ServiceOrder) => entity);
+
+      const result = await service.assignToMechanic('id', {
+        mechanicId: MECHANIC,
+      });
+
+      expect(result.getStatus()).toBe(ServiceOrderStatus.IN_DIAGNOSIS);
+      expect(result.getAssignedAt()).toBeInstanceOf(Date);
+      expect(repository.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('recusa quando o mecânico já tem OS em aberto', async () => {
+      const emAberto = makeServiceOrder();
+      repository.findById.mockResolvedValue(makeServiceOrder());
+      repository.findActiveByMechanicId.mockResolvedValue(emAberto);
+
+      await expect(
+        service.assignToMechanic('id', { mechanicId: MECHANIC }),
+      ).rejects.toThrow('Mechanic already has an open service order');
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+  });
+  describe('findByClientId', () => {
+    const CLIENT = 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+    it('devolve as OS do cliente para acompanhamento', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      const orders = [makeServiceOrder()];
+      repository.findByClientId.mockResolvedValue(orders);
+
+      await expect(service.findByClientId(CLIENT)).resolves.toBe(orders);
+      expect(repository.findByClientId).toHaveBeenCalledWith(CLIENT);
+    });
+
+    it('cliente sem OS devolve lista vazia, não erro', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      repository.findByClientId.mockResolvedValue([]);
+
+      await expect(service.findByClientId(CLIENT)).resolves.toEqual([]);
+    });
+
+    it('404 quando o cliente não existe', async () => {
+      clientRepository.findById.mockResolvedValue(null);
+
+      await expect(service.findByClientId(CLIENT)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(repository.findByClientId).not.toHaveBeenCalled();
     });
   });
 });

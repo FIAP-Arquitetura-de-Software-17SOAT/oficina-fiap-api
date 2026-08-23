@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp, setupSwagger } from '../src/setup-app';
 import { AuthTestModule } from './auth-test.controller';
+import { allowAuthenticated } from './allow-authenticated';
 
 /**
  * O Swagger é entregável do Tech Challenge. Estes testes falham se alguém
@@ -18,12 +19,13 @@ describe('Swagger', () => {
   let document: OpenAPIObject;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule, AuthTestModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue({})
-      .compile();
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule, AuthTestModule],
+      })
+        .overrideProvider(PrismaService)
+        .useValue({}),
+    ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),
@@ -62,6 +64,55 @@ describe('Swagger', () => {
       );
     },
   );
+
+  it('documents protected stock CRUD routes and their schemas', () => {
+    const collection = document.paths['/api/v1/stock'];
+    const item = document.paths['/api/v1/stock/{id}'];
+
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining(['/api/v1/stock', '/api/v1/stock/{id}']),
+    );
+    expect(Object.keys(collection)).toEqual(
+      expect.arrayContaining(['post', 'get']),
+    );
+    expect(Object.keys(item)).toEqual(
+      expect.arrayContaining(['get', 'patch', 'delete']),
+    );
+    expect(document.components?.schemas).toEqual(
+      expect.objectContaining({
+        CreatePartDto: expect.any(Object),
+        UpdatePartDto: expect.any(Object),
+        PartResponseDto: expect.any(Object),
+      }),
+    );
+
+    for (const operation of [
+      collection.post!,
+      collection.get!,
+      item.get!,
+      item.patch!,
+      item.delete!,
+    ]) {
+      expect(operation.summary).toBeTruthy();
+      expect(operation.security).toEqual([{ bearer: [] }]);
+      expect(Object.keys(operation.responses)).toEqual(
+        expect.arrayContaining(['401', '403']),
+      );
+    }
+
+    expect(Object.keys(collection.post!.responses)).toEqual(
+      expect.arrayContaining(['201', '400', '409']),
+    );
+    expect(Object.keys(item.get!.responses)).toEqual(
+      expect.arrayContaining(['200', '400', '404']),
+    );
+    expect(Object.keys(item.patch!.responses)).toEqual(
+      expect.arrayContaining(['200', '400', '404', '409']),
+    );
+    expect(Object.keys(item.delete!.responses)).toEqual(
+      expect.arrayContaining(['204', '400', '404']),
+    );
+  });
 
   it('expõe os schemas de request e response', () => {
     expect(Object.keys(document.components?.schemas ?? {})).toEqual(
@@ -135,8 +186,16 @@ describe('Swagger', () => {
     expect(document.paths['/api/v1/test-auth/admin'].get!.security).toEqual([
       { bearer: [] },
     ]);
-    expect(document.paths['/api/v1/client'].get!.security).toBeUndefined();
+    // A proteção virou o padrão: as rotas administrativas declaram bearer, e só
+    // health e autenticação ficam sem.
+    expect(document.paths['/api/v1/client'].get!.security).toEqual([
+      { bearer: [] },
+    ]);
+    expect(document.paths['/api/v1/service-order'].get!.security).toEqual([
+      { bearer: [] },
+    ]);
     expect(document.paths['/api/v1/auth/login'].post!.security).toBeUndefined();
+    expect(document.paths['/api/v1/health'].get!.security).toBeUndefined();
   });
 
   it('documenta 401 e 403 nas rotas protegidas conforme aplicável', () => {
@@ -220,15 +279,29 @@ describe('Swagger', () => {
         '/api/v1/service-order',
         '/api/v1/service-order/{id}',
         '/api/v1/service-order/metrics/average-execution-time',
-        '/api/v1/service-order/{id}/start-diagnosis',
-        '/api/v1/service-order/{id}/await-approval',
-        '/api/v1/service-order/{id}/await-parts',
-        '/api/v1/service-order/{id}/start-progress',
+        '/api/v1/service-order/client/{clientId}',
+        '/api/v1/service-order/{id}/assign',
         '/api/v1/service-order/{id}/complete',
         '/api/v1/service-order/{id}/deliver',
         '/api/v1/service-order/{id}/cancel',
       ]),
     );
+  });
+
+  it('não expõe as transições que as políticas disparam', () => {
+    // await-parts e start-progress são chamados pelo aceite do orçamento e pelo
+    // despacho de estoque; expor como rota abriria um caminho paralelo ao fluxo.
+    // start-diagnosis saiu porque assign faz a mesma transição e liga o timer.
+    for (const removed of [
+      'start-diagnosis',
+      'await-approval',
+      'await-parts',
+      'start-progress',
+    ]) {
+      expect(
+        document.paths[`/api/v1/service-order/{id}/${removed}`],
+      ).toBeUndefined();
+    }
   });
 
   it('documenta todos os verbos das rotas de ordem de serviço', () => {
@@ -239,15 +312,7 @@ describe('Swagger', () => {
       expect.arrayContaining(['get']),
     );
 
-    for (const action of [
-      'start-diagnosis',
-      'await-approval',
-      'await-parts',
-      'start-progress',
-      'complete',
-      'deliver',
-      'cancel',
-    ]) {
+    for (const action of ['assign', 'complete', 'deliver', 'cancel']) {
       expect(
         Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
       ).toEqual(expect.arrayContaining(['patch']));

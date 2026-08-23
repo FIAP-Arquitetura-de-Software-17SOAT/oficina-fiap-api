@@ -50,6 +50,7 @@ describe('BudgetMapper', () => {
       items: [
         {
           id: 'item-123',
+          partId: null,
           description: 'Oil filter',
           type: BudgetItemType.PART,
           quantity: { toString: () => '2.5' },
