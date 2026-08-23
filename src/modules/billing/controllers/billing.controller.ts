@@ -15,6 +15,7 @@ import {
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import {
+  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -110,6 +111,9 @@ export class BillingController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renova link de pagamento vencido com multa' })
   @ApiOkResponse({ type: BillingResponseDto })
+  @ApiBadRequestResponse({
+    description: 'Billing payment link has not expired yet',
+  })
   @ApiConflictResponse({ description: 'Paid billing is terminal' })
   @ApiNotFoundResponse({ description: 'Billing not found' })
   async renewPaymentLink(

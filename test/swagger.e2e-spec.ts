@@ -265,6 +265,27 @@ describe('Swagger', () => {
     }
   });
 
+  it('documents billing routes including payment-link renewal', () => {
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining([
+        '/api/v1/billings',
+        '/api/v1/billings/{id}',
+        '/api/v1/billings/{id}/expire',
+        '/api/v1/billings/{id}/renew-payment-link',
+        '/api/v1/billings/{id}/deliver-service-order',
+        '/api/v1/billings/stripe/webhook',
+      ]),
+    );
+
+    const renew =
+      document.paths['/api/v1/billings/{id}/renew-payment-link'].post!;
+
+    expect(renew.summary).toBe('Renova link de pagamento vencido com multa');
+    expect(Object.keys(renew.responses)).toEqual(
+      expect.arrayContaining(['200', '400', '404', '409']),
+    );
+  });
+
   it('serve a UI e o JSON em /api/v1/docs', async () => {
     await request(http)
       .get('/api/v1/docs')
