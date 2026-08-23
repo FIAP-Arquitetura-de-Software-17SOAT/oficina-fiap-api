@@ -4,6 +4,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
+import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
+import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
 import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
@@ -37,10 +39,12 @@ describe('Billing (integracao)', () => {
       .useValue(new InMemoryBudgetRepository())
       .overrideProvider(BillingRepository)
       .useValue(new InMemoryBillingRepository())
+      .overrideProvider(PaymentGateway)
+      .useValue(new FakePaymentGateway())
       .compile();
 
     app = configureApp(
-      moduleFixture.createNestApplication(),
+      moduleFixture.createNestApplication({ rawBody: true }),
     ) as INestApplication<App>;
     await app.init();
     http = app.getHttpServer();
@@ -145,11 +149,12 @@ describe('Billing (integracao)', () => {
 
     expect(response.body).toMatchObject({
       serviceOrderId,
-      status: 'OPEN',
-      totalAmount: 150,
-      paidAmount: 0,
-      balanceAmount: 150,
-      payments: [],
+      budgetId: latestBudget.id,
+      status: 'WAITING_PAYMENT',
+      amount: 150,
+      paymentLink: expect.stringContaining('https://fake.stripe.test/checkout/'),
+      paymentMethod: null,
+      paidAt: null,
     });
 
     const persistedBudget = await request(http)
@@ -174,7 +179,7 @@ describe('Billing (integracao)', () => {
     });
   });
 
-  it('registers partial and final payments', async () => {
+  it('registers a payment webhook once when Stripe retries it', async () => {
     const { serviceOrderId } =
       await createCompletedServiceOrderWithAcceptedBudget();
     const billing = await request(http)
@@ -182,32 +187,39 @@ describe('Billing (integracao)', () => {
       .send({ serviceOrderId })
       .expect(201);
 
-    const partial = await request(http)
-      .post(`/api/v1/billings/${billing.body.id}/payments`)
-      .send({ amount: 50, method: PaymentMethod.PIX })
-      .expect(201);
+    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    gateway.queueWebhookResult({
+      type: 'payment_confirmed',
+      gatewayTransactionId: billing.body.gatewayTransactionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
 
-    expect(partial.body.status).toBe('PARTIALLY_PAID');
-    expect(partial.body.balanceAmount).toBe(100);
+    await request(http)
+      .post('/api/v1/billings/stripe/webhook')
+      .set('stripe-signature', 'fake-signature')
+      .send({ id: 'evt_1' })
+      .expect(204);
 
-    const persistedPartial = await request(http)
+    gateway.queueWebhookResult({
+      type: 'payment_confirmed',
+      gatewayTransactionId: billing.body.gatewayTransactionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:01:00.000Z'),
+    });
+
+    await request(http)
+      .post('/api/v1/billings/stripe/webhook')
+      .set('stripe-signature', 'fake-signature')
+      .send({ id: 'evt_1_duplicate' })
+      .expect(204);
+
+    const paid = await request(http)
       .get(`/api/v1/billings/${billing.body.id}`)
       .expect(200);
 
-    expect(persistedPartial.body).toMatchObject({
-      status: 'PARTIALLY_PAID',
-      paidAmount: 50,
-      balanceAmount: 100,
-    });
-    expect(persistedPartial.body.payments).toHaveLength(1);
-
-    const paid = await request(http)
-      .post(`/api/v1/billings/${billing.body.id}/payments`)
-      .send({ amount: 100, method: PaymentMethod.CREDIT_CARD })
-      .expect(201);
-
     expect(paid.body.status).toBe('PAID');
-    expect(paid.body.balanceAmount).toBe(0);
+    expect(paid.body.paidAt).toBe('2026-08-22T10:00:00.000Z');
   });
 
   it('blocks billing delivery before payment and allows after payment', async () => {
@@ -222,10 +234,19 @@ describe('Billing (integracao)', () => {
       .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)
       .expect(409);
 
+    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    gateway.queueWebhookResult({
+      type: 'payment_confirmed',
+      gatewayTransactionId: billing.body.gatewayTransactionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
     await request(http)
-      .post(`/api/v1/billings/${billing.body.id}/payments`)
-      .send({ amount: 150, method: PaymentMethod.CASH })
-      .expect(201);
+      .post('/api/v1/billings/stripe/webhook')
+      .set('stripe-signature', 'fake-signature')
+      .send({ id: 'evt_delivery' })
+      .expect(204);
 
     await request(http)
       .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)

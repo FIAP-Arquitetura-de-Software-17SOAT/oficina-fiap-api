@@ -247,6 +247,22 @@ uma rota sem documentar ou mudar o response sem atualizar o DTO.
 O `coverageThreshold` está em 80% (branches, funções, linhas e statements),
 conforme exigido pelo Tech Challenge.
 
+## Stripe test mode
+
+This project uses Stripe Checkout Sessions through the Billing payment gateway.
+Use only Stripe test mode keys in local development:
+
+```env
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+PAYMENT_SUCCESS_URL=http://localhost:3000/api/v1/billings/payment-success
+PAYMENT_CANCEL_URL=http://localhost:3000/api/v1/billings/payment-cancel
+```
+
+For an interactive successful card payment in Stripe Checkout, use card number
+`4242 4242 4242 4242`, any future expiration date, any CVC, and any postal code.
+Stripe test-mode transactions do not move real money.
+
 ## Estrutura
 
 ```
