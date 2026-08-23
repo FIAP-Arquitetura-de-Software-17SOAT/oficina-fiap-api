@@ -265,6 +265,19 @@ describe('BillingService', () => {
       [created.getId(), 'cs_test_first'],
       [created.getId(), 'cs_test_second'],
     ]);
+
+    repository.findByGatewayTransactionId.mockResolvedValue(retried);
+    paymentGateway.parsePaymentWebhook.mockResolvedValue({
+      type: 'payment_confirmed',
+      gatewayTransactionId: 'cs_test_first',
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    await expect(
+      service.handlePaymentWebhook(Buffer.from('{}'), 'stripe-signature'),
+    ).resolves.toBeUndefined();
+    expect(retried.getStatus()).toBe(BillingStatus.PAID);
   });
 
   it('handles duplicated Stripe webhook idempotently', async () => {

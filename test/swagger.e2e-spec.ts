@@ -324,6 +324,25 @@ describe('Swagger', () => {
     ).toEqual(expect.arrayContaining(['get']));
   });
 
+  it('uses ASCII-only Swagger operation metadata for service orders', () => {
+    const serviceOrderOperations = Object.entries(document.paths)
+      .filter(([path]) => path.startsWith('/api/v1/service-order'))
+      .flatMap(([, pathItem]) =>
+        Object.values(pathItem ?? {}).filter(
+          (
+            operation,
+          ): operation is { summary?: string; description?: string } =>
+            typeof operation === 'object' && operation !== null,
+        ),
+      );
+
+    for (const operation of serviceOrderOperations) {
+      expect(
+        `${operation.summary ?? ''}${operation.description ?? ''}`,
+      ).toMatch(/^[\x00-\x7F]*$/);
+    }
+  });
+
   it('expõe os schemas de request e response da ordem de serviço', () => {
     expect(Object.keys(document.components?.schemas ?? {})).toEqual(
       expect.arrayContaining([
