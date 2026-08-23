@@ -147,6 +147,45 @@ describe('BillingService', () => {
     expect(repository.update).toHaveBeenCalledWith(billing, updatedAt);
   });
 
+  it('recovers a pending billing after gateway link creation fails', async () => {
+    const createdAt = new Date('2026-08-22T09:00:00.000Z');
+    const created = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      createdAt,
+      updatedAt: createdAt,
+    });
+    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
+    budgetService.findByServiceOrderId.mockResolvedValue([acceptedBudget(1, 150)]);
+    repository.findByServiceOrderId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(created);
+    repository.create.mockResolvedValue(created);
+    repository.update.mockImplementation(async (billing) => billing);
+    paymentGateway.createPaymentLink
+      .mockRejectedValueOnce(new Error('Stripe unavailable'))
+      .mockResolvedValueOnce({
+        paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_recovered',
+        gatewayTransactionId: 'cs_test_recovered',
+        expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+      });
+
+    await expect(service.generateForServiceOrder({ serviceOrderId })).rejects.toThrow(
+      'Stripe unavailable',
+    );
+    expect(created.getStatus()).toBe(BillingStatus.PENDING);
+
+    const recovered = await service.generateForServiceOrder({ serviceOrderId });
+
+    expect(recovered.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(recovered.getPaymentLink()).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_recovered',
+    );
+    expect(repository.create).toHaveBeenCalledTimes(1);
+    expect(repository.update).toHaveBeenCalledWith(recovered, createdAt);
+  });
+
   it('handles duplicated Stripe webhook idempotently', async () => {
     const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
       serviceOrderId,
