@@ -348,6 +348,91 @@ describe('BillingService', () => {
     expect(expired.getStatus()).toBe(BillingStatus.EXPIRED);
   });
 
+  it('renews an overdue payment link with penalty amount', async () => {
+    const updatedAt = new Date('2026-08-20T10:00:00.000Z');
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_old',
+      gatewayTransactionId: 'cs_test_old',
+      expiresAt: new Date('2026-08-20T10:00:00.000Z'),
+      updatedAt,
+    });
+    repository.findById.mockResolvedValue(billing);
+    repository.update.mockImplementation((updated) => Promise.resolve(updated));
+    paymentGateway.createPaymentLink.mockResolvedValue({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_renewed',
+      gatewayTransactionId: 'cs_test_renewed',
+      expiresAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    const renewed = await service.renewPaymentLink(
+      billing.getId(),
+      new Date('2026-08-21T10:00:00.000Z'),
+    );
+
+    expect(renewed.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(renewed.getPaymentLink()).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_renewed',
+    );
+    expect(renewed.getAmount().valueInCents).toBe(15000);
+    expect(paymentGateway.createPaymentLink.mock.calls).toEqual([
+      [
+        {
+          billingId: billing.getId(),
+          serviceOrderId,
+          amountInCents: 15305,
+        },
+      ],
+    ]);
+    expect(repository.update.mock.calls).toEqual([[renewed, updatedAt]]);
+  });
+
+  it('rejects payment link renewal before expiration', async () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+    repository.findById.mockResolvedValue(billing);
+
+    await expect(
+      service.renewPaymentLink(
+        billing.getId(),
+        new Date('2026-08-21T10:00:00.000Z'),
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(paymentGateway.createPaymentLink.mock.calls).toHaveLength(0);
+  });
+
+  it('rejects payment link renewal for paid billing', async () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.PAID,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      paidAt: new Date('2026-08-20T10:00:00.000Z'),
+      expiresAt: new Date('2026-08-19T10:00:00.000Z'),
+    });
+    repository.findById.mockResolvedValue(billing);
+
+    await expect(
+      service.renewPaymentLink(
+        billing.getId(),
+        new Date('2026-08-21T10:00:00.000Z'),
+      ),
+    ).rejects.toThrow(ConflictException);
+    expect(paymentGateway.createPaymentLink.mock.calls).toHaveLength(0);
+  });
+
   it('throws not found when a confirmed payment does not match billing', async () => {
     paymentGateway.parsePaymentWebhook.mockResolvedValue({
       type: 'payment_confirmed',

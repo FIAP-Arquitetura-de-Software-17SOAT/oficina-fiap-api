@@ -104,6 +104,20 @@ export class BillingController {
     return BillingMapper.toResponse(await this.billingService.expire(id));
   }
 
+  @Post(':id/renew-payment-link')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Renova link de pagamento vencido com multa' })
+  @ApiOkResponse({ type: BillingResponseDto })
+  @ApiConflictResponse({ description: 'Paid billing is terminal' })
+  @ApiNotFoundResponse({ description: 'Billing not found' })
+  async renewPaymentLink(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<BillingResponseDto> {
+    return BillingMapper.toResponse(
+      await this.billingService.renewPaymentLink(id),
+    );
+  }
+
   @Post(':id/deliver-service-order')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Entrega a ordem de servico apos quitacao' })

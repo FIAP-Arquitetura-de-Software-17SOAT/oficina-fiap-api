@@ -1,4 +1,7 @@
-import { BillingResponseDto } from '../dto/billing.dto';
+import {
+  BillingPenaltyResponseDto,
+  BillingResponseDto,
+} from '../dto/billing.dto';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
@@ -56,7 +59,12 @@ export class BillingMapper {
     });
   }
 
-  static toResponse(billing: Billing): BillingResponseDto {
+  static toResponse(
+    billing: Billing,
+    calculatedAt = new Date(),
+  ): BillingResponseDto {
+    const penalty = billing.calculatePenalty(calculatedAt);
+
     return {
       id: billing.getId(),
       serviceOrderId: billing.getServiceOrderId(),
@@ -69,6 +77,7 @@ export class BillingMapper {
       generatedAt: billing.getGeneratedAt(),
       paidAt: billing.getPaidAt(),
       expiresAt: billing.getExpiresAt(),
+      penalty: penalty ? BillingMapper.toPenaltyResponse(penalty) : null,
       createdAt: billing.getCreatedAt(),
       updatedAt: billing.getUpdatedAt(),
     };
@@ -76,5 +85,18 @@ export class BillingMapper {
 
   static toResponseList(billings: Billing[]): BillingResponseDto[] {
     return billings.map((billing) => BillingMapper.toResponse(billing));
+  }
+
+  private static toPenaltyResponse(
+    penalty: NonNullable<ReturnType<Billing['calculatePenalty']>>,
+  ): BillingPenaltyResponseDto {
+    return {
+      originalAmount: penalty.getOriginalAmount().value,
+      fixedPenaltyAmount: penalty.getFixedPenaltyAmount().value,
+      interestAmount: penalty.getInterestAmount().value,
+      overdueDays: penalty.getOverdueDays(),
+      totalAmount: penalty.getTotalAmount().value,
+      calculatedAt: penalty.getCalculatedAt(),
+    };
   }
 }

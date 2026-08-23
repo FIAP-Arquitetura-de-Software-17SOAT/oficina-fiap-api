@@ -3,6 +3,7 @@ import { DomainException } from '../../../shared/domain/domain.exception';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
+import { Penalty } from '../value-objects/penalty.vo';
 
 export interface BillingProps {
   serviceOrderId: string;
@@ -95,6 +96,23 @@ export class Billing {
     this.touch();
   }
 
+  renewPaymentLink(props: GeneratePaymentLinkProps, now = new Date()): void {
+    if (this.status === BillingStatus.PAID) {
+      throw new DomainException('Paid billing is terminal');
+    }
+    if (!this.calculatePenalty(now)) {
+      throw new DomainException('Billing payment link has not expired yet');
+    }
+    this.paymentLink = this.validatePaymentLink(props.paymentLink);
+    this.gatewayTransactionId = this.validateRequiredId(
+      props.gatewayTransactionId,
+      'Gateway transaction is required',
+    );
+    this.expiresAt = props.expiresAt ?? null;
+    this.status = BillingStatus.WAITING_PAYMENT;
+    this.touch();
+  }
+
   registerPayment(props: RegisterPaymentProps): boolean {
     const gatewayTransactionId = this.validateRequiredId(
       props.gatewayTransactionId,
@@ -129,6 +147,16 @@ export class Billing {
     }
     this.status = BillingStatus.EXPIRED;
     this.touch();
+  }
+
+  calculatePenalty(now = new Date()): Penalty | null {
+    const penalty = Penalty.calculate({
+      originalAmount: this.amount,
+      expiresAt: this.expiresAt,
+      calculatedAt: now,
+    });
+
+    return penalty.hasOverdueAmount() ? penalty : null;
   }
 
   getId(): string {

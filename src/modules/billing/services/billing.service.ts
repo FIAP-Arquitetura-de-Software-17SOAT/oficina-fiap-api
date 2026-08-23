@@ -112,6 +112,28 @@ export class BillingService {
     return this.persistUpdatedBilling(billing, expectedUpdatedAt);
   }
 
+  async renewPaymentLink(id: string, now = new Date()): Promise<Billing> {
+    const billing = await this.findById(id);
+    if (billing.getStatus() === BillingStatus.PAID) {
+      throw new ConflictException('Paid billing is terminal');
+    }
+
+    const penalty = billing.calculatePenalty(now);
+    if (!penalty) {
+      throw new BadRequestException('Billing payment link has not expired yet');
+    }
+
+    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
+    const link = await this.paymentGateway.createPaymentLink({
+      billingId: billing.getId(),
+      serviceOrderId: billing.getServiceOrderId(),
+      amountInCents: penalty.getTotalAmount().valueInCents,
+    });
+    billing.renewPaymentLink(link, now);
+
+    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
+  }
+
   async handlePaymentWebhook(
     payload: Buffer | string,
     signature: string,

@@ -65,4 +65,29 @@ describe('BillingMapper', () => {
     expect(billing.getPaymentMethod()).toBe(PaymentMethod.CARD);
     expect(billing.getPaidAt()).toBe(generatedAt);
   });
+
+  it('maps overdue penalty details to response', () => {
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(10000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      generatedAt,
+      expiresAt: new Date('2026-08-20T10:00:00.000Z'),
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    });
+    const calculatedAt = new Date('2026-08-21T10:00:00.000Z');
+
+    expect(BillingMapper.toResponse(billing, calculatedAt).penalty).toEqual({
+      originalAmount: 100,
+      fixedPenaltyAmount: 2,
+      interestAmount: 0.03,
+      overdueDays: 1,
+      totalAmount: 102.03,
+      calculatedAt,
+    });
+  });
 });

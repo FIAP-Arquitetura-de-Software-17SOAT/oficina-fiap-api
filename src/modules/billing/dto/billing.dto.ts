@@ -24,6 +24,26 @@ export class FindBillingQueryDto {
   serviceOrderId?: string;
 }
 
+export class BillingPenaltyResponseDto {
+  @ApiProperty({ example: 100 })
+  originalAmount: number;
+
+  @ApiProperty({ example: 2 })
+  fixedPenaltyAmount: number;
+
+  @ApiProperty({ example: 0.03 })
+  interestAmount: number;
+
+  @ApiProperty({ example: 1 })
+  overdueDays: number;
+
+  @ApiProperty({ example: 102.03 })
+  totalAmount: number;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  calculatedAt: Date;
+}
+
 export class BillingResponseDto {
   @ApiProperty({ format: 'uuid' })
   id: string;
@@ -59,6 +79,9 @@ export class BillingResponseDto {
 
   @ApiPropertyOptional({ type: String, format: 'date-time' })
   expiresAt: Date | null;
+
+  @ApiPropertyOptional({ type: BillingPenaltyResponseDto })
+  penalty: BillingPenaltyResponseDto | null;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;

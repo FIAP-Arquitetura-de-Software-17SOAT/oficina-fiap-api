@@ -16,6 +16,7 @@ describe('BillingController', () => {
       generateForServiceOrder: jest.fn(),
       handlePaymentWebhook: jest.fn(),
       expire: jest.fn(),
+      renewPaymentLink: jest.fn(),
       findById: jest.fn(),
       findByServiceOrderId: jest.fn(),
       findAll: jest.fn(),
@@ -75,5 +76,26 @@ describe('BillingController', () => {
 
     expect(service.expire.mock.calls).toEqual([[billing.getId()]]);
     expect(response.status).toBe(BillingStatus.EXPIRED);
+  });
+
+  it('renews billing payment link', async () => {
+    const billing = Billing.create({
+      serviceOrderId,
+      budgetId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      amount: Money.fromCents(12000),
+    });
+    billing.generatePaymentLink({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_renewed',
+      gatewayTransactionId: 'cs_test_renewed',
+      expiresAt: new Date('2026-08-24T10:00:00.000Z'),
+    });
+    service.renewPaymentLink.mockResolvedValue(billing);
+
+    const response = await controller.renewPaymentLink(billing.getId());
+
+    expect(service.renewPaymentLink.mock.calls).toEqual([[billing.getId()]]);
+    expect(response.paymentLink).toBe(
+      'https://checkout.stripe.com/c/pay/cs_test_renewed',
+    );
   });
 });

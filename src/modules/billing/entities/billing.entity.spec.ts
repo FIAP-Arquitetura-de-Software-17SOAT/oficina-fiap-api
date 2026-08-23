@@ -120,4 +120,44 @@ describe('Billing', () => {
 
     expect(billing.getStatus()).toBe(BillingStatus.EXPIRED);
   });
+
+  it('does not calculate penalty before payment link expiration', () => {
+    const billing = Billing.create({
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(10000),
+    });
+    billing.generatePaymentLink({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+    });
+
+    const penalty = billing.calculatePenalty(
+      new Date('2026-08-23T09:59:00.000Z'),
+    );
+
+    expect(penalty).toBeNull();
+  });
+
+  it('calculates penalty from expiresAt without changing original amount', () => {
+    const billing = Billing.create({
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(10000),
+    });
+    billing.generatePaymentLink({
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      gatewayTransactionId: 'cs_test_123',
+      expiresAt: new Date('2026-08-20T10:00:00.000Z'),
+    });
+
+    const penalty = billing.calculatePenalty(
+      new Date('2026-08-21T10:00:00.000Z'),
+    );
+
+    expect(penalty?.getOverdueDays()).toBe(1);
+    expect(penalty?.getTotalAmount().valueInCents).toBe(10203);
+    expect(billing.getAmount().valueInCents).toBe(10000);
+  });
 });
