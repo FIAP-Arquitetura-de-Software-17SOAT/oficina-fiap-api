@@ -184,6 +184,18 @@ enum PaymentMethod {
   CASH
 }
 
+enum NotificationType {
+  BUDGET_READY
+  PAYMENT_LINK_READY
+  STOCK_PARTS_REQUESTED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model Budget {
   id             String       @id @db.Uuid
   serviceOrderId String
@@ -257,6 +269,24 @@ model BillingCheckoutSession {
 
   @@index([billingId])
   @@map("billing_checkout_session")
+}
+
+model Notification {
+  id        String             @id @db.Uuid
+  type      NotificationType
+  status    NotificationStatus
+  to        String
+  subject   String
+  text      String
+  html      String
+  attempts  Int                @default(0)
+  lastError String?
+  sentAt    DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([status, createdAt])
+  @@map("notification")
 }
 
 model ServiceOrder {
