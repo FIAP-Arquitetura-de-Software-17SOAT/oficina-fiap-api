@@ -9,6 +9,9 @@ import {
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
 import { Budget } from '../entities/budget.entity';
 import { BudgetRepository } from '../repositories/budget.repository';
 
@@ -22,6 +25,8 @@ export class BudgetService {
   constructor(
     private readonly budgetRepository: BudgetRepository,
     private readonly serviceOrderController: ServiceOrderController,
+    private readonly clientRepository: ClientRepository,
+    private readonly notifications: NotificationService,
   ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
@@ -37,7 +42,9 @@ export class BudgetService {
     // a execucao gera outro orcamento, e a OS ja nao esta mais em diagnostico -
     // nesse caso a transicao nao se aplica e o orcamento segue valido.
     if (budget.getVersion() === 1) {
-      await this.serviceOrderController.awaitApproval(serviceOrderId);
+      const serviceOrder =
+        await this.serviceOrderController.awaitApproval(serviceOrderId);
+      void this.enqueueBudgetReadyNotification(budget, serviceOrder.clientId);
     }
 
     return budget;
@@ -252,5 +259,80 @@ export class BudgetService {
 
   private normalizeServiceOrderId(serviceOrderId: string): string {
     return serviceOrderId.trim();
+  }
+
+  private async enqueueBudgetReadyNotification(
+    budget: Budget,
+    clientId: string,
+  ): Promise<void> {
+    try {
+      const client = await this.clientRepository.findById(clientId);
+      if (!client) return;
+
+      const currency = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      });
+      const quantity = new Intl.NumberFormat('pt-BR', {
+        maximumFractionDigits: 2,
+      });
+      const items = budget.getItems();
+      const textItems = items.map(
+        (item) =>
+          `- ${item.getDescription()} | Quantidade: ${quantity.format(
+            item.getQuantity(),
+          )} | Valor unitário: ${currency.format(
+            item.getUnitPrice(),
+          )} | Subtotal: ${currency.format(item.getSubtotal())}`,
+      );
+      const htmlItems = items.map(
+        (item) =>
+          `<tr><td>${this.escapeHtml(
+            item.getDescription(),
+          )}</td><td>${quantity.format(item.getQuantity())}</td><td>${currency.format(
+            item.getUnitPrice(),
+          )}</td><td>${currency.format(item.getSubtotal())}</td></tr>`,
+      );
+      const serviceOrderId = budget.getServiceOrderId();
+      const total = currency.format(budget.getTotalAmount());
+
+      await this.notifications.enqueue({
+        type: NotificationType.BUDGET_READY,
+        to: client.getEmail().getValue(),
+        subject: `Orçamento disponível para a OS ${serviceOrderId}`,
+        text: [
+          `Orçamento disponível para a ordem de serviço ${serviceOrderId}.`,
+          '',
+          'Itens:',
+          ...textItems,
+          '',
+          `Total: ${total}`,
+        ].join('\n'),
+        html: [
+          `<p>Orçamento disponível para a ordem de serviço ${this.escapeHtml(
+            serviceOrderId,
+          )}.</p>`,
+          '<table><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th>Subtotal</th></tr></thead><tbody>',
+          ...htmlItems,
+          `</tbody></table><p><strong>Total: ${total}</strong></p>`,
+        ].join(''),
+      });
+    } catch {
+      // A criação do orçamento e a transição da OS já ocorreram. Falhas de
+      // notificação não podem alterar esse resultado de negócio.
+    }
+  }
+
+  private escapeHtml(value: string): string {
+    return value.replace(/[&<>'"]/g, (character) => {
+      const entities: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;',
+      };
+      return entities[character];
+    });
   }
 }

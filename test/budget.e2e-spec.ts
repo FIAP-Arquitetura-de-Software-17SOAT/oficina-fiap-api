@@ -9,6 +9,8 @@ import {
 } from '../src/modules/budget/entities/budget.entity';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
+import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -83,11 +85,19 @@ describe('InMemoryBudgetRepository', () => {
 describe('Budget (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
+  let notifications: { enqueue: jest.Mock };
   // Aceitar ou recusar um orcamento mexe na ordem de servico, entao o cenario
   // minimo agora inclui cliente, veiculo e uma OS aguardando aprovacao.
   let serviceOrderId: string;
 
   beforeEach(async () => {
+    notifications = {
+      // A rejeição simula a falha de entrega/filas sem permitir que ela altere
+      // a resposta HTTP da criação do orçamento.
+      enqueue: jest
+        .fn()
+        .mockRejectedValue(new Error('notification unavailable')),
+    };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
         imports: [AppModule],
@@ -101,7 +111,9 @@ describe('Budget (e2e)', () => {
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
-        .useValue(new InMemoryServiceOrderRepository()),
+        .useValue(new InMemoryServiceOrderRepository())
+        .overrideProvider(NotificationService)
+        .useValue(notifications),
     ).compile();
 
     app = configureApp(
@@ -187,6 +199,34 @@ describe('Budget (e2e)', () => {
       itemId: response.body.items[0].id as string,
     };
   };
+
+  it('queues every first-budget item in BRL without failing HTTP creation when notification delivery fails', async () => {
+    await createBudget();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.BUDGET_READY,
+        to: 'maria@example.com',
+        subject: expect.stringContaining(serviceOrderId),
+        text: expect.stringContaining('Oil change'),
+        html: expect.stringContaining('Oil change'),
+      }),
+    );
+
+    const message = notifications.enqueue.mock.calls[0][0] as {
+      text: string;
+      html: string;
+    };
+    expect(message.text).toContain('Oil filter');
+    expect(message.text).toContain('R$ 120,00');
+    expect(message.text).toContain('R$ 40,00');
+    expect(message.text).toContain('R$ 160,00');
+    expect(message.html).toContain('Oil filter');
+    expect(message.html).toContain('R$ 120,00');
+    expect(message.html).toContain('R$ 40,00');
+    expect(message.html).toContain('R$ 160,00');
+  });
 
   it('creates, sends, accepts, and fetches a budget', async () => {
     const create = await request(http)

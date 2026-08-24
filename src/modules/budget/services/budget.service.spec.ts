@@ -6,6 +6,10 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { Client } from '../../client/entities/client.entity';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
 import { BudgetRepository } from '../repositories/budget.repository';
 import { BudgetService } from './budget.service';
 
@@ -35,6 +39,8 @@ describe('BudgetService', () => {
     awaitParts: jest.Mock;
     cancel: jest.Mock;
   };
+  let clientRepository: { findById: jest.Mock };
+  let notifications: { enqueue: jest.Mock };
 
   beforeEach(async () => {
     repository = {
@@ -47,10 +53,12 @@ describe('BudgetService', () => {
     };
 
     serviceOrderController = {
-      awaitApproval: jest.fn(),
+      awaitApproval: jest.fn().mockResolvedValue({ clientId: 'client-1' }),
       awaitParts: jest.fn(),
       cancel: jest.fn(),
     };
+    clientRepository = { findById: jest.fn() };
+    notifications = { enqueue: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,6 +68,8 @@ describe('BudgetService', () => {
           provide: ServiceOrderController,
           useValue: serviceOrderController,
         },
+        { provide: ClientRepository, useValue: clientRepository },
+        { provide: NotificationService, useValue: notifications },
       ],
     }).compile();
 
@@ -83,6 +93,41 @@ describe('BudgetService', () => {
 
     expect(result.getVersion()).toBe(1);
     expect(repository.create).toHaveBeenCalled();
+  });
+
+  it('queues the first budget after awaiting approval', async () => {
+    const client = Client.create({
+      name: 'Maria Silva',
+      document: '529.982.247-25',
+      email: 'maria@example.com',
+      phone: '(11) 99999-8888',
+    });
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
+    serviceOrderController.awaitApproval.mockResolvedValue({
+      clientId: client.getId(),
+    });
+    clientRepository.findById.mockResolvedValue(client);
+
+    await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.BUDGET_READY,
+        to: client.getEmail().getValue(),
+        text: expect.stringContaining('Oil change'),
+        html: expect.stringContaining('R$'),
+      }),
+    );
   });
 
   it('normalizes service order id before allocating the next version', async () => {
@@ -458,6 +503,7 @@ describe('BudgetService', () => {
       });
 
       expect(serviceOrderController.awaitApproval).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('orçamento aceito com peças coloca a OS aguardando peças', async () => {
