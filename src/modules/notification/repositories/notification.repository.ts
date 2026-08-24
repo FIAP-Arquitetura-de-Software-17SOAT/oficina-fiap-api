@@ -47,7 +47,9 @@ export class NotificationRepository {
         },
       });
       if (result.count === 0) return null;
-      return tx.notification.findUnique({ where: { id: notification.getId() });
+      return tx.notification.findUnique({
+        where: { id: notification.getId() },
+      });
     });
     return updated ? NotificationMapper.toDomain(updated) : null;
   }

@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { isEmail } from 'class-validator';
 import {
   CreateBudgetDto,
   CreateBudgetItemDto,
@@ -12,7 +14,7 @@ import { ServiceOrderController } from '../../service-order/controllers/service-
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
-import { Budget } from '../entities/budget.entity';
+import { Budget, BudgetItemType } from '../entities/budget.entity';
 import { BudgetRepository } from '../repositories/budget.repository';
 
 @Injectable()
@@ -27,6 +29,7 @@ export class BudgetService {
     private readonly serviceOrderController: ServiceOrderController,
     private readonly clientRepository: ClientRepository,
     private readonly notifications: NotificationService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
@@ -119,6 +122,7 @@ export class BudgetService {
    */
   private async requestPartsForAcceptedBudget(budget: Budget): Promise<void> {
     await this.serviceOrderController.awaitParts(budget.getServiceOrderId());
+    void this.enqueueStockPartsRequestNotification(budget);
   }
 
   async findById(id: string): Promise<Budget> {
@@ -319,6 +323,61 @@ export class BudgetService {
       });
     } catch {
       // A criação do orçamento e a transição da OS já ocorreram. Falhas de
+      // notificação não podem alterar esse resultado de negócio.
+    }
+  }
+
+  private async enqueueStockPartsRequestNotification(
+    budget: Budget,
+  ): Promise<void> {
+    try {
+      const stockEmail = this.config
+        .get<string>('STOCK_NOTIFICATION_EMAIL')
+        ?.trim();
+
+      if (!stockEmail || !isEmail(stockEmail)) return;
+
+      const quantity = new Intl.NumberFormat('pt-BR', {
+        maximumFractionDigits: 2,
+      });
+      const parts = budget
+        .getItems()
+        .filter((item) => item.getType() === BudgetItemType.PART);
+      const textParts = parts.map(
+        (item) =>
+          `- ${item.getDescription()} | Quantidade: ${quantity.format(
+            item.getQuantity(),
+          )}`,
+      );
+      const htmlParts = parts.map(
+        (item) =>
+          `<tr><td>${this.escapeHtml(
+            item.getDescription(),
+          )}</td><td>${quantity.format(item.getQuantity())}</td></tr>`,
+      );
+      const serviceOrderId = budget.getServiceOrderId();
+
+      await this.notifications.enqueue({
+        type: NotificationType.STOCK_PARTS_REQUESTED,
+        to: stockEmail,
+        subject: `Peças solicitadas para a OS ${serviceOrderId}`,
+        text: [
+          `Peças solicitadas para a ordem de serviço ${serviceOrderId}.`,
+          '',
+          'Peças:',
+          ...textParts,
+        ].join('\n'),
+        html: [
+          `<p>Peças solicitadas para a ordem de serviço ${this.escapeHtml(
+            serviceOrderId,
+          )}.</p>`,
+          '<table><thead><tr><th>Peça</th><th>Quantidade</th></tr></thead><tbody>',
+          ...htmlParts,
+          '</tbody></table>',
+        ].join(''),
+      });
+    } catch {
+      // O aceite do orçamento e a transição da OS já ocorreram. Falhas de
       // notificação não podem alterar esse resultado de negócio.
     }
   }
