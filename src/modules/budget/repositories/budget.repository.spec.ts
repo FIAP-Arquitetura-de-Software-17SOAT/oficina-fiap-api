@@ -120,8 +120,13 @@ describe('BudgetRepository', () => {
       quantity: 1,
       unitPrice: 30,
     });
-    prisma.$transaction.mockImplementation(async (callback) =>
-      callback({ budget: prisma.budget, budgetItem: prisma.budgetItem }),
+    prisma.$transaction.mockImplementation((callback) =>
+      Promise.resolve(
+        callback({
+          budget: prisma.budget,
+          budgetItem: prisma.budgetItem,
+        }) as Promise<Budget | null>,
+      ),
     );
     prisma.budget.updateMany.mockResolvedValue({ count: 1 });
     prisma.budget.findUnique.mockResolvedValue({
@@ -166,8 +171,13 @@ describe('BudgetRepository', () => {
 
   it('does not persist a generated-state change after the budget was sent', async () => {
     const budget = makeBudget();
-    prisma.$transaction.mockImplementation(async (callback) =>
-      callback({ budget: prisma.budget, budgetItem: prisma.budgetItem }),
+    prisma.$transaction.mockImplementation((callback) =>
+      Promise.resolve(
+        callback({
+          budget: prisma.budget,
+          budgetItem: prisma.budgetItem,
+        }) as Promise<Budget | null>,
+      ),
     );
     prisma.budget.updateMany.mockResolvedValue({ count: 0 });
 
@@ -181,8 +191,13 @@ describe('BudgetRepository', () => {
     const budget = makeBudget();
     budget.sendToCustomer();
     budget.accept();
-    prisma.$transaction.mockImplementation(async (callback) =>
-      callback({ budget: prisma.budget, budgetItem: prisma.budgetItem }),
+    prisma.$transaction.mockImplementation((callback) =>
+      Promise.resolve(
+        callback({
+          budget: prisma.budget,
+          budgetItem: prisma.budgetItem,
+        }) as Promise<Budget | null>,
+      ),
     );
     prisma.budget.updateMany.mockResolvedValue({ count: 1 });
     prisma.budget.findUnique.mockResolvedValue({

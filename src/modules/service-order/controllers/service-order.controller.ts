@@ -39,9 +39,9 @@ export class ServiceOrderController {
   constructor(private readonly serviceOrderService: ServiceOrderService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Abre uma ordem de serviço' })
+  @ApiOperation({ summary: 'Open a service order' })
   @ApiCreatedResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Campos obrigatórios ausentes' })
+  @ApiBadRequestResponse({ description: 'Required fields are missing' })
   @ApiNotFoundResponse({ description: 'Client not found' })
   async openServiceOrder(
     @Body() dto: OpenServiceOrderDto,
@@ -52,7 +52,7 @@ export class ServiceOrderController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lista as ordens de serviço' })
+  @ApiOperation({ summary: 'List service orders' })
   @ApiOkResponse({ type: ServiceOrderResponseDto, isArray: true })
   async findAll(): Promise<ServiceOrderResponseDto[]> {
     return ServiceOrderMapper.toResponseList(
@@ -62,7 +62,7 @@ export class ServiceOrderController {
 
   @Get('metrics/average-execution-time')
   @ApiOperation({
-    summary: 'Tempo médio de execução das ordens de serviço finalizadas',
+    summary: 'Average execution time for completed service orders',
   })
   @ApiOkResponse({ type: AverageExecutionTimeResponseDto })
   async getAverageExecutionTime(): Promise<AverageExecutionTimeResponseDto> {
@@ -71,10 +71,10 @@ export class ServiceOrderController {
 
   @Get('client/:clientId')
   @ApiOperation({
-    summary: 'Acompanhamento: ordens de serviço de um cliente',
+    summary: 'Track a customer service orders',
     description:
-      'Retorna as OS do cliente, da mais recente para a mais antiga, com o ' +
-      'status atual de cada uma. Lista vazia quando o cliente não tem OS.',
+      'Returns the customer service orders from newest to oldest with their ' +
+      'current status. Returns an empty list when the customer has none.',
   })
   @ApiOkResponse({ type: ServiceOrderResponseDto, isArray: true })
   @ApiNotFoundResponse({ description: 'Client not found' })
@@ -87,7 +87,7 @@ export class ServiceOrderController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Busca uma ordem de serviço por id' })
+  @ApiOperation({ summary: 'Find a service order by id' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async findById(
@@ -100,16 +100,18 @@ export class ServiceOrderController {
 
   @Patch(':id/assign')
   @ApiOperation({
-    summary: 'Atribui a OS a um mecânico',
+    summary: 'Assign a mechanic to a service order',
     description:
-      'Move a OS para IN_DIAGNOSIS e inicia o timer de execução. Um mecânico ' +
-      'não pode assumir outra OS antes de finalizar a atual.',
+      'Moves the service order to IN_DIAGNOSIS and starts the execution timer. ' +
+      'A mechanic cannot take another service order before completing the current one.',
   })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
   @ApiBadRequestResponse({
-    description: 'Transição inválida ou OS já atribuída',
+    description: 'Invalid status transition or service order already assigned',
   })
-  @ApiConflictResponse({ description: 'Mecânico já tem uma OS em aberto' })
+  @ApiConflictResponse({
+    description: 'Mechanic already has an open service order',
+  })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async assignToMechanic(
     @Param('id', ParseUUIDPipe) id: string,
@@ -154,9 +156,9 @@ export class ServiceOrderController {
   }
 
   @Patch(':id/complete')
-  @ApiOperation({ summary: 'Finaliza a OS' })
+  @ApiOperation({ summary: 'Complete a service order' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
+  @ApiBadRequestResponse({ description: 'Invalid status transition' })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async complete(
     @Param('id', ParseUUIDPipe) id: string,
@@ -166,24 +168,11 @@ export class ServiceOrderController {
     );
   }
 
-  @Patch(':id/deliver')
-  @ApiOperation({ summary: 'Marca a OS como entregue ao cliente' })
-  @ApiOkResponse({ type: ServiceOrderResponseDto })
-  @ApiBadRequestResponse({ description: 'Transição de status inválida' })
-  @ApiNotFoundResponse({ description: 'Service order not found' })
-  async deliver(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.deliver(id),
-    );
-  }
-
   @Patch(':id/cancel')
-  @ApiOperation({ summary: 'Cancela a OS' })
+  @ApiOperation({ summary: 'Cancel a service order' })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
   @ApiBadRequestResponse({
-    description: 'Transição de status inválida ou motivo ausente',
+    description: 'Invalid status transition or missing cancellation reason',
   })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async cancel(

@@ -194,6 +194,16 @@ describe('Swagger', () => {
     expect(document.paths['/api/v1/service-order'].get!.security).toEqual([
       { bearer: [] },
     ]);
+    expect(document.paths['/api/v1/billings'].post!.security).toEqual([
+      { bearer: [] },
+    ]);
+    expect(
+      document.paths['/api/v1/billings/{id}/renew-payment-link'].post!
+        .security,
+    ).toEqual([{ bearer: [] }]);
+    expect(
+      document.paths['/api/v1/billings/stripe/webhook'].post!.security,
+    ).toBeUndefined();
     expect(document.paths['/api/v1/auth/login'].post!.security).toBeUndefined();
     expect(document.paths['/api/v1/health'].get!.security).toBeUndefined();
   });
@@ -265,6 +275,27 @@ describe('Swagger', () => {
     }
   });
 
+  it('documents billing routes including payment-link renewal', () => {
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining([
+        '/api/v1/billings',
+        '/api/v1/billings/{id}',
+        '/api/v1/billings/{id}/expire',
+        '/api/v1/billings/{id}/renew-payment-link',
+        '/api/v1/billings/{id}/deliver-service-order',
+        '/api/v1/billings/stripe/webhook',
+      ]),
+    );
+
+    const renew =
+      document.paths['/api/v1/billings/{id}/renew-payment-link'].post!;
+
+    expect(renew.summary).toBe('Renova link de pagamento vencido com multa');
+    expect(Object.keys(renew.responses)).toEqual(
+      expect.arrayContaining(['200', '400', '401', '404', '409']),
+    );
+  });
+
   it('serve a UI e o JSON em /api/v1/docs', async () => {
     await request(http)
       .get('/api/v1/docs')
@@ -282,7 +313,6 @@ describe('Swagger', () => {
         '/api/v1/service-order/client/{clientId}',
         '/api/v1/service-order/{id}/assign',
         '/api/v1/service-order/{id}/complete',
-        '/api/v1/service-order/{id}/deliver',
         '/api/v1/service-order/{id}/cancel',
       ]),
     );
@@ -312,7 +342,7 @@ describe('Swagger', () => {
       expect.arrayContaining(['get']),
     );
 
-    for (const action of ['assign', 'complete', 'deliver', 'cancel']) {
+    for (const action of ['assign', 'complete', 'cancel']) {
       expect(
         Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
       ).toEqual(expect.arrayContaining(['patch']));
@@ -323,6 +353,25 @@ describe('Swagger', () => {
         document.paths['/api/v1/service-order/metrics/average-execution-time'],
       ),
     ).toEqual(expect.arrayContaining(['get']));
+  });
+
+  it('uses ASCII-only Swagger operation metadata for service orders', () => {
+    const serviceOrderOperations = Object.entries(document.paths)
+      .filter(([path]) => path.startsWith('/api/v1/service-order'))
+      .flatMap(([, pathItem]) =>
+        Object.values(pathItem ?? {}).filter(
+          (
+            operation,
+          ): operation is { summary?: string; description?: string } =>
+            typeof operation === 'object' && operation !== null,
+        ),
+      );
+
+    for (const operation of serviceOrderOperations) {
+      expect(
+        `${operation.summary ?? ''}${operation.description ?? ''}`,
+      ).toMatch(/^[\x00-\x7F]*$/);
+    }
   });
 
   it('expõe os schemas de request e response da ordem de serviço', () => {

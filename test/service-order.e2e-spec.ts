@@ -238,7 +238,7 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'deliver').expect(400);
+      await advance(created.id, 'deliver').expect(404);
     });
 
     it('cancelar é possível a qualquer momento antes da finalização', async () => {
