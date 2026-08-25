@@ -10,6 +10,10 @@ import {
   BudgetStatus,
 } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
+import { Client } from '../../client/entities/client.entity';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceOrder } from '../../service-order/entities/service-order.entity';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceOrderService } from '../../service-order/services/service-order.service';
@@ -54,6 +58,8 @@ const acceptedBudget = (version: number, total: number) =>
 describe('BillingService', () => {
   let repository: jest.Mocked<BillingRepository>;
   let budgetService: jest.Mocked<BudgetService>;
+  let clientRepository: jest.Mocked<ClientRepository>;
+  let notifications: jest.Mocked<NotificationService>;
   let serviceOrderService: jest.Mocked<ServiceOrderService>;
   let paymentGateway: jest.Mocked<PaymentGateway>;
   let service: BillingService;
@@ -72,6 +78,12 @@ describe('BillingService', () => {
     budgetService = {
       findByServiceOrderId: jest.fn(),
     } as unknown as jest.Mocked<BudgetService>;
+    clientRepository = {
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<ClientRepository>;
+    notifications = {
+      enqueue: jest.fn(),
+    } as unknown as jest.Mocked<NotificationService>;
     serviceOrderService = {
       findById: jest.fn(),
       deliver: jest.fn(),
@@ -85,6 +97,8 @@ describe('BillingService', () => {
       budgetService,
       serviceOrderService,
       paymentGateway,
+      clientRepository,
+      notifications,
     );
   });
 
@@ -133,6 +147,49 @@ describe('BillingService', () => {
     expect(repository.registerCheckoutSession.mock.calls).toEqual([
       [billing.getId(), 'cs_test_123'],
     ]);
+  });
+
+  it('queues the persisted payment link for the service-order customer', async () => {
+    const createdAt = new Date('2026-08-22T09:00:00.000Z');
+    const billing = Billing.restore('bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      createdAt,
+      updatedAt: createdAt,
+    });
+    const client = Client.create({
+      name: 'Maria Silva',
+      document: '529.982.247-25',
+      email: 'maria@example.com',
+      phone: '(11) 99999-8888',
+    });
+    const paymentLink = 'https://checkout.stripe.com/c/pay/cs_test_456';
+
+    serviceOrderService.findById.mockResolvedValue(completedServiceOrder());
+    repository.findByServiceOrderId.mockResolvedValue(billing);
+    repository.update.mockImplementation((updated) => Promise.resolve(updated));
+    paymentGateway.createPaymentLink.mockResolvedValue({
+      paymentLink,
+      gatewayTransactionId: 'cs_test_456',
+      expiresAt: new Date('2026-08-23T10:00:00.000Z'),
+    });
+    clientRepository.findById.mockResolvedValue(client);
+
+    await service.generateForServiceOrder({ serviceOrderId });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.PAYMENT_LINK_READY,
+        to: client.getEmail().getValue(),
+        text: expect.stringContaining(paymentLink),
+        html: expect.stringContaining(paymentLink),
+      }),
+    );
+    const message = notifications.enqueue.mock.calls[0][0];
+    expect(message.text).toContain('R$ 150,00');
+    expect(message.html).toContain('R$ 150,00');
   });
 
   it('retries payment link generation for a pending billing', async () => {
