@@ -11,6 +11,7 @@ import { ServiceOrderModule } from './modules/service-order/service-order.module
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { StockModule } from './modules/stock/stock.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { PrismaModule } from './shared/database/prisma.module';
 import { JwtAuthGuard } from './shared/http/auth/jwt-auth.guard';
 import { RolesGuard } from './shared/http/auth/roles.guard';
@@ -41,6 +42,7 @@ import { RolesGuard } from './shared/http/auth/roles.guard';
     PrismaModule,
     AuthModule,
     StockModule,
+    NotificationModule,
     ClientModule,
     PurchaseOrderModule,
     BudgetModule,

@@ -219,6 +219,42 @@ o endereço local e a mesma senha configurada em `POSTGRES_PASSWORD`, por
 exemplo `postgres://postgres:SENHA@localhost:5432/oficina_fiap`. Dentro do
 Compose, a URL é montada e injetada automaticamente com o host `db`.
 
+## Entrega de notificações por e-mail
+
+Os avisos de orçamento disponível, link de pagamento e solicitação de peças
+são registrados antes de serem enviados. Configure o SMTP no `.env` do processo
+da API:
+
+| Variável | Finalidade | Regra |
+| --- | --- | --- |
+| `SMTP_HOST` | Host do servidor SMTP | obrigatório |
+| `SMTP_PORT` | Porta do servidor SMTP | inteiro entre 1 e 65535 |
+| `SMTP_SECURE` | Ativa TLS implícito | use somente `true` ou `false` |
+| `SMTP_USER` | Usuário SMTP | opcional, mas exige `SMTP_PASSWORD` |
+| `SMTP_PASSWORD` | Senha SMTP | opcional, mas exige `SMTP_USER` |
+| `MAIL_FROM` | Remetente das mensagens | e-mail válido, ou `Nome <email@dominio>` |
+| `STOCK_NOTIFICATION_EMAIL` | Destinatário das solicitações de peças | e-mail válido; sem valor, o aviso de estoque não é enviado |
+
+Use `SMTP_SECURE=true` para provedores que exigem TLS implícito (comumente a
+porta 465); nas portas STARTTLS, use `false` conforme a configuração do
+provedor. Guarde credenciais SMTP em um gerenciador de segredos nos ambientes
+compartilhados.
+
+### Reprocessar falhas de entrega
+
+Falhas de e-mail não desfazem a operação de negócio: a API mantém a notificação
+com status `FAILED`, contador de tentativas e o último erro. Um operador
+autenticado como `ADMIN` deve:
+
+1. Consultar `GET /api/v1/notifications?status=FAILED` com o access token.
+2. Conferir destinatário, conteúdo e `lastError`, corrigindo a configuração
+   SMTP quando necessário.
+3. Executar `POST /api/v1/notifications/{id}/retry` com o mesmo token.
+4. Confirmar que a resposta passou para `SENT`; chamadas para itens que não
+   estejam em `FAILED` retornam `409`.
+
+As duas rotas aparecem no Swagger e exigem `Authorization: Bearer <accessToken>`.
+
 ### Criando uma migration
 
 ```bash
