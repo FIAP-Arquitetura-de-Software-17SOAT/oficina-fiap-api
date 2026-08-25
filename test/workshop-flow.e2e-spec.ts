@@ -46,8 +46,15 @@ describe('Fluxo da oficina (e2e)', () => {
     const parts = new InMemoryPartRepository();
     notifications = { enqueue: jest.fn() };
     config = {
-      get: jest.fn((key: string) =>
-        key === 'STOCK_NOTIFICATION_EMAIL' ? 'estoque@example.com' : undefined,
+      get: jest.fn(
+        (key: string) =>
+          ({
+            JWT_ACCESS_SECRET: 'e2e-access-secret',
+            JWT_ACCESS_TTL: '15m',
+            JWT_REFRESH_SECRET: 'e2e-refresh-secret',
+            JWT_REFRESH_TTL: '7d',
+            STOCK_NOTIFICATION_EMAIL: 'estoque@example.com',
+          })[key],
       ),
     };
 

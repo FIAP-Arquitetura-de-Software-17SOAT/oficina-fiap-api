@@ -20,17 +20,18 @@ Adiciona a infraestrutura reutilizável de envio de e-mails com Nodemailer. O m�
 
 ## ✅ Como testar
 
-- [ ] `npm test -- --runInBand`
-- [ ] `npm run test:e2e -- --runInBand`
-- [ ] `npm run build`
+- [x] `npm test -- --runInBand`
+- [x] `npm run test:e2e -- --runInBand`
+- [x] `npm run build`
 
-Os comandos foram executados, mas não puderam iniciar porque o `node_modules` local está incompleto e pertence a `root`: `jest`, `cross-env` e `prisma` não foram encontrados. Após recriar as dependências com `npm ci`, execute os comandos acima e configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` e `MAIL_FROM` (e, se aplicável, `SMTP_USER` e `SMTP_PASSWORD`).
+As verificações foram executadas após recriar as dependências com `npm ci`.
 
 ## 👀 Observações
 
 - Este PR é a primeira camada da pilha e deve ter `main` como base.
 - Não contém disparos de regra de negócio; os consumidores de orçamento, cobrança e estoque ficam no PR subsequente.
 - Para a demonstração local, Ethereal ou Mailpit podem ser usados como servidor SMTP de teste.
+- O `EmailModule` importa explicitamente `ConfigModule`; isso permite que o adaptador receba `ConfigService` também quando o módulo é testado isoladamente.
 
 ## 📋 Checklist
 

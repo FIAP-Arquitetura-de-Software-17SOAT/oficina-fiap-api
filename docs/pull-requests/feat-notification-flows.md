@@ -21,11 +21,11 @@ Implementa os fluxos de notificação persistidos para orçamento disponível, p
 
 ## ✅ Como testar
 
-- [ ] `npm test -- --runInBand`
-- [ ] `npm run test:e2e -- --runInBand`
-- [ ] `npm run build`
+- [x] `npm test -- --runInBand`
+- [x] `npm run test:e2e -- --runInBand`
+- [x] `npm run build`
 
-Os comandos foram executados, mas não puderam iniciar porque o `node_modules` local está incompleto e pertence a `root`: `jest`, `cross-env` e `prisma` não foram encontrados. Após executar `npm ci`, rode `npx prisma generate`, aplique a migration de notificações e execute os comandos acima.
+As verificações foram executadas após recriar as dependências com `npm ci`. A suíte e2e de persistência em banco permanece ignorada sem `DATABASE_URL`.
 
 ## 👀 Observações
 
@@ -39,7 +39,7 @@ Os comandos foram executados, mas não puderam iniciar porque o `node_modules` l
 - [x] A mudança está coerente com o escopo do PR
 - [x] Testes foram adicionados ou atualizados quando necessário
 - [x] A documentação/Swagger foi atualizada quando aplicável
-- [ ] Impactos em Prisma/schema/migrations foram avaliados quando aplicável
+- [x] Impactos em Prisma/schema/migrations foram avaliados quando aplicável
 - [x] Foram avaliados riscos de regressão ou efeitos colaterais
 
-O schema e a migration foram revisados no diff, mas a validação do Prisma não pôde ser executada no ambiente atual pela ausência do executável no `node_modules`.
+O schema e a migration foram revisados e `npx prisma validate` foi executado. A aplicação da migration exige um PostgreSQL configurado em `DATABASE_URL`; nesta máquina, o Docker Desktop ainda não está integrado ao WSL.
