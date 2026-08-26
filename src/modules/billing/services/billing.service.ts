@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { isUniqueViolation } from '../../../shared/database/prisma-errors';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { paymentLinkReadyEmail } from '../../../shared/notifications/email/notification-templates';
 import { BudgetStatus } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
 import { ClientRepository } from '../../client/repositories/client.repository';
@@ -132,41 +133,19 @@ export class BillingService {
 
       if (!client || !paymentLink) return;
 
-      const total = new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-      }).format(billing.getAmount().value);
-      const serviceOrderId = billing.getServiceOrderId();
-
       await this.notifications.enqueue({
         type: NotificationType.PAYMENT_LINK_READY,
         to: client.getEmail().getValue(),
-        subject: `Link de pagamento disponível para a OS ${serviceOrderId}`,
-        text: [
-          `O serviço da ordem ${serviceOrderId} foi concluído.`,
-          `Valor para pagamento: ${total}.`,
-          '',
-          `Pague pelo link: ${paymentLink}`,
-        ].join('\n'),
-        html: [
-          `<p>O serviço da ordem ${this.escapeHtml(serviceOrderId)} foi concluído.</p>`,
-          `<p>Valor para pagamento: <strong>${this.escapeHtml(total)}</strong>.</p>`,
-          `<p><a href="${this.escapeHtml(paymentLink)}">Pagar agora</a></p>`,
-        ].join(''),
+        ...paymentLinkReadyEmail({
+          serviceOrderId: billing.getServiceOrderId(),
+          total: billing.getAmount().value,
+          paymentLink,
+        }),
       });
     } catch {
       // A cobrança e o link já foram persistidos; falhas de notificação não
       // podem alterar esse resultado de negócio.
     }
-  }
-
-  private escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   async renewPaymentLink(id: string, now = new Date()): Promise<Billing> {

@@ -6,6 +6,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { isEmail } from 'class-validator';
 import {
+  budgetReadyEmail,
+  stockPartsRequestedEmail,
+} from '../../../shared/notifications/email/notification-templates';
+import {
   CreateBudgetDto,
   CreateBudgetItemDto,
   RefuseBudgetDto,
@@ -273,53 +277,21 @@ export class BudgetService {
       const client = await this.clientRepository.findById(clientId);
       if (!client) return;
 
-      const currency = new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-      });
-      const quantity = new Intl.NumberFormat('pt-BR', {
-        maximumFractionDigits: 2,
-      });
       const items = budget.getItems();
-      const textItems = items.map(
-        (item) =>
-          `- ${item.getDescription()} | Quantidade: ${quantity.format(
-            item.getQuantity(),
-          )} | Valor unitário: ${currency.format(
-            item.getUnitPrice(),
-          )} | Subtotal: ${currency.format(item.getSubtotal())}`,
-      );
-      const htmlItems = items.map(
-        (item) =>
-          `<tr><td>${this.escapeHtml(
-            item.getDescription(),
-          )}</td><td>${quantity.format(item.getQuantity())}</td><td>${currency.format(
-            item.getUnitPrice(),
-          )}</td><td>${currency.format(item.getSubtotal())}</td></tr>`,
-      );
-      const serviceOrderId = budget.getServiceOrderId();
-      const total = currency.format(budget.getTotalAmount());
 
       await this.notifications.enqueue({
         type: NotificationType.BUDGET_READY,
         to: client.getEmail().getValue(),
-        subject: `Orçamento disponível para a OS ${serviceOrderId}`,
-        text: [
-          `Orçamento disponível para a ordem de serviço ${serviceOrderId}.`,
-          '',
-          'Itens:',
-          ...textItems,
-          '',
-          `Total: ${total}`,
-        ].join('\n'),
-        html: [
-          `<p>Orçamento disponível para a ordem de serviço ${this.escapeHtml(
-            serviceOrderId,
-          )}.</p>`,
-          '<table><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th>Subtotal</th></tr></thead><tbody>',
-          ...htmlItems,
-          `</tbody></table><p><strong>Total: ${total}</strong></p>`,
-        ].join(''),
+        ...budgetReadyEmail({
+          serviceOrderId: budget.getServiceOrderId(),
+          items: items.map((item) => ({
+            description: item.getDescription(),
+            quantity: item.getQuantity(),
+            unitPrice: item.getUnitPrice(),
+            subtotal: item.getSubtotal(),
+          })),
+          total: budget.getTotalAmount(),
+        }),
       });
     } catch {
       // A criação do orçamento e a transição da OS já ocorreram. Falhas de
@@ -337,44 +309,20 @@ export class BudgetService {
 
       if (!stockEmail || !isEmail(stockEmail)) return;
 
-      const quantity = new Intl.NumberFormat('pt-BR', {
-        maximumFractionDigits: 2,
-      });
       const parts = budget
         .getItems()
         .filter((item) => item.getType() === BudgetItemType.PART);
-      const textParts = parts.map(
-        (item) =>
-          `- ${item.getDescription()} | Quantidade: ${quantity.format(
-            item.getQuantity(),
-          )}`,
-      );
-      const htmlParts = parts.map(
-        (item) =>
-          `<tr><td>${this.escapeHtml(
-            item.getDescription(),
-          )}</td><td>${quantity.format(item.getQuantity())}</td></tr>`,
-      );
-      const serviceOrderId = budget.getServiceOrderId();
 
       await this.notifications.enqueue({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         to: stockEmail,
-        subject: `Peças solicitadas para a OS ${serviceOrderId}`,
-        text: [
-          `Peças solicitadas para a ordem de serviço ${serviceOrderId}.`,
-          '',
-          'Peças:',
-          ...textParts,
-        ].join('\n'),
-        html: [
-          `<p>Peças solicitadas para a ordem de serviço ${this.escapeHtml(
-            serviceOrderId,
-          )}.</p>`,
-          '<table><thead><tr><th>Peça</th><th>Quantidade</th></tr></thead><tbody>',
-          ...htmlParts,
-          '</tbody></table>',
-        ].join(''),
+        ...stockPartsRequestedEmail({
+          serviceOrderId: budget.getServiceOrderId(),
+          parts: parts.map((item) => ({
+            description: item.getDescription(),
+            quantity: item.getQuantity(),
+          })),
+        }),
       });
     } catch {
       // O aceite do orçamento e a transição da OS já ocorreram. Falhas de
@@ -382,16 +330,4 @@ export class BudgetService {
     }
   }
 
-  private escapeHtml(value: string): string {
-    return value.replace(/[&<>'"]/g, (character) => {
-      const entities: Record<string, string> = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;',
-      };
-      return entities[character];
-    });
-  }
 }
