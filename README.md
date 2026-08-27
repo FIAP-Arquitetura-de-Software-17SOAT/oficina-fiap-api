@@ -245,6 +245,26 @@ as credenciais da conta de teste, mantenha `SMTP_HOST=smtp.ethereal.email`,
 `SMTP_PORT=587` e `SMTP_SECURE=false`. As mensagens ficam disponíveis apenas
 no preview do Ethereal e não são entregues a destinatários reais.
 
+### Configurando uma conta Ethereal
+
+1. Acesse [Ethereal](https://ethereal.email/create) e crie uma conta de teste.
+2. Na página da conta, copie o **Username** e o **Password** exibidos nas
+   credenciais SMTP.
+3. No arquivo `.env`, use o e-mail da conta como remetente e preencha as
+   credenciais copiadas:
+
+```dotenv
+SMTP_HOST=smtp.ethereal.email
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=usuario-gerado-pelo-ethereal
+SMTP_PASSWORD=senha-gerada-pelo-ethereal
+MAIL_FROM=usuario-gerado-pelo-ethereal@ethereal.email
+```
+
+Após disparar uma notificação, abra o preview disponível na conta Ethereal para
+consultar a mensagem. Não versione o `.env` nem compartilhe as credenciais.
+
 ### Reprocessar falhas de entrega
 
 Falhas de e-mail não desfazem a operação de negócio: a API mantém a notificação
