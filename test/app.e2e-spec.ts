@@ -34,6 +34,15 @@ describe('AppController (e2e)', () => {
       .expect({ status: 'ok' });
   });
 
+  it('aplica headers basicos de hardening HTTP', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .expect(200);
+
+    expect(response.headers['x-powered-by']).toBeUndefined();
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+  });
+
   it('rota fora do prefixo devolve 404', () => {
     return request(app.getHttpServer()).get('/health').expect(404);
   });
