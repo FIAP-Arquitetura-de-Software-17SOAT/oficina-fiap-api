@@ -1,15 +1,15 @@
 import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
 import { EmailMessage } from './email-sender';
 import { NodemailerEmailSender } from './nodemailer-email-sender';
 
 const mockSendMail = jest.fn().mockResolvedValue(undefined);
-const mockCreateTransport = jest.fn().mockReturnValue({
-  sendMail: mockSendMail,
-});
 
 jest.mock('nodemailer', () => ({
-  createTransport: mockCreateTransport,
+  createTransport: jest.fn(),
 }));
+
+const mockCreateTransport = nodemailer.createTransport as jest.Mock;
 
 describe('NodemailerEmailSender', () => {
   const settings: Record<string, string> = {
@@ -30,6 +30,7 @@ describe('NodemailerEmailSender', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCreateTransport.mockReturnValue({ sendMail: mockSendMail });
     (config.get as jest.Mock).mockImplementation(
       (key: string) => settings[key],
     );

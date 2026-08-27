@@ -240,6 +240,11 @@ porta 465); nas portas STARTTLS, use `false` conforme a configuração do
 provedor. Guarde credenciais SMTP em um gerenciador de segredos nos ambientes
 compartilhados.
 
+Para o MVP acadêmico com Ethereal, preencha `SMTP_USER` e `SMTP_PASSWORD` com
+as credenciais da conta de teste, mantenha `SMTP_HOST=smtp.ethereal.email`,
+`SMTP_PORT=587` e `SMTP_SECURE=false`. As mensagens ficam disponíveis apenas
+no preview do Ethereal e não são entregues a destinatários reais.
+
 ### Reprocessar falhas de entrega
 
 Falhas de e-mail não desfazem a operação de negócio: a API mantém a notificação
