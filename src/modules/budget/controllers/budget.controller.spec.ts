@@ -29,6 +29,7 @@ describe('BudgetController', () => {
     accept: jest.Mock;
     refuse: jest.Mock;
     findById: jest.Mock;
+    findAll: jest.Mock;
     findByServiceOrderId: jest.Mock;
   };
 
@@ -42,6 +43,7 @@ describe('BudgetController', () => {
       accept: jest.fn(),
       refuse: jest.fn(),
       findById: jest.fn(),
+      findAll: jest.fn(),
       findByServiceOrderId: jest.fn(),
     };
 
@@ -170,6 +172,16 @@ describe('BudgetController', () => {
 
     expect(service.findById).toHaveBeenCalledWith(budget.getId());
     expect(result.id).toBe(budget.getId());
+  });
+
+  it('lists all budgets', async () => {
+    const budgets = [makeBudget()];
+    service.findAll.mockResolvedValue(budgets);
+
+    const result = await controller.findAll();
+
+    expect(service.findAll).toHaveBeenCalledWith();
+    expect(result).toHaveLength(1);
   });
 
   it('finds budgets by service order id', async () => {

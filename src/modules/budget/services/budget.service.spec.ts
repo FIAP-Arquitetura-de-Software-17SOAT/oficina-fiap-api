@@ -50,6 +50,7 @@ describe('BudgetService', () => {
       updateGenerated: jest.fn((budget: Budget) => budget),
       updateWaitingApproval: jest.fn((budget: Budget) => budget),
       findById: jest.fn(),
+      findAll: jest.fn(),
       findByServiceOrderId: jest.fn(),
       findLastVersionByServiceOrderId: jest.fn(),
     };
@@ -78,6 +79,14 @@ describe('BudgetService', () => {
     }).compile();
 
     service = module.get<BudgetService>(BudgetService);
+  });
+
+  it('lists all budgets', async () => {
+    const budgets = [makeBudget()];
+    repository.findAll.mockResolvedValue(budgets);
+
+    await expect(service.findAll()).resolves.toEqual(budgets);
+    expect(repository.findAll).toHaveBeenCalledWith();
   });
 
   it('creates first budget with version 1', async () => {
