@@ -7,8 +7,12 @@ import {
 } from '@nestjs/common';
 import { isUniqueViolation } from '../../../shared/database/prisma-errors';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { paymentLinkReadyEmail } from '../../../shared/notifications/email/notification-templates';
 import { BudgetStatus } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceOrderService } from '../../service-order/services/service-order.service';
 import { GenerateBillingDto } from '../dto/billing.dto';
@@ -27,6 +31,8 @@ export class BillingService {
     private readonly budgetService: BudgetService,
     private readonly serviceOrderService: ServiceOrderService,
     private readonly paymentGateway: PaymentGateway,
+    private readonly clientRepository: ClientRepository,
+    private readonly notifications: NotificationService,
   ) {}
 
   async generateForServiceOrder(dto: GenerateBillingDto): Promise<Billing> {
@@ -111,6 +117,35 @@ export class BillingService {
     billing.expire();
 
     return this.persistUpdatedBilling(billing, expectedUpdatedAt);
+  }
+
+  private async enqueuePaymentLinkReadyNotification(
+    billing: Billing,
+  ): Promise<void> {
+    try {
+      const serviceOrder = await this.serviceOrderService.findById(
+        billing.getServiceOrderId(),
+      );
+      const client = await this.clientRepository.findById(
+        serviceOrder.getClientId(),
+      );
+      const paymentLink = billing.getPaymentLink();
+
+      if (!client || !paymentLink) return;
+
+      await this.notifications.enqueue({
+        type: NotificationType.PAYMENT_LINK_READY,
+        to: client.getEmail().getValue(),
+        ...paymentLinkReadyEmail({
+          serviceOrderId: billing.getServiceOrderId(),
+          total: billing.getAmount().value,
+          paymentLink,
+        }),
+      });
+    } catch {
+      // A cobrança e o link já foram persistidos; falhas de notificação não
+      // podem alterar esse resultado de negócio.
+    }
   }
 
   async renewPaymentLink(id: string, now = new Date()): Promise<Billing> {
@@ -237,7 +272,13 @@ export class BillingService {
     );
     const expectedUpdatedAt = new Date(billing.getUpdatedAt());
     billing.generatePaymentLink(link);
-    return this.persistUpdatedBilling(billing, expectedUpdatedAt);
+    const persisted = await this.persistUpdatedBilling(
+      billing,
+      expectedUpdatedAt,
+    );
+    void this.enqueuePaymentLinkReadyNotification(persisted);
+
+    return persisted;
   }
 
   private createPaymentLinkIdempotencyKey(billingId: string): string {

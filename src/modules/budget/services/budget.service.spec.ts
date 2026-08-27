@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   Budget,
@@ -6,6 +7,10 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { Client } from '../../client/entities/client.entity';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
 import { BudgetRepository } from '../repositories/budget.repository';
 import { BudgetService } from './budget.service';
 
@@ -35,6 +40,9 @@ describe('BudgetService', () => {
     awaitParts: jest.Mock;
     cancel: jest.Mock;
   };
+  let clientRepository: { findById: jest.Mock };
+  let notifications: { enqueue: jest.Mock };
+  let config: { get: jest.Mock };
 
   beforeEach(async () => {
     repository = {
@@ -47,10 +55,13 @@ describe('BudgetService', () => {
     };
 
     serviceOrderController = {
-      awaitApproval: jest.fn(),
+      awaitApproval: jest.fn().mockResolvedValue({ clientId: 'client-1' }),
       awaitParts: jest.fn(),
       cancel: jest.fn(),
     };
+    clientRepository = { findById: jest.fn() };
+    notifications = { enqueue: jest.fn() };
+    config = { get: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,6 +71,9 @@ describe('BudgetService', () => {
           provide: ServiceOrderController,
           useValue: serviceOrderController,
         },
+        { provide: ClientRepository, useValue: clientRepository },
+        { provide: NotificationService, useValue: notifications },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
 
@@ -83,6 +97,41 @@ describe('BudgetService', () => {
 
     expect(result.getVersion()).toBe(1);
     expect(repository.create).toHaveBeenCalled();
+  });
+
+  it('queues the first budget after awaiting approval', async () => {
+    const client = Client.create({
+      name: 'Maria Silva',
+      document: '529.982.247-25',
+      email: 'maria@example.com',
+      phone: '(11) 99999-8888',
+    });
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
+    serviceOrderController.awaitApproval.mockResolvedValue({
+      clientId: client.getId(),
+    });
+    clientRepository.findById.mockResolvedValue(client);
+
+    await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.BUDGET_READY,
+        to: client.getEmail().getValue(),
+        text: expect.stringContaining('Oil change'),
+        html: expect.stringContaining('R$'),
+      }),
+    );
   });
 
   it('normalizes service order id before allocating the next version', async () => {
@@ -344,6 +393,91 @@ describe('BudgetService', () => {
     );
   });
 
+  it('queues accepted parts to the stock mailbox after the service order awaits parts', async () => {
+    const budget = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [
+        {
+          description: 'Brake pad',
+          type: BudgetItemType.PART,
+          quantity: 2,
+          unitPrice: 80,
+        },
+        {
+          description: 'Brake replacement',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+    serviceOrderController.awaitParts.mockResolvedValue(undefined);
+    config.get.mockReturnValue('estoque@example.com');
+
+    await service.accept(budget.getId());
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.STOCK_PARTS_REQUESTED,
+        to: 'estoque@example.com',
+        subject: expect.stringContaining('service-123'),
+        text: expect.stringContaining('Brake pad'),
+        html: expect.stringContaining('Brake pad'),
+      }),
+    );
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.not.stringContaining('Brake replacement'),
+        html: expect.not.stringContaining('Brake replacement'),
+      }),
+    );
+  });
+
+  it('does not block an accepted budget when the stock mailbox is not a valid email', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+    config.get.mockReturnValue('not-an-email');
+
+    await expect(service.accept(budget.getId())).resolves.toBe(budget);
+    expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
+      'service-123',
+    );
+    expect(notifications.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('queues a stock request with no items when an accepted budget has no parts', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+    config.get.mockReturnValue('estoque@example.com');
+
+    await service.accept(budget.getId());
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.STOCK_PARTS_REQUESTED,
+        text: expect.stringContaining('Peças:'),
+      }),
+    );
+  });
+
+  it('does not block an accepted budget when queueing the stock request fails', async () => {
+    const budget = makeBudget();
+    budget.sendToCustomer();
+    repository.findById.mockResolvedValue(budget);
+    config.get.mockReturnValue('estoque@example.com');
+    notifications.enqueue.mockRejectedValue(new Error('queue unavailable'));
+
+    await expect(service.accept(budget.getId())).resolves.toBe(budget);
+    expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
+      'service-123',
+    );
+  });
+
   it('refuses a budget waiting for approval with a required reason', async () => {
     const budget = makeBudget();
     budget.sendToCustomer();
@@ -458,6 +592,7 @@ describe('BudgetService', () => {
       });
 
       expect(serviceOrderController.awaitApproval).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('orçamento aceito com peças coloca a OS aguardando peças', async () => {

@@ -3,13 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { isEmail } from 'class-validator';
+import {
+  budgetReadyEmail,
+  stockPartsRequestedEmail,
+} from '../../../shared/notifications/email/notification-templates';
 import {
   CreateBudgetDto,
   CreateBudgetItemDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
-import { Budget } from '../entities/budget.entity';
+import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
+import { Budget, BudgetItemType } from '../entities/budget.entity';
 import { BudgetRepository } from '../repositories/budget.repository';
 
 @Injectable()
@@ -22,6 +31,9 @@ export class BudgetService {
   constructor(
     private readonly budgetRepository: BudgetRepository,
     private readonly serviceOrderController: ServiceOrderController,
+    private readonly clientRepository: ClientRepository,
+    private readonly notifications: NotificationService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
@@ -37,7 +49,9 @@ export class BudgetService {
     // a execucao gera outro orcamento, e a OS ja nao esta mais em diagnostico -
     // nesse caso a transicao nao se aplica e o orcamento segue valido.
     if (budget.getVersion() === 1) {
-      await this.serviceOrderController.awaitApproval(serviceOrderId);
+      const serviceOrder =
+        await this.serviceOrderController.awaitApproval(serviceOrderId);
+      void this.enqueueBudgetReadyNotification(budget, serviceOrder.clientId);
     }
 
     return budget;
@@ -112,6 +126,7 @@ export class BudgetService {
    */
   private async requestPartsForAcceptedBudget(budget: Budget): Promise<void> {
     await this.serviceOrderController.awaitParts(budget.getServiceOrderId());
+    void this.enqueueStockPartsRequestNotification(budget);
   }
 
   async findById(id: string): Promise<Budget> {
@@ -253,4 +268,66 @@ export class BudgetService {
   private normalizeServiceOrderId(serviceOrderId: string): string {
     return serviceOrderId.trim();
   }
+
+  private async enqueueBudgetReadyNotification(
+    budget: Budget,
+    clientId: string,
+  ): Promise<void> {
+    try {
+      const client = await this.clientRepository.findById(clientId);
+      if (!client) return;
+
+      const items = budget.getItems();
+
+      await this.notifications.enqueue({
+        type: NotificationType.BUDGET_READY,
+        to: client.getEmail().getValue(),
+        ...budgetReadyEmail({
+          serviceOrderId: budget.getServiceOrderId(),
+          items: items.map((item) => ({
+            description: item.getDescription(),
+            quantity: item.getQuantity(),
+            unitPrice: item.getUnitPrice(),
+            subtotal: item.getSubtotal(),
+          })),
+          total: budget.getTotalAmount(),
+        }),
+      });
+    } catch {
+      // A criação do orçamento e a transição da OS já ocorreram. Falhas de
+      // notificação não podem alterar esse resultado de negócio.
+    }
+  }
+
+  private async enqueueStockPartsRequestNotification(
+    budget: Budget,
+  ): Promise<void> {
+    try {
+      const stockEmail = this.config
+        .get<string>('STOCK_NOTIFICATION_EMAIL')
+        ?.trim();
+
+      if (!stockEmail || !isEmail(stockEmail)) return;
+
+      const parts = budget
+        .getItems()
+        .filter((item) => item.getType() === BudgetItemType.PART);
+
+      await this.notifications.enqueue({
+        type: NotificationType.STOCK_PARTS_REQUESTED,
+        to: stockEmail,
+        ...stockPartsRequestedEmail({
+          serviceOrderId: budget.getServiceOrderId(),
+          parts: parts.map((item) => ({
+            description: item.getDescription(),
+            quantity: item.getQuantity(),
+          })),
+        }),
+      });
+    } catch {
+      // O aceite do orçamento e a transição da OS já ocorreram. Falhas de
+      // notificação não podem alterar esse resultado de negócio.
+    }
+  }
+
 }

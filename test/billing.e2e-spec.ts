@@ -11,6 +11,8 @@ import { BillingRepository } from '../src/modules/billing/repositories/billing.r
 import { BillingService } from '../src/modules/billing/services/billing.service';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
+import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -25,10 +27,12 @@ import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 describe('Billing (integracao)', () => {
   let app: INestApplication<App>;
   let http: App;
+  let notifications: { enqueue: jest.Mock };
   const jwt = new JwtService();
   let token: string;
 
   beforeEach(async () => {
+    notifications = { enqueue: jest.fn() };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
         imports: [AppModule],
@@ -48,6 +52,8 @@ describe('Billing (integracao)', () => {
       .useValue(new InMemoryBillingRepository())
       .overrideProvider(PaymentGateway)
       .useValue(new FakePaymentGateway())
+      .overrideProvider(NotificationService)
+      .useValue(notifications)
       .compile();
 
     app = configureApp(
@@ -191,6 +197,32 @@ describe('Billing (integracao)', () => {
         },
       ],
     });
+  });
+
+  it('queues the persisted payment link in BRL for the customer', async () => {
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
+
+    const response = await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId })
+      .expect(201);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.PAYMENT_LINK_READY,
+        to: 'maria@example.com',
+        text: expect.stringContaining(response.body.paymentLink),
+        html: expect.stringContaining(response.body.paymentLink),
+      }),
+    );
+    const message = notifications.enqueue.mock.calls[0][0] as {
+      text: string;
+      html: string;
+    };
+    expect(message.text).toContain('R$ 150,00');
+    expect(message.html).toContain('R$ 150,00');
   });
 
   it('rejects malformed service order ids before billing lookup', async () => {

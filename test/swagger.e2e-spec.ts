@@ -296,6 +296,13 @@ describe('Swagger', () => {
     );
   });
 
+  it('documents notification operations and the retry success response', () => {
+    expect(document.paths['/api/v1/notifications']).toBeDefined();
+    expect(
+      document.paths['/api/v1/notifications/{id}/retry'].post!.responses,
+    ).toHaveProperty('200');
+  });
+
   it('serve a UI e o JSON em /api/v1/docs', async () => {
     await request(http)
       .get('/api/v1/docs')

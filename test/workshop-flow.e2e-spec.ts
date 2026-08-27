@@ -1,10 +1,13 @@
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
+import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
 import { PurchaseOrderRepository } from '../src/modules/purchase-order/repositories/purchase-order.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -34,11 +37,19 @@ describe('Fluxo da oficina (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
   const jwt = new JwtService();
+  let notifications: { enqueue: jest.Mock };
+  let config: { get: jest.Mock };
 
   let token: string;
 
   beforeEach(async () => {
     const parts = new InMemoryPartRepository();
+    notifications = { enqueue: jest.fn() };
+    config = {
+      get: jest.fn((key: string) =>
+        key === 'STOCK_NOTIFICATION_EMAIL' ? 'estoque@example.com' : undefined,
+      ),
+    };
 
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
@@ -59,7 +70,11 @@ describe('Fluxo da oficina (e2e)', () => {
         .overrideProvider(StockMovementRepository)
         .useValue(new InMemoryStockMovementRepository(parts))
         .overrideProvider(PurchaseOrderRepository)
-        .useValue(new InMemoryPurchaseOrderRepository()),
+        .useValue(new InMemoryPurchaseOrderRepository())
+        .overrideProvider(NotificationService)
+        .useValue(notifications)
+        .overrideProvider(ConfigService)
+        .useValue(config),
     ).compile();
 
     app = configureApp(
@@ -236,6 +251,54 @@ describe('Fluxo da oficina (e2e)', () => {
         expect(body.sampleSize).toBe(1);
         expect(body.averageExecutionTimeMs).toBeGreaterThanOrEqual(0);
       });
+  });
+
+  it('o aceite enfileira somente as peças para o e-mail de estoque', async () => {
+    const partId = await createPart(1);
+    const serviceOrderId = await openServiceOrderAwaitingApproval();
+    const budget = await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId,
+        items: [
+          {
+            partId,
+            description: 'Filtro de óleo',
+            type: 'PART',
+            quantity: 2,
+            unitPrice: 149.9,
+          },
+          {
+            description: 'Troca do filtro',
+            type: 'SERVICE',
+            quantity: 1,
+            unitPrice: 100,
+          },
+        ],
+      })
+      .expect(201);
+
+    await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/send`)
+      .expect(200);
+    notifications.enqueue.mockClear();
+
+    await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/accept`)
+      .expect(200);
+
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.STOCK_PARTS_REQUESTED,
+        to: 'estoque@example.com',
+        text: expect.stringContaining('Filtro de óleo'),
+      }),
+    );
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.not.stringContaining('Troca do filtro'),
+      }),
+    );
   });
 
   it('o atalho não existe mais: nenhuma OS chega em execução por fora do estoque', async () => {
