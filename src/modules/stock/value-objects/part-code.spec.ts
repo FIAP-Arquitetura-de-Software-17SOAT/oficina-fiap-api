@@ -16,6 +16,13 @@ describe('PartCode', () => {
     },
   );
 
+  it.each(['OIL-FILTER-123 AND 1=1 --', '../etc/passwd', 'OIL/FILTER'])(
+    'rejects suspicious SKU characters',
+    (input) => {
+      expect(() => PartCode.create(input)).toThrow(DomainException);
+    },
+  );
+
   it('compares normalized values', () => {
     expect(
       PartCode.create('oil-filter').equals(PartCode.create('OIL-FILTER')),

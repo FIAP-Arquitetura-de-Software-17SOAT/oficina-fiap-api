@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -87,7 +88,7 @@ export class PurchaseOrderController {
     summary: 'Consultar pedido de compra por ID',
   })
   async findById(
-    @Param('id')
+    @Param('id', ParseUUIDPipe)
     id: string,
   ) {
     const purchaseOrder = await this.service.findById(id);
@@ -100,7 +101,7 @@ export class PurchaseOrderController {
     summary: 'Adicionar item ao pedido de compra',
   })
   async addItem(
-    @Param('id')
+    @Param('id', ParseUUIDPipe)
     id: string,
 
     @Body()
@@ -116,10 +117,10 @@ export class PurchaseOrderController {
     summary: 'Remover item do pedido de compra',
   })
   async removeItem(
-    @Param('id')
+    @Param('id', ParseUUIDPipe)
     id: string,
 
-    @Param('itemId')
+    @Param('itemId', ParseUUIDPipe)
     itemId: string,
   ) {
     const purchaseOrder = await this.service.removeItem(id, itemId);
@@ -132,7 +133,7 @@ export class PurchaseOrderController {
     summary: 'Registrar compra junto ao fornecedor',
   })
   async registerPurchase(
-    @Param('id')
+    @Param('id', ParseUUIDPipe)
     id: string,
   ) {
     const purchaseOrder = await this.service.registerPurchase(id);
@@ -145,7 +146,7 @@ export class PurchaseOrderController {
     summary: 'Registrar entrega do pedido de compra',
   })
   async markAsDelivered(
-    @Param('id')
+    @Param('id', ParseUUIDPipe)
     id: string,
   ) {
     const purchaseOrder = await this.service.markAsDelivered(id);

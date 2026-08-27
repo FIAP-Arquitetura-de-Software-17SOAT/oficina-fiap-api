@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../shared/database/prisma.service';
+import { isUniqueViolation } from '../../../shared/database/prisma-errors';
 
 import { PurchaseOrder } from '../entities/purchase-order.entity';
 
@@ -49,43 +50,51 @@ export class PurchaseOrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
-    const row = await this.prisma.purchaseOrder.create({
-      data: {
-        id: purchaseOrder.getId(),
+    try {
+      const row = await this.prisma.purchaseOrder.create({
+        data: {
+          id: purchaseOrder.getId(),
 
-        number: purchaseOrder.getNumber().value,
+          number: purchaseOrder.getNumber().value,
 
-        supplier: purchaseOrder.getSupplier(),
+          supplier: purchaseOrder.getSupplier(),
 
-        status: purchaseOrder.getStatus(),
+          status: purchaseOrder.getStatus(),
 
-        createdAt: purchaseOrder.getCreatedAt(),
+          createdAt: purchaseOrder.getCreatedAt(),
 
-        updatedAt: purchaseOrder.getUpdatedAt(),
+          updatedAt: purchaseOrder.getUpdatedAt(),
 
-        deliveredAt: purchaseOrder.getDeliveredAt(),
+          deliveredAt: purchaseOrder.getDeliveredAt(),
 
-        // Pedidos abertos pela politica de necessidade de compra ja nascem com
-        // itens; os criados pela API nascem vazios e o map fica sem elementos.
-        items: {
-          create: purchaseOrder.getItems().map((item) => ({
-            id: item.getId(),
+          // Pedidos abertos pela politica de necessidade de compra ja nascem com
+          // itens; os criados pela API nascem vazios e o map fica sem elementos.
+          items: {
+            create: purchaseOrder.getItems().map((item) => ({
+              id: item.getId(),
 
-            partId: item.getPecaId(),
+              partId: item.getPecaId(),
 
-            quantity: item.getQuantity().value,
+              quantity: item.getQuantity().value,
 
-            unitPriceCents: item.getUnitPrice().valueInCents,
-          })),
+              unitPriceCents: item.getUnitPrice().valueInCents,
+            })),
+          },
         },
-      },
 
-      include: {
-        items: true,
-      },
-    });
+        include: {
+          items: true,
+        },
+      });
 
-    return this.toDomain(row);
+      return this.toDomain(row);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Purchase order number already exists');
+      }
+
+      throw error;
+    }
   }
 
   /**
