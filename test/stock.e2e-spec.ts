@@ -122,4 +122,14 @@ describe('Stock (e2e)', () => {
       .send({ ...payload, minimumQuantity: -1, unexpected: true })
       .expect(400);
   });
+
+  it('rejects suspicious part codes observed by security scanners', async () => {
+    const token = await accessToken('ADMIN');
+
+    await request(http)
+      .post('/api/v1/stock')
+      .auth(token, { type: 'bearer' })
+      .send({ ...payload, code: 'OIL-FILTER-123 AND 1=1 --' })
+      .expect(400);
+  });
 });

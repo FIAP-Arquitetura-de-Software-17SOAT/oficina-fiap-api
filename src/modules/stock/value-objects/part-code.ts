@@ -1,5 +1,7 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
 
+const PART_CODE_PATTERN = /^[A-Z0-9._-]+$/;
+
 export class PartCode {
   private constructor(private readonly value: string) {}
 
@@ -8,6 +10,12 @@ export class PartCode {
 
     if (!value) {
       throw new DomainException('Código da peça é obrigatório');
+    }
+
+    if (!PART_CODE_PATTERN.test(value)) {
+      throw new DomainException(
+        'Codigo da peca deve conter apenas letras, numeros, ponto, hifen ou sublinhado',
+      );
     }
 
     return new PartCode(value);

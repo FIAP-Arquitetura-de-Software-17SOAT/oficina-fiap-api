@@ -1,10 +1,22 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NextFunction, Request, Response } from 'express';
 import { DomainExceptionFilter } from './shared/http/filters/domain-exception.filter';
 
 export const API_PREFIX = 'api/v1';
 
 export function configureApp(app: INestApplication): INestApplication {
+  const httpInstance = app.getHttpAdapter().getInstance();
+
+  if (typeof httpInstance.disable === 'function') {
+    httpInstance.disable('x-powered-by');
+  }
+
+  app.use((_request: Request, response: Response, next: NextFunction) => {
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+  });
+
   app.setGlobalPrefix(API_PREFIX);
 
   app.useGlobalPipes(
