@@ -303,7 +303,15 @@ describe('Budget (e2e)', () => {
       });
 
     await request(http)
-      .get(`/api/v1/budgets?serviceOrderId=${serviceOrderId}`)
+      .get('/api/v1/budgets')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(1);
+        expect(body[0].id).toBe(create.body.id);
+      });
+
+    await request(http)
+      .get(`/api/v1/budgets/service-order/${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveLength(1);
@@ -361,11 +369,13 @@ describe('Budget (e2e)', () => {
       .expect(400);
   });
 
-  it('rejects budget list requests without a valid service order id', async () => {
-    await request(http).get('/api/v1/budgets').expect(400);
-    await request(http).get('/api/v1/budgets?serviceOrderId=').expect(400);
+  it('rejects budget service-order list requests without a valid service order id', async () => {
+    await request(http).get('/api/v1/budgets').expect(200);
     await request(http)
-      .get('/api/v1/budgets?serviceOrderId=%20%20%20')
+      .get('/api/v1/budgets/service-order/')
+      .expect(400);
+    await request(http)
+      .get('/api/v1/budgets/service-order/%20%20%20')
       .expect(400);
   });
 

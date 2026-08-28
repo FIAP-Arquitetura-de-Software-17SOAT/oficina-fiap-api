@@ -95,6 +95,15 @@ export class BudgetRepository {
     return record ? this.toDomain(record) : null;
   }
 
+  async findAll(): Promise<Budget[]> {
+    const records = await this.prisma.budget.findMany({
+      include: { items: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return records.map((record) => this.toDomain(record));
+  }
+
   async findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
     const records = await this.prisma.budget.findMany({
       where: { serviceOrderId },

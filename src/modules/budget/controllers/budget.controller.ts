@@ -8,7 +8,6 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
-  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -18,6 +17,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -26,7 +26,7 @@ import {
   BudgetTotalResponseDto,
   CreateBudgetDto,
   CreateBudgetItemDto,
-  FindBudgetsQueryDto,
+  FindBudgetsByServiceOrderParamsDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { BudgetMapper } from '../mappers/budget.mapper';
@@ -148,14 +148,22 @@ export class BudgetController {
     return BudgetMapper.toResponse(await this.budgetService.findById(id));
   }
 
-  @Get()
+  @Get('service-order/:serviceOrderId')
   @ApiOperation({ summary: 'Lista orcamentos por ordem de servico' })
+  @ApiParam({ name: 'serviceOrderId', example: 'service-123' })
   @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
   async findByServiceOrderId(
-    @Query() query: FindBudgetsQueryDto,
+    @Param() params: FindBudgetsByServiceOrderParamsDto,
   ): Promise<BudgetResponseDto[]> {
     return BudgetMapper.toResponseList(
-      await this.budgetService.findByServiceOrderId(query.serviceOrderId),
+      await this.budgetService.findByServiceOrderId(params.serviceOrderId),
     );
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Lista todos os orcamentos' })
+  @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
+  async findAll(): Promise<BudgetResponseDto[]> {
+    return BudgetMapper.toResponseList(await this.budgetService.findAll());
   }
 }

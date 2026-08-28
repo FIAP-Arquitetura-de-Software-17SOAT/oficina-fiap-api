@@ -223,6 +223,18 @@ describe('BudgetRepository', () => {
     expect(updated?.getStatus()).toBe(BudgetStatus.ACCEPTED);
   });
 
+  it('lists all budgets with their items', async () => {
+    prisma.budget.findMany.mockResolvedValue([row]);
+
+    const budgets = await repository.findAll();
+
+    expect(prisma.budget.findMany).toHaveBeenCalledWith({
+      include: { items: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(budgets).toHaveLength(1);
+  });
+
   it('lists budgets for a service order with their items', async () => {
     prisma.budget.findMany.mockResolvedValue([row]);
 

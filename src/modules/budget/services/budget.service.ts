@@ -139,6 +139,10 @@ export class BudgetService {
     return budget;
   }
 
+  async findAll(): Promise<Budget[]> {
+    return this.budgetRepository.findAll();
+  }
+
   async findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
     return this.budgetRepository.findByServiceOrderId(
       this.normalizeServiceOrderId(serviceOrderId),

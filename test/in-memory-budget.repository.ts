@@ -59,6 +59,12 @@ export class InMemoryBudgetRepository {
     return Promise.resolve(budget ? this.clone(budget) : null);
   }
 
+  findAll(): Promise<Budget[]> {
+    return Promise.resolve(
+      Array.from(this.budgets.values()).map((budget) => this.clone(budget)),
+    );
+  }
+
   findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
     return Promise.resolve(
       Array.from(this.budgets.values())
