@@ -493,7 +493,11 @@ describe('Fluxo da oficina (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/refuse`)
       .send({ reason: 'Achou caro' })
-      .expect(200);
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('REFUSED');
+        expect(body.refusalReason).toBe('Achou caro');
+      });
 
     // A recusa é resposta a uma proposta, não desistência do atendimento: a OS
     // continua aberta para o mecânico refazer o orçamento.
@@ -549,6 +553,42 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(({ body }) => {
         expect(body.status).toBe('CANCELLED');
         expect(body.cancellationReason).toContain('Cliente desistiu');
+      });
+  });
+
+  it('OS encerrada não recebe orçamento novo', async () => {
+    const partId = await createPart(5);
+    const serviceOrderId = await openServiceOrderAwaitingApproval();
+
+    await request(http)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/cancel`)
+      .send({ reason: 'Cliente desistiu do reparo' })
+      .expect(200);
+
+    // Só a versão 1 passa por `awaitApproval`, que barraria a transição
+    // inválida. Sem o guard na criação, a versão 2 era gravada em silêncio numa
+    // OS que já tinha acabado.
+    await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId,
+        items: [
+          {
+            partId,
+            description: 'Filtro de óleo',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 149.9,
+          },
+        ],
+      })
+      .expect(409);
+
+    await request(http)
+      .get(`/api/v1/budgets?serviceOrderId=${serviceOrderId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(0);
       });
   });
 

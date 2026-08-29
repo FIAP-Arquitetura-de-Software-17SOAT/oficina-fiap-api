@@ -44,6 +44,7 @@ describe('BudgetService', () => {
     awaitApproval: jest.Mock;
     awaitParts: jest.Mock;
     cancel: jest.Mock;
+    findById: jest.Mock;
   };
   let serviceCatalogController: { findById: jest.Mock };
   let partController: { findById: jest.Mock };
@@ -66,6 +67,10 @@ describe('BudgetService', () => {
       awaitApproval: jest.fn().mockResolvedValue({ clientId: 'client-1' }),
       awaitParts: jest.fn(),
       cancel: jest.fn(),
+      findById: jest.fn().mockResolvedValue({
+        clientId: 'client-1',
+        status: 'IN_DIAGNOSIS',
+      }),
     };
     serviceCatalogController = { findById: jest.fn() };
     partController = { findById: jest.fn() };
@@ -634,6 +639,35 @@ describe('BudgetService', () => {
       expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
+    it.each(['CANCELLED', 'COMPLETED', 'DELIVERED'])(
+      'OS em %s não recebe orçamento novo',
+      async (status) => {
+        // A versão 2 não passa por `awaitApproval`, então sem esta conferência
+        // ela era gravada em silêncio num atendimento já encerrado.
+        repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+        serviceOrderController.findById.mockResolvedValue({
+          clientId: 'client-1',
+          status,
+        });
+
+        await expect(
+          service.create({
+            serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+            items: [
+              {
+                description: 'Reparo extra',
+                type: BudgetItemType.SERVICE,
+                quantity: 1,
+                unitPrice: 90,
+              },
+            ],
+          }),
+        ).rejects.toBeInstanceOf(ConflictException);
+
+        expect(repository.create).not.toHaveBeenCalled();
+      },
+    );
+
     it('orçamento aceito com peças coloca a OS aguardando peças', async () => {
       const budget = makeBudgetWithPart();
       budget.sendToClient();
@@ -835,6 +869,10 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
             awaitApproval: jest.fn().mockResolvedValue({ clientId: 'c-1' }),
             awaitParts: jest.fn(),
             cancel: jest.fn(),
+            findById: jest.fn().mockResolvedValue({
+              clientId: 'c-1',
+              status: 'IN_DIAGNOSIS',
+            }),
           },
         },
         { provide: ServiceController, useValue: serviceCatalogController },
