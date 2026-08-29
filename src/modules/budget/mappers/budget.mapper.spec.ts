@@ -41,7 +41,7 @@ describe('BudgetMapper', () => {
       id: 'budget-123',
       serviceOrderId: 'service-123',
       version: 2,
-      status: BudgetStatus.REFUSED,
+      status: BudgetStatus.BUDGET_REFUSED,
       refusalReason: 'Too expensive',
       sentAt: createdAt,
       answeredAt: updatedAt,
@@ -61,7 +61,7 @@ describe('BudgetMapper', () => {
     });
 
     expect(budget.getId()).toBe('budget-123');
-    expect(budget.getStatus()).toBe(BudgetStatus.REFUSED);
+    expect(budget.getStatus()).toBe(BudgetStatus.BUDGET_REFUSED);
     expect(budget.getItems()[0].getQuantity()).toBe(2.5);
     expect(budget.getItems()[0].getUnitPrice()).toBe(40.2);
     expect(budget.getCreatedAt()).toEqual(createdAt);

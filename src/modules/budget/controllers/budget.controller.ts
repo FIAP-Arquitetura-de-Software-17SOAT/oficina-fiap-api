@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -18,6 +19,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -162,8 +164,19 @@ export class BudgetController {
 
   @Get()
   @ApiOperation({ summary: 'Lista todos os orcamentos' })
+  @ApiQuery({
+    name: 'serviceOrderId',
+    required: false,
+    description: 'Filtra orcamentos por ordem de servico',
+  })
   @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
-  async findAll(): Promise<BudgetResponseDto[]> {
-    return BudgetMapper.toResponseList(await this.budgetService.findAll());
+  async findAll(
+    @Query('serviceOrderId') serviceOrderId?: string,
+  ): Promise<BudgetResponseDto[]> {
+    const budgets = serviceOrderId?.trim()
+      ? await this.budgetService.findByServiceOrderId(serviceOrderId)
+      : await this.budgetService.findAll();
+
+    return BudgetMapper.toResponseList(budgets);
   }
 }

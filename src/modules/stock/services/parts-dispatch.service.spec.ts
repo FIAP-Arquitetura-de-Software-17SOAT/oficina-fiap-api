@@ -126,7 +126,11 @@ describe('PartsDispatchService', () => {
     budgetController.findByServiceOrderId.mockResolvedValue([
       makeBudget({ id: 'budget-1', version: 1 }),
       makeBudget({ id: 'budget-2', version: 2 }),
-      makeBudget({ id: 'budget-3', version: 3, status: BudgetStatus.REFUSED }),
+      makeBudget({
+        id: 'budget-3',
+        version: 3,
+        status: BudgetStatus.BUDGET_REFUSED,
+      }),
     ]);
     partService.findById.mockResolvedValue(makePart(5));
 

@@ -43,6 +43,16 @@ export class BudgetService {
 
     await this.assertReferencedServicesExist(dto.items);
 
+    const serviceOrder = await this.serviceOrderController.findById(
+      serviceOrderId,
+    );
+
+    if (!this.canCreateBudgetForServiceOrderStatus(serviceOrder.status)) {
+      throw new ConflictException(
+        `Cannot create budget for service order in status ${serviceOrder.status}`,
+      );
+    }
+
     const budget = await this.createWithNextAvailableVersion(
       serviceOrderId,
       dto.items,
@@ -112,8 +122,8 @@ export class BudgetService {
       expectedUpdatedAt,
     );
 
-    // Politica do Event Storming: "Quando Status do orcamento for alterado para
-    // recusado, encerra a ordem de servico".
+    // MVP educativo: recusa do cliente encerra a OS. Um fluxo futuro de revisao
+    // deve criar nova regra/status de reabertura em outro plano.
     await this.serviceOrderController.cancel(refused.getServiceOrderId(), {
       reason: `Orcamento recusado: ${refused.getRefusalReason()}`,
     });
@@ -193,6 +203,10 @@ export class BudgetService {
     }
 
     throw new ConflictException('Could not allocate budget version');
+  }
+
+  private canCreateBudgetForServiceOrderStatus(status: string): boolean {
+    return ['IN_DIAGNOSIS', 'IN_PROGRESS'].includes(status);
   }
 
   private async persistGeneratedChange(

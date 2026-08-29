@@ -163,7 +163,7 @@ enum BudgetStatus {
   GENERATED
   WAITING_APPROVAL
   ACCEPTED
-  REFUSED
+  BUDGET_REFUSED
 }
 
 enum BudgetItemType {

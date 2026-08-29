@@ -319,6 +319,34 @@ describe('Budget (e2e)', () => {
       });
   });
 
+  it('filters budgets by serviceOrderId query string', async () => {
+    const firstBudget = await createBudget();
+    const firstServiceOrderId = serviceOrderId;
+    await app.get(BudgetRepository).create(
+      Budget.create({
+        serviceOrderId: 'another-service-order',
+        version: 1,
+        items: [
+          {
+            description: 'Brake adjustment',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 180,
+          },
+        ],
+      }),
+    );
+
+    await request(http)
+      .get(`/api/v1/budgets?serviceOrderId=${firstServiceOrderId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(1);
+        expect(body[0].id).toBe(firstBudget.id);
+        expect(body[0].serviceOrderId).toBe(firstServiceOrderId);
+      });
+  });
+
   it('rejects decisions before send and blank refusal reasons', async () => {
     const { id } = await createBudget();
 
@@ -430,7 +458,7 @@ describe('Budget (e2e)', () => {
       .send({ reason: 'Customer found it expensive' })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.status).toBe('REFUSED');
+        expect(body.status).toBe('BUDGET_REFUSED');
         expect(body.refusalReason).toBe('Customer found it expensive');
       });
 
@@ -438,7 +466,7 @@ describe('Budget (e2e)', () => {
       .get(`/api/v1/budgets/${id}`)
       .expect(200)
       .expect(({ body }) => {
-        expect(body.status).toBe('REFUSED');
+        expect(body.status).toBe('BUDGET_REFUSED');
         expect(body.refusalReason).toBe('Customer found it expensive');
       });
 

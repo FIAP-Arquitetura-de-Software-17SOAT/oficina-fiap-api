@@ -8,7 +8,7 @@ export enum BudgetStatus {
   GENERATED = 'GENERATED',
   WAITING_APPROVAL = 'WAITING_APPROVAL',
   ACCEPTED = 'ACCEPTED',
-  REFUSED = 'REFUSED',
+  BUDGET_REFUSED = 'BUDGET_REFUSED',
 }
 
 export enum BudgetItemType {
@@ -250,7 +250,7 @@ export class Budget {
     this.assertWaitingApproval();
     const trimmed = (reason ?? '').trim();
     if (!trimmed) throw new DomainException('Refusal reason is required');
-    this.status = BudgetStatus.REFUSED;
+    this.status = BudgetStatus.BUDGET_REFUSED;
     this.refusalReason = trimmed;
     this.answeredAt = new Date();
     this.touch();

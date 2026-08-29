@@ -37,6 +37,7 @@ describe('BudgetService', () => {
   let service: BudgetService;
   let repository: MockedRepository;
   let serviceOrderController: {
+    findById: jest.Mock;
     awaitApproval: jest.Mock;
     awaitParts: jest.Mock;
     cancel: jest.Mock;
@@ -58,6 +59,11 @@ describe('BudgetService', () => {
     };
 
     serviceOrderController = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'service-123',
+        status: 'IN_DIAGNOSIS',
+        clientId: 'client-1',
+      }),
       awaitApproval: jest.fn().mockResolvedValue({ clientId: 'client-1' }),
       awaitParts: jest.fn(),
       cancel: jest.fn(),
@@ -174,6 +180,11 @@ describe('BudgetService', () => {
 
   it('creates next budget with incremented version for same serviceOrderId', async () => {
     repository.findLastVersionByServiceOrderId.mockResolvedValue(2);
+    serviceOrderController.findById.mockResolvedValue({
+      id: 'service-123',
+      status: 'IN_PROGRESS',
+      clientId: 'client-1',
+    });
 
     const result = await service.create({
       serviceOrderId: 'service-123',
@@ -188,6 +199,33 @@ describe('BudgetService', () => {
     });
 
     expect(result.getVersion()).toBe(3);
+  });
+
+  it('recusa criar novo orcamento para OS cancelada antes de persistir', async () => {
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+    serviceOrderController.findById.mockResolvedValue({
+      id: 'service-123',
+      status: 'CANCELLED',
+      clientId: 'client-1',
+    });
+
+    await expect(
+      service.create({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            description: 'Revisao indevida',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 90,
+          },
+        ],
+      }),
+    ).rejects.toThrow(ConflictException);
+
+    expect(repository.findLastVersionByServiceOrderId).not.toHaveBeenCalled();
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(serviceOrderController.awaitApproval).not.toHaveBeenCalled();
   });
 
   it('retries allocation with the next version after a duplicate version conflict', async () => {
@@ -503,7 +541,7 @@ describe('BudgetService', () => {
       reason: 'Customer found it expensive',
     });
 
-    expect(result.getStatus()).toBe(BudgetStatus.REFUSED);
+    expect(result.getStatus()).toBe(BudgetStatus.BUDGET_REFUSED);
     expect(result.getRefusalReason()).toBe('Customer found it expensive');
     expect(result.getAnsweredAt()).toBeInstanceOf(Date);
     expect(repository.updateWaitingApproval).toHaveBeenCalledWith(
@@ -636,13 +674,16 @@ describe('BudgetService', () => {
       );
     });
 
-    it('orçamento recusado encerra a ordem de serviço com o motivo', async () => {
+    it('orçamento recusado cancela a ordem de serviço no MVP', async () => {
       const budget = makeBudget();
       budget.sendToCustomer();
       repository.findById.mockResolvedValue(budget);
 
-      await service.refuse(budget.getId(), { reason: 'Achou caro' });
+      const result = await service.refuse(budget.getId(), {
+        reason: 'Achou caro',
+      });
 
+      expect(result.getStatus()).toBe(BudgetStatus.BUDGET_REFUSED);
       expect(serviceOrderController.cancel).toHaveBeenCalledWith(
         'service-123',
         { reason: 'Orcamento recusado: Achou caro' },
@@ -776,6 +817,11 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
         {
           provide: ServiceOrderController,
           useValue: {
+            findById: jest.fn().mockResolvedValue({
+              id: 'service-123',
+              status: 'IN_DIAGNOSIS',
+              clientId: 'c-1',
+            }),
             awaitApproval: jest.fn().mockResolvedValue({ clientId: 'c-1' }),
             awaitParts: jest.fn(),
             cancel: jest.fn(),

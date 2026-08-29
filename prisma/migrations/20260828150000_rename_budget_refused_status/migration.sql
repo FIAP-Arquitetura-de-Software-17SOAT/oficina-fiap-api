@@ -1,0 +1,5 @@
+ALTER TYPE "BudgetStatus" ADD VALUE IF NOT EXISTS 'BUDGET_REFUSED';
+
+UPDATE "budget"
+SET "status" = 'BUDGET_REFUSED'
+WHERE "status"::text = 'REFUSED';

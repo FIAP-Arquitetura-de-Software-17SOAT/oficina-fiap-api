@@ -414,7 +414,11 @@ describe('Fluxo da oficina (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/refuse`)
       .send({ reason: 'Achou caro' })
-      .expect(200);
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('BUDGET_REFUSED');
+        expect(body.refusalReason).toBe('Achou caro');
+      });
 
     await request(http)
       .get(`/api/v1/service-order/${serviceOrderId}`)
@@ -422,6 +426,30 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(({ body }) => {
         expect(body.status).toBe('CANCELLED');
         expect(body.cancellationReason).toContain('Achou caro');
+      });
+
+    await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId,
+        items: [
+          {
+            partId,
+            description: 'Filtro de oleo revisado',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 120,
+          },
+        ],
+      })
+      .expect(409);
+
+    await request(http)
+      .get(`/api/v1/budgets/service-order/${serviceOrderId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(1);
+        expect(body[0].status).toBe('BUDGET_REFUSED');
       });
   });
 

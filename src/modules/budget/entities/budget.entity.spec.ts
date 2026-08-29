@@ -236,7 +236,7 @@ describe('Budget', () => {
     budget.sendToCustomer();
     budget.refuse('  Customer found it expensive  ');
 
-    expect(budget.getStatus()).toBe(BudgetStatus.REFUSED);
+    expect(budget.getStatus()).toBe(BudgetStatus.BUDGET_REFUSED);
     expect(budget.getRefusalReason()).toBe('Customer found it expensive');
     expect(budget.getAnsweredAt()).toBeInstanceOf(Date);
   });
