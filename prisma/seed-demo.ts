@@ -270,7 +270,7 @@ export async function runDemoSeed(
       ['IN_PROGRESS', 'Troca de óleo em execução'],
       ['COMPLETED', 'Revisão concluída, aguardando cobrança'],
       ['DELIVERED', 'Serviço concluído e veículo entregue'],
-      ['CANCELLED', 'Cliente recusou o orçamento'],
+      ['CANCELLED', 'Cliente desistiu do reparo'],
     ].map(([status, description], index) =>
       createIfMissing(
         prisma.serviceOrder,
@@ -292,7 +292,7 @@ export async function runDemoSeed(
             completedAt: new Date('2026-01-12T15:00:00.000Z'),
           }),
           ...(index === 7 && {
-            cancellationReason: 'Cliente recusou o orçamento',
+            cancellationReason: 'Cliente desistiu do reparo',
           }),
         },
       ),
@@ -307,9 +307,11 @@ export async function runDemoSeed(
         id: '80000000-0000-4000-8000-000000000001',
         serviceOrderId: serviceOrders[2].id,
         version: 1,
-        status: 'WAITING_APPROVAL',
+        status: 'REFUSED',
         totalCents: 22500,
+        refusalReason: 'Cliente achou o valor acima do esperado',
         sentAt: new Date('2026-01-10T10:00:00.000Z'),
+        answeredAt: new Date('2026-01-10T14:00:00.000Z'),
         items: {
           create: [
             {
@@ -467,26 +469,24 @@ export async function runDemoSeed(
     ),
     createIfMissing(
       prisma.budget,
-      { id: '80000000-0000-4000-8000-000000000006' },
+      { id: '80000000-0000-4000-8000-000000000007' },
       {
-        id: '80000000-0000-4000-8000-000000000006',
-        serviceOrderId: serviceOrders[7].id,
-        version: 1,
-        status: 'REFUSED',
-        totalCents: 35000,
-        refusalReason: 'Cliente decidiu adiar o reparo',
-        sentAt: new Date('2026-01-07T10:00:00.000Z'),
-        answeredAt: new Date('2026-01-07T12:00:00.000Z'),
+        id: '80000000-0000-4000-8000-000000000007',
+        serviceOrderId: serviceOrders[2].id,
+        version: 2,
+        status: 'WAITING_APPROVAL',
+        totalCents: 18000,
+        sentAt: new Date('2026-01-11T10:00:00.000Z'),
         items: {
           create: [
             {
-              id: '81000000-0000-4000-8000-000000000010',
-              serviceId: brakeRepair.id,
-              description: 'Reparo de freios',
+              id: '81000000-0000-4000-8000-000000000011',
+              serviceId: oilChange.id,
+              description: 'Troca de óleo com valor revisado',
               type: 'SERVICE',
               quantity: 1,
-              unitPriceCents: 35000,
-              subtotalCents: 35000,
+              unitPriceCents: 18000,
+              subtotalCents: 18000,
             },
           ],
         },

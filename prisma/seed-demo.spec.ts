@@ -83,6 +83,24 @@ describe('runDemoSeed', () => {
           .map((order) => order.mechanicId),
       ).size,
     ).toBe(4);
+    expect(
+      records.budget
+        .filter(
+          (budget) =>
+            budget.serviceOrderId === '60000000-0000-4000-8000-000000000003',
+        )
+        .map((budget) => ({ version: budget.version, status: budget.status })),
+    ).toEqual(
+      expect.arrayContaining([
+        { version: 1, status: 'REFUSED' },
+        { version: 2, status: 'WAITING_APPROVAL' },
+      ]),
+    );
+    expect(
+      records.serviceOrder.find(
+        (order) => order.id === '60000000-0000-4000-8000-000000000008',
+      )?.cancellationReason,
+    ).toBe('Cliente desistiu do reparo');
     expect(records.purchaseOrder).toHaveLength(1);
     expect(records.billing).toHaveLength(2);
     expect(records.notification).toBeUndefined();
