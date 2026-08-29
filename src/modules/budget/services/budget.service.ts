@@ -1,7 +1,9 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { isEmail } from 'class-validator';
@@ -16,6 +18,7 @@ import {
 } from '../dto/budget.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
+import { PartController } from '../../stock/controllers/part.controller';
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
@@ -41,12 +44,16 @@ export class BudgetService {
     private readonly notifications: NotificationService,
     private readonly config: ConfigService,
     private readonly serviceCatalogController: ServiceController,
+    // forwardRef fecha o ciclo orçamento <-> estoque: o orçamento confere aqui a
+    // peça que o item referencia, e o despacho de peças lê o orçamento aceito.
+    @Inject(forwardRef(() => PartController))
+    private readonly partController: PartController,
   ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
     const serviceOrderId = this.normalizeServiceOrderId(dto.serviceOrderId);
 
-    await this.assertReferencedServicesExist(dto.items);
+    await this.assertReferencedCatalogsExist(dto.items);
 
     const budget = await this.createWithNextAvailableVersion(
       serviceOrderId,
@@ -67,7 +74,7 @@ export class BudgetService {
   }
 
   async addItem(id: string, dto: CreateBudgetItemDto): Promise<Budget> {
-    await this.assertReferencedServicesExist([dto]);
+    await this.assertReferencedCatalogsExist([dto]);
 
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
@@ -296,20 +303,51 @@ export class BudgetService {
    * A consulta passa pelo controller do catálogo, e não pelo repositório dele:
    * é a convenção de integração entre módulos do projeto.
    */
-  private async assertReferencedServicesExist(
+  private async assertReferencedCatalogsExist(
     items: CreateBudgetItemDto[] = [],
   ): Promise<void> {
-    const serviceIds = [
-      ...new Set(
-        items
-          .map((item) => item.serviceId?.trim())
-          .filter((serviceId): serviceId is string => Boolean(serviceId)),
-      ),
-    ];
+    await this.assertReferencedServicesExist(items);
+    await this.assertReferencedPartsExist(items);
+  }
 
-    for (const serviceId of serviceIds) {
+  private async assertReferencedServicesExist(
+    items: CreateBudgetItemDto[],
+  ): Promise<void> {
+    for (const serviceId of BudgetService.distinctRefs(
+      items,
+      (item) => item.serviceId,
+    )) {
       await this.serviceCatalogController.findById(serviceId);
     }
+  }
+
+  /**
+   * O mesmo cuidado do catálogo, do lado do estoque: sem esta conferência um
+   * `partId` inexistente só era barrado pela chave estrangeira, o que chegava ao
+   * cliente como 500 em vez de 404.
+   */
+  private async assertReferencedPartsExist(
+    items: CreateBudgetItemDto[],
+  ): Promise<void> {
+    for (const partId of BudgetService.distinctRefs(
+      items,
+      (item) => item.partId,
+    )) {
+      await this.partController.findById(partId);
+    }
+  }
+
+  private static distinctRefs(
+    items: CreateBudgetItemDto[],
+    pick: (item: CreateBudgetItemDto) => string | undefined,
+  ): string[] {
+    return [
+      ...new Set(
+        items
+          .map((item) => pick(item)?.trim())
+          .filter((ref): ref is string => Boolean(ref)),
+      ),
+    ];
   }
 
   private normalizeServiceOrderId(serviceOrderId: string): string {

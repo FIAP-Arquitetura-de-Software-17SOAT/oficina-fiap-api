@@ -9,6 +9,7 @@ import { NotificationService } from '../src/modules/notification/services/notifi
 import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { PartRepository } from '../src/modules/stock/repositories/part.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
@@ -16,6 +17,7 @@ import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryServiceRepository } from './in-memory-service.repository';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
+import { InMemoryPartRepository } from './in-memory-part.repository';
 import { allowAuthenticated } from './allow-authenticated';
 
 const MISSING_UUID = '2f1b7d3e-9a4c-4e5b-8f6a-1c2d3e4f5a6b';
@@ -31,8 +33,11 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
   let http: App;
   let serviceOrderId: string;
   let catalogServiceId: string;
+  let partId: string;
+  let parts: InMemoryPartRepository;
 
   beforeEach(async () => {
+    parts = new InMemoryPartRepository();
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
         imports: [AppModule],
@@ -41,6 +46,8 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
         .useValue({})
         .overrideProvider(BudgetRepository)
         .useValue(new InMemoryBudgetRepository())
+        .overrideProvider(PartRepository)
+        .useValue(parts)
         .overrideProvider(ClientRepository)
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepository)
@@ -61,6 +68,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
 
     serviceOrderId = await openServiceOrderInDiagnosis();
     catalogServiceId = await createCatalogService();
+    partId = parts.seed().getId();
   });
 
   afterEach(async () => {
@@ -159,6 +167,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
 
   it('400 quando um item de peça tenta referenciar serviço', async () => {
     await createBudgetWith({
+      partId,
       serviceId: catalogServiceId,
       description: 'Filtro de óleo',
       type: 'PART',
@@ -231,5 +240,167 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
 
     expect(added.body.items).toHaveLength(2);
     expect(added.body.items[1].serviceId).toBe(catalogServiceId);
+  });
+});
+
+/**
+ * A outra metade do vínculo: o item de peça é o que diz ao estoque o que baixar
+ * quando o orçamento é aceito. Sem `partId` ele não representa peça nenhuma, e
+ * o erro só aparecia no despacho — com a OS já aceita e aguardando peças.
+ */
+describe('Orçamento x estoque (integração)', () => {
+  let app: INestApplication<App>;
+  let http: App;
+  let serviceOrderId: string;
+  let partId: string;
+  let parts: InMemoryPartRepository;
+
+  beforeEach(async () => {
+    parts = new InMemoryPartRepository();
+    const moduleFixture: TestingModule = await allowAuthenticated(
+      Test.createTestingModule({
+        imports: [AppModule],
+      })
+        .overrideProvider(PrismaService)
+        .useValue({})
+        .overrideProvider(BudgetRepository)
+        .useValue(new InMemoryBudgetRepository())
+        .overrideProvider(PartRepository)
+        .useValue(parts)
+        .overrideProvider(ClientRepository)
+        .useValue(new InMemoryClientRepository())
+        .overrideProvider(VehicleRepository)
+        .useValue(new InMemoryVehicleRepository())
+        .overrideProvider(ServiceOrderRepository)
+        .useValue(new InMemoryServiceOrderRepository())
+        .overrideProvider(ServiceRepository)
+        .useValue(new InMemoryServiceRepository())
+        .overrideProvider(NotificationService)
+        .useValue({ enqueue: jest.fn() }),
+    ).compile();
+
+    app = configureApp(
+      moduleFixture.createNestApplication(),
+    ) as INestApplication<App>;
+    await app.init();
+    http = app.getHttpServer();
+
+    const client = await request(http)
+      .post('/api/v1/clients')
+      .send({
+        name: 'Maria Silva',
+        document: '529.982.247-25',
+        email: 'maria@example.com',
+        phone: '(11) 99999-8888',
+      })
+      .expect(201);
+
+    const vehicle = await request(http)
+      .post('/api/v1/vehicles')
+      .send({
+        clientId: client.body.id,
+        plate: 'ABC1D23',
+        brand: 'Fiat',
+        model: 'Argo',
+        year: 2022,
+      })
+      .expect(201);
+
+    const serviceOrder = await request(http)
+      .post('/api/v1/service-orders')
+      .send({
+        clientId: client.body.id,
+        vehicleId: vehicle.body.id,
+        description: 'Barulho no motor',
+      })
+      .expect(201);
+
+    serviceOrderId = serviceOrder.body.id as string;
+
+    await request(http)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/assign`)
+      .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
+      .expect(200);
+
+    partId = parts.seed().getId();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const createBudgetWith = (item: Record<string, unknown>) =>
+    request(http)
+      .post('/api/v1/budgets')
+      .send({ serviceOrderId, items: [item] });
+
+  const partItem = (overrides: Record<string, unknown> = {}) => ({
+    partId,
+    description: 'Filtro de óleo',
+    type: 'PART',
+    quantity: 1,
+    unitPrice: 40,
+    ...overrides,
+  });
+
+  it('vincula o item de peça à peça do estoque', async () => {
+    const response = await createBudgetWith(partItem()).expect(201);
+
+    expect(response.body.items[0]).toMatchObject({
+      partId,
+      type: 'PART',
+      unitPrice: 40,
+    });
+  });
+
+  it('400 quando o item de peça não referencia peça alguma', async () => {
+    await createBudgetWith(partItem({ partId: undefined }))
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.message).toBe(
+          'Item de peça deve referenciar a peça do estoque',
+        );
+      });
+  });
+
+  it('404 — e não 500 — quando a peça referenciada não existe', async () => {
+    await createBudgetWith(partItem({ partId: MISSING_UUID })).expect(404);
+  });
+
+  it('400 quando um item de serviço tenta referenciar peça', async () => {
+    await createBudgetWith(
+      partItem({ type: 'SERVICE', description: 'Troca de óleo' }),
+    ).expect(400);
+  });
+
+  it('400 quando o partId não é uuid', async () => {
+    await createBudgetWith(partItem({ partId: 'nao-e-uuid' })).expect(400);
+  });
+
+  it('vale também ao adicionar item depois', async () => {
+    const budget = await createBudgetWith({
+      description: 'Serviço avulso',
+      type: 'SERVICE',
+      quantity: 1,
+      unitPrice: 90,
+    }).expect(201);
+
+    await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/items`)
+      .send(partItem({ partId: undefined }))
+      .expect(400);
+
+    await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/items`)
+      .send(partItem({ partId: MISSING_UUID }))
+      .expect(404);
+
+    const added = await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/items`)
+      .send(partItem())
+      .expect(201);
+
+    expect(added.body.items).toHaveLength(2);
+    expect(added.body.items[1].partId).toBe(partId);
   });
 });

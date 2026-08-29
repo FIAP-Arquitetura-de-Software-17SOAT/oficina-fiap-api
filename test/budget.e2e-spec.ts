@@ -15,6 +15,7 @@ import { NotificationRepository } from '../src/modules/notification/repositories
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { PartRepository } from '../src/modules/stock/repositories/part.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
@@ -22,6 +23,7 @@ import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { InMemoryNotificationRepository } from './in-memory-notification.repository';
+import { InMemoryPartRepository } from './in-memory-part.repository';
 import { allowAuthenticated } from './allow-authenticated';
 import { EmailSender } from '../src/shared/notifications/email/email-sender';
 
@@ -69,6 +71,7 @@ describe('InMemoryBudgetRepository', () => {
       version: 1,
       items: [
         {
+          partId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 1,
@@ -93,8 +96,13 @@ describe('Budget (e2e)', () => {
   // Aceitar ou recusar um orcamento mexe na ordem de servico, entao o cenario
   // minimo agora inclui cliente, veiculo e uma OS aguardando aprovacao.
   let serviceOrderId: string;
+  // Item de peça só existe apontando para uma peça do estoque, então o cenário
+  // cadastra uma antes de orçar.
+  let partId: string;
+  let parts: InMemoryPartRepository;
 
   beforeEach(async () => {
+    parts = new InMemoryPartRepository();
     notifications = {
       // A rejeição simula a falha de entrega/filas sem permitir que ela altere
       // a resposta HTTP da criação do orçamento.
@@ -110,6 +118,8 @@ describe('Budget (e2e)', () => {
         .useValue({})
         .overrideProvider(BudgetRepository)
         .useValue(new InMemoryBudgetRepository())
+        .overrideProvider(PartRepository)
+        .useValue(parts)
         .overrideProvider(ClientRepository)
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepository)
@@ -127,6 +137,7 @@ describe('Budget (e2e)', () => {
     http = app.getHttpServer();
 
     serviceOrderId = await openServiceOrderAwaitingApproval();
+    partId = parts.seed().getId();
   });
 
   afterEach(async () => {
@@ -189,6 +200,7 @@ describe('Budget (e2e)', () => {
             unitPrice: 120,
           },
           {
+            partId,
             description: 'Oil filter',
             type: 'PART',
             quantity: 1,
@@ -253,6 +265,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${create.body.id}/items`)
       .send({
+        partId,
         description: 'Oil filter',
         type: 'PART',
         quantity: 1,
@@ -312,7 +325,7 @@ describe('Budget (e2e)', () => {
       });
 
     await request(http)
-      .get(`/api/v1/budgets/service-orders/${serviceOrderId}`)
+      .get(`/api/v1/budgets?serviceOrderId=${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveLength(1);
@@ -346,7 +359,7 @@ describe('Budget (e2e)', () => {
         items: [
           {
             description: 'Precision overflow',
-            type: 'PART',
+            type: 'SERVICE',
             quantity: 1.001,
             unitPrice: 1,
           },
@@ -361,7 +374,7 @@ describe('Budget (e2e)', () => {
         items: [
           {
             description: 'Range overflow',
-            type: 'PART',
+            type: 'SERVICE',
             quantity: 1,
             unitPrice: 100_000_000,
           },
@@ -370,14 +383,19 @@ describe('Budget (e2e)', () => {
       .expect(400);
   });
 
-  it('rejects budget service-order list requests without a valid service order id', async () => {
+  it('rejects a malformed service order filter instead of ignoring it', async () => {
+    // Sem filtro a listagem inteira é resposta legítima; filtro presente e
+    // inválido é erro. O que não pode voltar é 200 com a lista toda, que era o
+    // que acontecia quando `findAll` não tinha `@Query` e a query era ignorada.
     await request(http).get('/api/v1/budgets').expect(200);
+    await request(http).get('/api/v1/budgets?serviceOrderId=').expect(400);
     await request(http)
-      .get('/api/v1/budgets/service-orders/')
+      .get('/api/v1/budgets?serviceOrderId=%20%20%20')
       .expect(400);
     await request(http)
-      .get('/api/v1/budgets/service-orders/%20%20%20')
+      .get('/api/v1/budgets?serviceOrderId=nao-e-uuid')
       .expect(400);
+    await request(http).get('/api/v1/budgets?filtroInexistente=1').expect(400);
   });
 
   it('rejects item changes after send and all changes after acceptance', async () => {
@@ -388,6 +406,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${id}/items`)
       .send({
+        partId,
         description: 'Brake fluid',
         type: 'PART',
         quantity: 1,
@@ -410,6 +429,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${id}/items`)
       .send({
+        partId,
         description: 'Brake fluid',
         type: 'PART',
         quantity: 1,
@@ -452,6 +472,7 @@ describe('Budget (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${id}/items`)
       .send({
+        partId,
         description: 'Brake fluid',
         type: 'PART',
         quantity: 1,
@@ -484,6 +505,8 @@ describe('Budget notification delivery resilience (e2e)', () => {
       .useValue({})
       .overrideProvider(BudgetRepository)
       .useValue(new InMemoryBudgetRepository())
+      .overrideProvider(PartRepository)
+      .useValue(new InMemoryPartRepository())
       .overrideProvider(ClientRepository)
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepository)

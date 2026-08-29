@@ -55,14 +55,14 @@ describe('PartsDispatchService', () => {
   let service: PartsDispatchService;
   let partService: { findById: jest.Mock };
   let stockMovementService: { decrease: jest.Mock };
-  let budgetController: { findByServiceOrderId: jest.Mock };
+  let budgetController: { findAll: jest.Mock };
   let serviceOrderController: { registerPartsDispatched: jest.Mock };
   let purchaseOrderController: { registerShortage: jest.Mock };
 
   beforeEach(async () => {
     partService = { findById: jest.fn() };
     stockMovementService = { decrease: jest.fn() };
-    budgetController = { findByServiceOrderId: jest.fn() };
+    budgetController = { findAll: jest.fn() };
     serviceOrderController = { registerPartsDispatched: jest.fn() };
     purchaseOrderController = { registerShortage: jest.fn() };
 
@@ -84,7 +84,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('baixa o estoque e move a OS para execução quando há saldo', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([makeBudget()]);
+    budgetController.findAll.mockResolvedValue([makeBudget()]);
     partService.findById.mockResolvedValue(makePart(5));
 
     const result = await service.dispatchForServiceOrder(SERVICE_ORDER_ID);
@@ -101,7 +101,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('abre pedido de compra com a diferença e não baixa nada quando falta peça', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([makeBudget()]);
+    budgetController.findAll.mockResolvedValue([makeBudget()]);
     partService.findById.mockResolvedValue(makePart(1));
     purchaseOrderController.registerShortage.mockResolvedValue({
       id: 'purchase-order-1',
@@ -123,7 +123,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('usa o orçamento aceito de maior versão', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([
+    budgetController.findAll.mockResolvedValue([
       makeBudget({ id: 'budget-1', version: 1 }),
       makeBudget({ id: 'budget-2', version: 2 }),
       makeBudget({ id: 'budget-3', version: 3, status: BudgetStatus.REFUSED }),
@@ -141,7 +141,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('arredonda quantidade fracionária para cima', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([
+    budgetController.findAll.mockResolvedValue([
       makeBudget({
         items: [
           {
@@ -167,7 +167,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('recusa OS sem orçamento aceito', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([
+    budgetController.findAll.mockResolvedValue([
       makeBudget({ status: BudgetStatus.WAITING_APPROVAL }),
     ]);
 
@@ -177,7 +177,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('libera a OS sem baixar nada quando o orçamento só tem serviços', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([
+    budgetController.findAll.mockResolvedValue([
       makeBudget({
         items: [
           {
@@ -204,7 +204,7 @@ describe('PartsDispatchService', () => {
   });
 
   it('recusa item de peça que não referencia peça em vez de ignorá-lo', async () => {
-    budgetController.findByServiceOrderId.mockResolvedValue([
+    budgetController.findAll.mockResolvedValue([
       makeBudget({
         items: [
           {

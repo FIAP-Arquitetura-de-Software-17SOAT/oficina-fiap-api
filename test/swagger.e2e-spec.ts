@@ -188,6 +188,23 @@ describe('Swagger', () => {
     );
   });
 
+  it('a listagem de orçamentos documenta o filtro por ordem de serviço', () => {
+    const parameters = document.paths['/api/v1/budgets'].get?.parameters ?? [];
+
+    expect(parameters.map((p) => (p as { name: string }).name)).toContain(
+      'serviceOrderId',
+    );
+  });
+
+  it('não expõe mais a sub-rota de orçamentos por ordem de serviço', () => {
+    // O recorte por OS é query string, como em veículos e cobranças. A sub-rota
+    // `/budgets/service-orders/{serviceOrderId}` convivia com `/budgets/{id}` e
+    // só não colidia por ordem de declaração.
+    expect(document.paths).not.toHaveProperty(
+      '/api/v1/budgets/service-orders/{serviceOrderId}',
+    );
+  });
+
   it('documenta as rotas e respostas de autenticação', () => {
     const login = document.paths['/api/v1/auth/login'].post!;
     const refresh = document.paths['/api/v1/auth/refresh'].post!;

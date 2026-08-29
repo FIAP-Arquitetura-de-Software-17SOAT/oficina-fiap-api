@@ -1,5 +1,10 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
-import { Budget, BudgetStatus, BudgetItemType } from './budget.entity';
+import {
+  Budget,
+  BudgetItemProps,
+  BudgetStatus,
+  BudgetItemType,
+} from './budget.entity';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 const serviceItem = {
@@ -8,6 +13,9 @@ const serviceItem = {
   quantity: 1,
   unitPrice: Money.fromDecimal(120),
 };
+
+/** Item de peça sempre carrega a peça do estoque que ele representa. */
+const PART_ID = 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
 describe('Budget', () => {
   it('creates a generated budget with total calculated from items', () => {
@@ -31,12 +39,14 @@ describe('Budget', () => {
       version: 1,
       items: [
         {
+          partId: PART_ID,
           description: 'Part one',
           type: BudgetItemType.PART,
           quantity: 1,
           unitPrice: Money.fromDecimal(0.1),
         },
         {
+          partId: PART_ID,
           description: 'Part two',
           type: BudgetItemType.PART,
           quantity: 1,
@@ -58,6 +68,7 @@ describe('Budget', () => {
         version: 1,
         items: [
           {
+            partId: PART_ID,
             description: 'Precision overflow',
             type: BudgetItemType.PART,
             quantity: 1.001,
@@ -73,6 +84,7 @@ describe('Budget', () => {
         version: 1,
         items: [
           {
+            partId: PART_ID,
             description: 'Range overflow',
             type: BudgetItemType.PART,
             quantity: 1,
@@ -90,6 +102,7 @@ describe('Budget', () => {
         version: 1,
         items: [
           {
+            partId: PART_ID,
             description: 'Subtotal overflow',
             type: BudgetItemType.PART,
             quantity: 1_000_000,
@@ -137,6 +150,7 @@ describe('Budget', () => {
     });
 
     budget.addItem({
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -167,6 +181,7 @@ describe('Budget', () => {
     });
 
     budget.addItem({
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -189,6 +204,7 @@ describe('Budget', () => {
 
     expect(() =>
       budget.addItem({
+        partId: PART_ID,
         description: 'Oil filter',
         type: BudgetItemType.PART,
         quantity: 1,
@@ -337,11 +353,69 @@ describe('BudgetItem.serviceId', () => {
         serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         version: 1,
         items: [
-          item({ type: BudgetItemType.PART, serviceId: 'service-catalog-1' }),
+          item({
+            type: BudgetItemType.PART,
+            partId: PART_ID,
+            serviceId: 'service-catalog-1',
+          }),
         ],
       }),
     ).toThrow(
       'Somente item de serviço pode referenciar um serviço do catálogo',
     );
+  });
+});
+
+describe('BudgetItem.partId', () => {
+  const partItem = (
+    overrides: Partial<BudgetItemProps> = {},
+  ): BudgetItemProps => ({
+    partId: PART_ID,
+    description: 'Oil filter',
+    type: BudgetItemType.PART,
+    quantity: 1,
+    unitPrice: Money.fromDecimal(40),
+    ...overrides,
+  });
+
+  const createWith = (item: BudgetItemProps) =>
+    Budget.create({
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+      version: 1,
+      items: [item],
+    });
+
+  it('guarda a peça referenciada em item de peça', () => {
+    const budget = createWith(partItem({ partId: `  ${PART_ID}  ` }));
+
+    expect(budget.getItems()[0].getPartId()).toBe(PART_ID);
+  });
+
+  it.each([[undefined], [null], ['   ']])(
+    'recusa item de peça com partId %p',
+    (partId) => {
+      expect(() => createWith(partItem({ partId }))).toThrow(
+        'Item de peça deve referenciar a peça do estoque',
+      );
+    },
+  );
+
+  it('recusa item de serviço apontando para peça', () => {
+    expect(() =>
+      createWith(partItem({ type: BudgetItemType.SERVICE })),
+    ).toThrow('Somente item de peça pode referenciar uma peça');
+  });
+
+  it('recusa peça sem referência também ao adicionar item depois', () => {
+    const budget = Budget.create({
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+      version: 1,
+      items: [serviceItem],
+    });
+
+    expect(() => budget.addItem(partItem({ partId: undefined }))).toThrow(
+      DomainException,
+    );
+    expect(budget.getItems()).toHaveLength(1);
   });
 });

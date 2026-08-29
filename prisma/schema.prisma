@@ -224,6 +224,9 @@ model Budget {
   @@map("budget")
 }
 
+/// `partId` é obrigatório em item do tipo PART e proibido em item do tipo
+/// SERVICE. O Prisma não modela CHECK, então a restrição vive na migration
+/// 20260829180000_require_budget_item_part_ref e na entidade `BudgetItem`.
 model BudgetItem {
   id             String         @id @db.Uuid
   budgetId       String         @db.Uuid

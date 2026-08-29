@@ -18,24 +18,40 @@ import { BudgetItemType, BudgetStatus } from '../entities/budget.entity';
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
 
-export class FindBudgetsByServiceOrderParamsDto {
-  @ApiProperty({
+/**
+ * Filtro da listagem. Antes o recorte por OS era a sub-rota
+ * `GET /budgets/service-orders/:serviceOrderId`, que ficava ao lado de
+ * `GET /budgets/:id` e só não colidia por ordem de declaração — e a query
+ * string, que é como o resto da API filtra, era ignorada em silêncio: pedir
+ * `?serviceOrderId=X` devolvia 200 com a listagem inteira.
+ *
+ * Query string também é o que combina com a modelagem: orçamento e OS são
+ * agregados distintos ligados por identidade (a FK foi removida em
+ * 20260829150000_budget_service_order_external_ref), então a OS filtra o
+ * orçamento, não o contém.
+ */
+export class FindBudgetsQueryDto {
+  @ApiPropertyOptional({
     format: 'uuid',
     example: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+    description:
+      'Recorta a listagem para os orçamentos de uma ordem de serviço',
   })
   @Transform(trim)
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @IsUUID()
-  serviceOrderId: string;
+  serviceOrderId?: string;
 }
 
 export class CreateBudgetItemDto {
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'Peça referenciada pelo item. Obrigatório para itens do tipo PART serem ' +
-      'solicitados ao estoque quando o orçamento for aceito.',
+      'Peça do estoque referenciada pelo item. Obrigatório em itens do tipo ' +
+      'PART — é por ela que a peça é baixada quando o orçamento é aceito — e ' +
+      'recusado em itens do tipo SERVICE.',
   })
   @IsOptional()
   @IsUUID()

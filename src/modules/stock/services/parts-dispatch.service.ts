@@ -41,6 +41,9 @@ export class PartsDispatchService {
   constructor(
     private readonly partService: PartService,
     private readonly stockMovementService: StockMovementService,
+    // forwardRef fecha o ciclo estoque <-> orçamento: o despacho lê o orçamento
+    // aceito, e o orçamento confere aqui a peça que cada item referencia.
+    @Inject(forwardRef(() => BudgetController))
     private readonly budgetController: BudgetController,
     private readonly serviceOrderController: ServiceOrderController,
     @Inject(forwardRef(() => PurchaseOrderController))
@@ -70,9 +73,7 @@ export class PartsDispatchService {
   private async findAcceptedBudget(
     serviceOrderId: string,
   ): Promise<BudgetResponseDto> {
-    const budgets = await this.budgetController.findByServiceOrderId({
-      serviceOrderId,
-    });
+    const budgets = await this.budgetController.findAll({ serviceOrderId });
 
     const accepted = budgets
       .filter((budget) => budget.status === BudgetStatus.ACCEPTED)
@@ -96,6 +97,9 @@ export class PartsDispatchService {
       (item) => item.type === BudgetItemType.PART,
     );
 
+    // Retaguarda: o orçamento passou a recusar item de peça sem referência na
+    // montagem, e o banco tem CHECK para isso. Só chega aqui linha anterior à
+    // migration 20260829180000_require_budget_item_part_ref.
     const unreferenced = partItems.filter((item) => !item.partId);
 
     if (unreferenced.length > 0) {
