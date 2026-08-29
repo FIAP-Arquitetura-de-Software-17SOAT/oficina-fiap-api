@@ -3,17 +3,18 @@ import { BudgetItemType } from '../entities/budget.entity';
 import { Budget } from '../entities/budget.entity';
 import { BudgetService } from '../services/budget.service';
 import { BudgetController } from './budget.controller';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 const makeBudget = () =>
   Budget.create({
-    serviceOrderId: 'service-123',
+    serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     version: 1,
     items: [
       {
         description: 'Oil change',
         type: BudgetItemType.SERVICE,
         quantity: 1,
-        unitPrice: 120,
+        unitPrice: Money.fromDecimal(120),
       },
     ],
   });
@@ -58,7 +59,7 @@ describe('BudgetController', () => {
   it('creates a budget and returns its calculated total', async () => {
     const budget = makeBudget();
     const dto = {
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Oil change',
@@ -82,7 +83,7 @@ describe('BudgetController', () => {
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
-      unitPrice: 40,
+      unitPrice: Money.fromDecimal(40),
     });
     const dto = {
       description: 'Oil filter',
@@ -104,7 +105,7 @@ describe('BudgetController', () => {
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
-      unitPrice: 40,
+      unitPrice: Money.fromDecimal(40),
     });
     const itemId = budget.getItems()[1].getId();
     budget.removeItem(itemId);
@@ -130,7 +131,7 @@ describe('BudgetController', () => {
 
   it('sends a budget to the customer', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     service.send.mockResolvedValue(budget);
 
     const result = await controller.send(budget.getId());
@@ -141,7 +142,7 @@ describe('BudgetController', () => {
 
   it('accepts a budget waiting for approval', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     budget.accept();
     service.accept.mockResolvedValue(budget);
 
@@ -153,7 +154,7 @@ describe('BudgetController', () => {
 
   it('refuses a budget with its reason', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     budget.refuse('Customer found it expensive');
     const dto = { reason: 'Customer found it expensive' };
     service.refuse.mockResolvedValue(budget);
@@ -189,11 +190,15 @@ describe('BudgetController', () => {
     service.findByServiceOrderId.mockResolvedValue(budgets);
 
     const result = await controller.findByServiceOrderId({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     });
 
-    expect(service.findByServiceOrderId).toHaveBeenCalledWith('service-123');
+    expect(service.findByServiceOrderId).toHaveBeenCalledWith(
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+    );
     expect(result).toHaveLength(1);
-    expect(result[0].serviceOrderId).toBe('service-123');
+    expect(result[0].serviceOrderId).toBe(
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+    );
   });
 });

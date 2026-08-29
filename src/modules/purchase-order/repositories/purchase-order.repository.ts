@@ -13,7 +13,7 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import { Quantity } from '../value-objects/quantity.vo';
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 interface PurchaseOrderItemRow {
   id: string;
@@ -73,9 +73,9 @@ export class PurchaseOrderRepository {
             create: purchaseOrder.getItems().map((item) => ({
               id: item.getId(),
 
-              partId: item.getPecaId(),
+              partId: item.getPartId(),
 
-              quantity: item.getQuantity().value,
+              quantity: item.getQuantity().getValue(),
 
               unitPriceCents: item.getUnitPrice().valueInCents,
             })),
@@ -158,9 +158,9 @@ export class PurchaseOrderRepository {
           create: purchaseOrder.getItems().map((item) => ({
             id: item.getId(),
 
-            partId: item.getPecaId(),
+            partId: item.getPartId(),
 
-            quantity: item.getQuantity().value,
+            quantity: item.getQuantity().getValue(),
 
             unitPriceCents: item.getUnitPrice().valueInCents,
           })),
@@ -183,7 +183,7 @@ export class PurchaseOrderRepository {
 
           partId: item.partId,
 
-          quantity: Quantity.create(item.quantity),
+          quantity: Quantity.positive(item.quantity),
 
           unitPrice: Money.fromCents(item.unitPriceCents),
         }),

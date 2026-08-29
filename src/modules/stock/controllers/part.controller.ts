@@ -41,13 +41,13 @@ import { PartService } from '../services/part.service';
 import { PartsDispatchService } from '../services/parts-dispatch.service';
 import { StockMovementService } from '../services/stock-movement.service';
 
-@ApiTags('stock')
+@ApiTags('parts')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
-@ApiForbiddenResponse({ description: 'Authenticated role is not allowed' })
+@ApiUnauthorizedResponse({ description: 'Token de acesso ausente ou inválido' })
+@ApiForbiddenResponse({ description: 'Perfil autenticado não tem permissão' })
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.EMPLOYEE)
-@Controller('stock')
+@Controller('parts')
 export class PartController {
   constructor(
     private readonly partService: PartService,
@@ -63,15 +63,15 @@ export class PartController {
   @ApiOperation({
     summary: 'Consulta e baixa as peças do orçamento aceito de uma OS',
     description:
-      'Havendo saldo, baixa as peças e move a OS para EM_EXECUCAO. Faltando ' +
-      'peça, nada é baixado e um pedido de compra é aberto com a diferença.',
+      'Havendo saldo, baixa as peças e move a OS para Em execução (IN_PROGRESS). ' +
+      'Faltando peça, nada é baixado e um pedido de compra é aberto com a diferença.',
   })
   @ApiOkResponse({ type: PartsDispatchResponseDto })
   @ApiBadRequestResponse({
     description: 'OS sem orçamento aceito ou com item de peça sem referência',
   })
-  @ApiNotFoundResponse({ description: 'Part not found' })
-  @ApiConflictResponse({ description: 'Insufficient stock' })
+  @ApiNotFoundResponse({ description: 'Peça não encontrada' })
+  @ApiConflictResponse({ description: 'Estoque insuficiente' })
   async dispatchServiceOrderParts(
     @Param('serviceOrderId', ParseUUIDPipe) serviceOrderId: string,
   ): Promise<PartsDispatchResponseDto> {
@@ -79,26 +79,26 @@ export class PartController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Creates a stock part' })
+  @ApiOperation({ summary: 'Cadastra uma peça ou insumo' })
   @ApiCreatedResponse({ type: PartResponseDto })
-  @ApiBadRequestResponse({ description: 'Invalid part data' })
-  @ApiConflictResponse({ description: 'Part code already in use' })
+  @ApiBadRequestResponse({ description: 'Dados da peça inválidos' })
+  @ApiConflictResponse({ description: 'Código da peça já cadastrado' })
   async create(@Body() dto: CreatePartDto): Promise<PartResponseDto> {
     return PartMapper.toResponse(await this.partService.create(dto));
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lists stock parts' })
+  @ApiOperation({ summary: 'Lista as peças e insumos' })
   @ApiOkResponse({ type: PartResponseDto, isArray: true })
   async findAll(): Promise<PartResponseDto[]> {
     return PartMapper.toResponseList(await this.partService.findAll());
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Gets a stock part by id' })
+  @ApiOperation({ summary: 'Consulta uma peça ou insumo por id' })
   @ApiOkResponse({ type: PartResponseDto })
-  @ApiBadRequestResponse({ description: 'Invalid part id' })
-  @ApiNotFoundResponse({ description: 'Part not found' })
+  @ApiBadRequestResponse({ description: 'Id da peça inválido' })
+  @ApiNotFoundResponse({ description: 'Peça não encontrada' })
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<PartResponseDto> {
@@ -106,11 +106,11 @@ export class PartController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Updates a stock part' })
+  @ApiOperation({ summary: 'Atualiza uma peça ou insumo' })
   @ApiOkResponse({ type: PartResponseDto })
-  @ApiBadRequestResponse({ description: 'Invalid part id or data' })
-  @ApiNotFoundResponse({ description: 'Part not found' })
-  @ApiConflictResponse({ description: 'Part code already in use' })
+  @ApiBadRequestResponse({ description: 'Id ou dados da peça inválidos' })
+  @ApiNotFoundResponse({ description: 'Peça não encontrada' })
+  @ApiConflictResponse({ description: 'Código da peça já cadastrado' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePartDto,
@@ -118,11 +118,13 @@ export class PartController {
     return PartMapper.toResponse(await this.partService.update(id, dto));
   }
 
-  @Post(':id/stock/in')
-  @ApiOperation({ summary: 'Records an inbound stock movement' })
+  @Post(':id/movements/in')
+  @ApiOperation({ summary: 'Registra entrada no estoque' })
   @ApiOkResponse({ type: StockMovementResponseDto })
-  @ApiBadRequestResponse({ description: 'Invalid part id or movement data' })
-  @ApiNotFoundResponse({ description: 'Part not found' })
+  @ApiBadRequestResponse({
+    description: 'Id da peça ou dados da movimentação inválidos',
+  })
+  @ApiNotFoundResponse({ description: 'Peça não encontrada' })
   async increaseStock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateStockMovementDto,
@@ -135,13 +137,15 @@ export class PartController {
     return { ...result, part: PartMapper.toResponse(result.part) };
   }
 
-  @Post(':id/stock/out')
-  @ApiOperation({ summary: 'Records an outbound stock movement' })
+  @Post(':id/movements/out')
+  @ApiOperation({ summary: 'Registra saída do estoque' })
   @ApiOkResponse({ type: StockMovementResponseDto })
-  @ApiBadRequestResponse({ description: 'Invalid part id or movement data' })
-  @ApiNotFoundResponse({ description: 'Part not found' })
+  @ApiBadRequestResponse({
+    description: 'Id da peça ou dados da movimentação inválidos',
+  })
+  @ApiNotFoundResponse({ description: 'Peça não encontrada' })
   @ApiConflictResponse({
-    description: 'Insufficient stock or idempotency key conflict',
+    description: 'Estoque insuficiente ou conflito de chave de idempotência',
   })
   async decreaseStock(
     @Param('id', ParseUUIDPipe) id: string,
@@ -157,10 +161,10 @@ export class PartController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Deletes a stock part' })
-  @ApiNoContentResponse({ description: 'Part deleted' })
-  @ApiBadRequestResponse({ description: 'Invalid part id' })
-  @ApiNotFoundResponse({ description: 'Part not found' })
+  @ApiOperation({ summary: 'Remove uma peça ou insumo' })
+  @ApiNoContentResponse({ description: 'Peça removida' })
+  @ApiBadRequestResponse({ description: 'Id da peça inválido' })
+  @ApiNotFoundResponse({ description: 'Peça não encontrada' })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.partService.delete(id);
   }

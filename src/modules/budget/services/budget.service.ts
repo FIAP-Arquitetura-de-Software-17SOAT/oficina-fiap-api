@@ -19,7 +19,12 @@ import { ServiceController } from '../../service-catalog/controllers/service.con
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
-import { Budget, BudgetItemType } from '../entities/budget.entity';
+import {
+  Budget,
+  BudgetItemProps,
+  BudgetItemType,
+} from '../entities/budget.entity';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BudgetRepository } from '../repositories/budget.repository';
 
 @Injectable()
@@ -66,7 +71,7 @@ export class BudgetService {
 
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
-    budget.addItem(dto);
+    budget.addItem(BudgetService.toItemProps(dto));
     return this.persistGeneratedChange(budget, expectedUpdatedAt);
   }
 
@@ -79,13 +84,13 @@ export class BudgetService {
 
   async calculateTotal(id: string): Promise<number> {
     const budget = await this.findById(id);
-    return budget.getTotalAmount();
+    return budget.getTotal().value;
   }
 
   async send(id: string): Promise<Budget> {
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
-    budget.sendToCustomer();
+    budget.sendToClient();
     return this.persistGeneratedChange(budget, expectedUpdatedAt);
   }
 
@@ -115,7 +120,7 @@ export class BudgetService {
     // Politica do Event Storming: "Quando Status do orcamento for alterado para
     // recusado, encerra a ordem de servico".
     await this.serviceOrderController.cancel(refused.getServiceOrderId(), {
-      reason: `Orcamento recusado: ${refused.getRefusalReason()}`,
+      reason: `Orçamento recusado: ${refused.getRefusalReason()}`,
     });
 
     return refused;
@@ -139,7 +144,7 @@ export class BudgetService {
     const budget = await this.budgetRepository.findById(id);
 
     if (!budget) {
-      throw new NotFoundException('Budget not found');
+      throw new NotFoundException('Orçamento não encontrado');
     }
 
     return budget;
@@ -171,7 +176,7 @@ export class BudgetService {
       const budget = Budget.create({
         serviceOrderId,
         version: lastVersion + 1,
-        items,
+        items: items.map((item) => BudgetService.toItemProps(item)),
       });
 
       try {
@@ -188,11 +193,15 @@ export class BudgetService {
           continue;
         }
 
-        throw new ConflictException('Could not allocate budget version');
+        throw new ConflictException(
+          'Não foi possível alocar a versão do orçamento',
+        );
       }
     }
 
-    throw new ConflictException('Could not allocate budget version');
+    throw new ConflictException(
+      'Não foi possível alocar a versão do orçamento',
+    );
   }
 
   private async persistGeneratedChange(
@@ -206,7 +215,7 @@ export class BudgetService {
 
     if (!updated) {
       throw new ConflictException(
-        'Budget status was changed by another request',
+        'O status do orçamento foi alterado por outra requisição',
       );
     }
 
@@ -224,7 +233,7 @@ export class BudgetService {
 
     if (!updated) {
       throw new ConflictException(
-        'Budget status was changed by another request',
+        'O status do orçamento foi alterado por outra requisição',
       );
     }
 
@@ -303,6 +312,23 @@ export class BudgetService {
     return serviceOrderId.trim();
   }
 
+  /**
+   * Fronteira entre o contrato HTTP e o domínio: o DTO traz o preço em decimal
+   * porque JSON não tem tipo monetário, e o domínio só aceita `Money`. Antes o
+   * DTO entrava direto no agregado porque as formas casavam por acidente, e o
+   * orçamento acabava sendo o único agregado com dinheiro que não usava o VO.
+   */
+  private static toItemProps(dto: CreateBudgetItemDto): BudgetItemProps {
+    return {
+      partId: dto.partId,
+      serviceId: dto.serviceId,
+      description: dto.description,
+      type: dto.type,
+      quantity: dto.quantity,
+      unitPrice: Money.fromDecimal(dto.unitPrice),
+    };
+  }
+
   private async enqueueBudgetReadyNotification(
     budget: Budget,
     clientId: string,
@@ -321,10 +347,10 @@ export class BudgetService {
           items: items.map((item) => ({
             description: item.getDescription(),
             quantity: item.getQuantity(),
-            unitPrice: item.getUnitPrice(),
-            subtotal: item.getSubtotal(),
+            unitPrice: item.getUnitPrice().value,
+            subtotal: item.getSubtotal().value,
           })),
-          total: budget.getTotalAmount(),
+          total: budget.getTotal().value,
         }),
       });
     } catch {
@@ -363,5 +389,4 @@ export class BudgetService {
       // notificação não podem alterar esse resultado de negócio.
     }
   }
-
 }

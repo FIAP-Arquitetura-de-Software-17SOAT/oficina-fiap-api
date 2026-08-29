@@ -51,14 +51,14 @@ export class Billing {
     this.id = id;
     this.serviceOrderId = this.validateRequiredId(
       props.serviceOrderId,
-      'Service order is required',
+      'Ordem de serviço da cobrança é obrigatória',
     );
     this.budgetId = this.validateRequiredId(
       props.budgetId,
-      'Budget is required',
+      'Orçamento da cobrança é obrigatório',
     );
     if (props.amount.valueInCents <= 0) {
-      throw new DomainException('Billing amount must be greater than zero');
+      throw new DomainException('Valor da cobrança deve ser maior que zero');
     }
     this.amount = props.amount;
     this.status = props.status ?? BillingStatus.PENDING;
@@ -83,7 +83,7 @@ export class Billing {
   generatePaymentLink(props: GeneratePaymentLinkProps): void {
     if (this.status !== BillingStatus.PENDING) {
       throw new DomainException(
-        'Payment link can only be generated for pending billing',
+        'Link de pagamento só pode ser gerado para cobrança pendente',
       );
     }
     this.paymentLink = this.validatePaymentLink(props.paymentLink);
@@ -98,10 +98,12 @@ export class Billing {
 
   renewPaymentLink(props: GeneratePaymentLinkProps, now = new Date()): void {
     if (this.status === BillingStatus.PAID) {
-      throw new DomainException('Paid billing is terminal');
+      throw new DomainException('Cobrança paga é terminal');
     }
     if (!this.calculatePenalty(now)) {
-      throw new DomainException('Billing payment link has not expired yet');
+      throw new DomainException(
+        'O link de pagamento da cobrança ainda não expirou',
+      );
     }
     this.paymentLink = this.validatePaymentLink(props.paymentLink);
     this.gatewayTransactionId = this.validateRequiredId(
@@ -128,18 +130,20 @@ export class Billing {
       ) {
         return false;
       }
-      throw new DomainException('Paid billing is terminal');
+      throw new DomainException('Cobrança paga é terminal');
     }
     if (this.status !== BillingStatus.WAITING_PAYMENT) {
       throw new DomainException(
-        'Payment can only be registered while waiting payment',
+        'Pagamento só pode ser registrado com a cobrança aguardando pagamento',
       );
     }
     if (
       this.gatewayTransactionId !== gatewayTransactionId &&
       !isKnownCheckoutSession
     ) {
-      throw new DomainException('Gateway transaction does not match billing');
+      throw new DomainException(
+        'A transação do gateway não corresponde à cobrança',
+      );
     }
     this.paymentMethod = props.method;
     this.paidAt = props.paidAt ?? new Date();
@@ -150,11 +154,13 @@ export class Billing {
 
   expire(now = new Date()): void {
     if (this.status === BillingStatus.PAID) {
-      throw new DomainException('Paid billing is terminal');
+      throw new DomainException('Cobrança paga é terminal');
     }
     if (this.status === BillingStatus.EXPIRED) return;
     if (this.expiresAt && now.getTime() < this.expiresAt.getTime()) {
-      throw new DomainException('Billing payment link has not expired yet');
+      throw new DomainException(
+        'O link de pagamento da cobrança ainda não expirou',
+      );
     }
     this.status = BillingStatus.EXPIRED;
     this.touch();
@@ -218,7 +224,7 @@ export class Billing {
 
   private validatePaymentLink(value: string): string {
     const trimmed = (value ?? '').trim();
-    if (!trimmed) throw new DomainException('Payment link is required');
+    if (!trimmed) throw new DomainException('Link de pagamento é obrigatório');
     return trimmed;
   }
 

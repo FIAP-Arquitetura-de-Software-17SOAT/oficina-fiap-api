@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 
 import { Money } from '../../../shared/domain/value-objects/money.vo';
-import { Quantity } from '../value-objects/quantity.vo';
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 import { DomainException } from '../../../shared/domain/domain.exception';
 
 export interface PurchaseOrderItemProps {
@@ -32,14 +32,14 @@ export class PurchaseOrderItem {
   }
 
   getSubtotal(): Money {
-    return this.unitPrice.multiply(this.quantity.value);
+    return this.unitPrice.multiply(this.quantity.getValue());
   }
 
   getId(): string {
     return this.id;
   }
 
-  getPecaId(): string {
+  getPartId(): string {
     return this.partId;
   }
 

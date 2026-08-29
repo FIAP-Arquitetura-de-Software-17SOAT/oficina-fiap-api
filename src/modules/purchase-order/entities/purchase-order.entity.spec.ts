@@ -8,7 +8,7 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import { Quantity } from '../value-objects/quantity.vo';
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 describe('PurchaseOrder', () => {
   const createOrder = (): PurchaseOrder => {
@@ -25,7 +25,7 @@ describe('PurchaseOrder', () => {
 
       partId: '550e8400-e29b-41d4-a716-446655440000',
 
-      quantity: Quantity.create(2),
+      quantity: Quantity.positive(2),
 
       unitPrice: Money.fromDecimal(150.5),
     });
@@ -78,7 +78,7 @@ describe('PurchaseOrder', () => {
       new PurchaseOrderItem({
         partId: 'peca-1',
 
-        quantity: Quantity.create(2),
+        quantity: Quantity.positive(2),
 
         unitPrice: Money.fromDecimal(100),
       }),
@@ -88,7 +88,7 @@ describe('PurchaseOrder', () => {
       new PurchaseOrderItem({
         partId: 'peca-2',
 
-        quantity: Quantity.create(4),
+        quantity: Quantity.positive(4),
 
         unitPrice: Money.fromDecimal(25),
       }),

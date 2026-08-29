@@ -35,8 +35,8 @@ import { Roles } from '../../../shared/http/auth/roles.decorator';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Roles(Role.ADMIN, Role.EMPLOYEE)
-@ApiTags('client')
-@Controller('client')
+@ApiTags('clients')
+@Controller('clients')
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
 

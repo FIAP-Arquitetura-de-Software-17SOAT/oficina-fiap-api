@@ -2,6 +2,8 @@
 
 Material complementar ao README, organizado para migracao para a Wiki do projeto.
 
+O vocabulario de negocio fica em documento proprio: [linguagem-ubiqua.md](linguagem-ubiqua.md).
+
 ## Configuracao
 
 O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicadas diretamente no arquivo `docker-compose.yml`; `SMTP_USER`, `SMTP_PASSWORD` e `STOCK_NOTIFICATION_EMAIL` sao opcionais.
@@ -124,11 +126,31 @@ O projeto e um monolito NestJS organizado por modulos de dominio. Cada modulo se
 | `services/`      | Casos de uso e orquestracao                 |
 | `repositories/`  | Persistencia com Prisma                     |
 | `entities/`      | Regras e invariantes de dominio             |
-| `value-objects/` | Valores com regras proprias                 |
+| `value-objects/` | Valores com regras proprias (`*.vo.ts`)     |
+| `enums/`         | Estados e tipos do dominio (`*.enum.ts`)    |
 | `mappers/`       | Conversao entre dominio, persistencia e API |
 | `dto/`           | Validacao e contrato Swagger                |
 
-O dominio contempla clientes, veiculos, ordens de servico, orcamentos e estoque. O fluxo previsto da ordem de servico e: `Recebida` -> `Em diagnostico` -> `Aguardando aprovacao` -> `Em execucao` -> `Finalizada` -> `Entregue`.
+Sao sete os agregados de negocio implementados: **Cliente**, **Veiculo**, **Ordem de Servico**, **Orcamento**, **Peca**, **Pedido de Compra** e **Cobranca**. Autenticacao e notificacao sao modulos transversais.
+
+> **Estoque e o contexto, nao o agregado.** O agregado operacional e a **Peca** (`Part`) e a **Movimentacao de estoque** (`StockMovement`) e o registro da entrada ou da saida. Por isso o recurso HTTP e `/api/v1/parts`, enquanto a pasta do modulo continua `src/modules/stock`: ela representa o contexto Estoque e Compras, que abriga os dois.
+
+O fluxo da ordem de servico e: `Recebida` -> `Em diagnostico` -> `Aguardando aprovacao` -> `Aguardando pecas` -> `Em execucao` -> `Finalizada` -> `Entregue`. De qualquer estado nao terminal tambem se chega a `Cancelada`. Um orcamento so de servicos pula `Aguardando pecas`, porque nao ha o que baixar do estoque.
+
+## Convencoes de codigo
+
+O vocabulario do projeto e o mapeamento entre termo de negocio e identificador no codigo estao em [linguagem-ubiqua.md](linguagem-ubiqua.md), que e a fonte da verdade. As regras que mais aparecem em revisao:
+
+- **Rotas no plural**, sempre: `/clients`, `/vehicles`, `/service-orders`, `/parts`, `/budgets`, `/billings`, `/services`, `/purchase-orders`, `/notifications`. O `@ApiTags` do controller repete o nome da rota.
+- **Identificador em ingles, mensagem de negocio em portugues** — `DomainException`, excecao HTTP e texto de Swagger. Nunca os dois idiomas no mesmo nome.
+- **Dinheiro e `Money`** dentro do dominio, centavos inteiros no banco (`*Cents`) e decimal no contrato HTTP. Um DTO com `unitPrice: number` esta correto: e a fronteira. O que nao pode e o agregado guardar `number`.
+- **Quantidade e `Quantity`** (VO compartilhado): `create` para saldo, que pode ser zero, e `positive` para movimento, que nao pode.
+- **Sempre mapeie entidade para DTO no controller.** Devolver a entidade direto serializa o VO como `{ "value": "..." }` e quebra o contrato do Swagger.
+- **Um conceito, uma classe.** VO usado por mais de um modulo sobe para `src/shared/domain/value-objects/` em vez de ser duplicado.
+- **A entidade protege as proprias invariantes** e lanca `DomainException` — nunca `Error` generico, que viraria 500.
+- **Value Object onde ha regra propria** (CPF/CNPJ, placa, dinheiro, quantidade). Nome e telefone continuam `string`; VO em tudo e overengineering.
+- **Nao crie um `PrismaService` por modulo.** O `PrismaModule` e `@Global`; basta injetar `PrismaService` no repositorio. Um por modulo significaria um pool de conexoes por modulo.
+- **Documente toda rota** com `@ApiOperation` e as respostas de erro.
 
 ## Regras de negocio implementadas
 

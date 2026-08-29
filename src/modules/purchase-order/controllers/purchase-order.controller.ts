@@ -32,7 +32,7 @@ import { Roles } from '../../../shared/http/auth/roles.decorator';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Roles(Role.ADMIN, Role.EMPLOYEE)
-@ApiTags('Purchase Orders')
+@ApiTags('purchase-orders')
 @Controller('purchase-orders')
 export class PurchaseOrderController {
   constructor(private readonly service: PurchaseOrderService) {}

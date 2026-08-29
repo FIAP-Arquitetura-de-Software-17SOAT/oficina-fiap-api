@@ -14,9 +14,9 @@ export class PurchaseOrderMapper {
       items: purchaseOrder.getItems().map((item) => ({
         id: item.getId(),
 
-        partId: item.getPecaId(),
+        partId: item.getPartId(),
 
-        quantity: item.getQuantity().value,
+        quantity: item.getQuantity().getValue(),
 
         unitPrice: item.getUnitPrice().value,
 

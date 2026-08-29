@@ -2,12 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Service } from '../entities/service.entity';
 import { ServiceCatalogService } from '../services/service-catalog.service';
 import { ServiceController } from './service.controller';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 const makeService = () =>
   Service.create({
     name: 'Troca de óleo',
     description: 'Sintético',
-    price: 149.9,
+    price: Money.fromDecimal(149.9),
   });
 
 describe('ServiceController', () => {

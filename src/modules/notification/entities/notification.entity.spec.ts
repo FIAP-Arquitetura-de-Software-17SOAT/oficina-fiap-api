@@ -30,7 +30,7 @@ describe('Notification', () => {
     notification.markSent();
 
     expect(() => notification.prepareRetry()).toThrow(
-      'Only failed notifications can be retried',
+      'Somente notificação que falhou pode ser reenviada',
     );
   });
 

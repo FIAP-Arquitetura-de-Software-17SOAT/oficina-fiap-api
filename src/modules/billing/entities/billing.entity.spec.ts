@@ -29,7 +29,7 @@ describe('Billing', () => {
         budgetId,
         amount: Money.fromCents(0),
       }),
-    ).toThrow(new DomainException('Billing amount must be greater than zero'));
+    ).toThrow(new DomainException('Valor da cobrança deve ser maior que zero'));
   });
 
   it('moves pending billing to waiting payment with link data', () => {
@@ -101,7 +101,7 @@ describe('Billing', () => {
         gatewayTransactionId: 'cs_test_other',
         method: PaymentMethod.CARD,
       }),
-    ).toThrow('Paid billing is terminal');
+    ).toThrow('Cobrança paga é terminal');
   });
 
   it('expires unpaid billing before payment', () => {

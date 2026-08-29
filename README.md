@@ -101,4 +101,7 @@ npm run test:e2e
 
 ## Documentacao complementar
 
-Os detalhes de configuracao, autenticacao, e-mail, pagamentos, arquitetura e solucao de problemas estao em [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md), estruturado para futura publicacao na Wiki do projeto.
+Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto.
+
+- [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
+- [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.
