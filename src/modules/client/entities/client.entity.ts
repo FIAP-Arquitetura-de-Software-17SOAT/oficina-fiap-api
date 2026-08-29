@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
-import { CpfCnpj } from '../value-objects/cpf-cnpj.vo';
+import { Document } from '../value-objects/document.vo';
 import { Email } from '../value-objects/email.vo';
 
 export interface ClientProps {
@@ -15,7 +15,7 @@ export interface ClientProps {
 export class Client {
   private readonly id: string;
   private name: string;
-  private document: CpfCnpj;
+  private document: Document;
   private email: Email;
   private phone: string;
   private readonly createdAt: Date;
@@ -49,7 +49,7 @@ export class Client {
     return this.name;
   }
 
-  getDocument(): CpfCnpj {
+  getDocument(): Document {
     return this.document;
   }
 
@@ -95,7 +95,7 @@ export class Client {
   }
 
   private setDocument(document: string): void {
-    this.document = CpfCnpj.create(document);
+    this.document = Document.create(document);
   }
 
   private setEmail(email: string): void {

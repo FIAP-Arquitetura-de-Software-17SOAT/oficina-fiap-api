@@ -6,7 +6,7 @@ import {
 import { CreateClientDto, UpdateClientDto } from '../dto/client.dto';
 import { Client } from '../entities/client.entity';
 import { ClientRepository } from '../repositories/client.repository';
-import { CpfCnpj } from '../value-objects/cpf-cnpj.vo';
+import { Document } from '../value-objects/document.vo';
 import { Email } from '../value-objects/email.vo';
 
 @Injectable()
@@ -16,7 +16,7 @@ export class ClientService {
   async create(dto: CreateClientDto): Promise<Client> {
     // Normaliza pelos VOs antes de consultar: "123.456.789-09" e "12345678909"
     // são o mesmo cliente, e o banco guarda apenas os dígitos.
-    const document = CpfCnpj.create(dto.document);
+    const document = Document.create(dto.document);
     const email = Email.create(dto.email);
 
     await this.assertDocumentIsAvailable(document);
@@ -71,7 +71,7 @@ export class ClientService {
     await this.clientRepository.delete(id);
   }
 
-  private async assertDocumentIsAvailable(document: CpfCnpj): Promise<void> {
+  private async assertDocumentIsAvailable(document: Document): Promise<void> {
     const existing = await this.clientRepository.findByDocument(
       document.getValue(),
     );

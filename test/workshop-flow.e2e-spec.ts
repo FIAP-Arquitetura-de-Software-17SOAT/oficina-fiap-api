@@ -466,7 +466,7 @@ describe('Fluxo da oficina (e2e)', () => {
     expect(await status(serviceOrderId)).toBe('IN_PROGRESS');
   });
 
-  it('orçamento recusado encerra a ordem de serviço', async () => {
+  it('orçamento recusado mantém a OS aguardando aprovação e aceita nova versão', async () => {
     const partId = await createPart(5);
     const serviceOrderId = await openServiceOrderAwaitingApproval();
 
@@ -495,12 +495,60 @@ describe('Fluxo da oficina (e2e)', () => {
       .send({ reason: 'Achou caro' })
       .expect(200);
 
+    // A recusa é resposta a uma proposta, não desistência do atendimento: a OS
+    // continua aberta para o mecânico refazer o orçamento.
+    await request(http)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('AWAITING_APPROVAL');
+        expect(body.cancellationReason).toBeNull();
+      });
+
+    // Nova versão para a mesma OS, e ela pode seguir o fluxo normalmente.
+    const revised = await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId,
+        items: [
+          {
+            partId,
+            description: 'Filtro de óleo',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 99.9,
+          },
+        ],
+      })
+      .expect(201);
+
+    expect(revised.body.version).toBe(2);
+
+    await request(http)
+      .post(`/api/v1/budgets/${revised.body.id}/send`)
+      .expect(200);
+
+    await request(http)
+      .post(`/api/v1/budgets/${revised.body.id}/accept`)
+      .expect(200);
+
+    expect(await status(serviceOrderId)).toBe('AWAITING_PARTS');
+  });
+
+  it('cancelar a OS continua sendo decisão manual, com motivo', async () => {
+    const serviceOrderId = await openServiceOrderAwaitingApproval();
+
+    await request(http)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/cancel`)
+      .send({ reason: 'Cliente desistiu do reparo' })
+      .expect(200);
+
     await request(http)
       .get(`/api/v1/service-orders/${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status).toBe('CANCELLED');
-        expect(body.cancellationReason).toContain('Achou caro');
+        expect(body.cancellationReason).toContain('Cliente desistiu');
       });
   });
 

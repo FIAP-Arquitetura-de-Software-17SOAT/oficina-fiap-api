@@ -82,7 +82,7 @@ describe('PartService', () => {
       repository.create.mockRejectedValue({ code: 'P2002' });
 
       await expect(service.create(dto)).rejects.toThrow(
-        'Part code already in use',
+        'Código da peça já cadastrado',
       );
     });
 
@@ -154,7 +154,7 @@ describe('PartService', () => {
 
       await expect(
         service.update(part.getId(), { code: 'OTHER-PART' }),
-      ).rejects.toThrow('Part code already in use');
+      ).rejects.toThrow('Código da peça já cadastrado');
     });
 
     it('does not update a missing part', async () => {

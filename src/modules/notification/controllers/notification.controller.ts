@@ -28,14 +28,14 @@ import { NotificationService } from '../services/notification.service';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@ApiUnauthorizedResponse({ description: 'Token de acesso ausente ou inválido' })
 @Roles(Role.ADMIN)
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lists delivery notifications' })
+  @ApiOperation({ summary: 'Lista as notificações de envio' })
   @ApiOkResponse({ type: NotificationResponseDto, isArray: true })
   async findAll(
     @Query() query: FindNotificationsQueryDto,
@@ -47,7 +47,7 @@ export class NotificationController {
 
   @Post(':id/retry')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Retries a failed notification' })
+  @ApiOperation({ summary: 'Reenvia uma notificação que falhou' })
   @ApiOkResponse({ type: NotificationResponseDto })
   @ApiNotFoundResponse({ description: 'Notificação não encontrada' })
   @ApiConflictResponse({
