@@ -24,21 +24,27 @@ import { RolesGuard } from './shared/http/auth/roles.guard';
     }),
     LoggerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        pinoHttp: {
-          level: config.get<string>('LOG_LEVEL') ?? 'info',
-          redact: {
-            paths: ['req.headers.authorization'],
-            censor: '[REDACTED]',
+      useFactory: (config: ConfigService) => {
+        const logLevel =
+          process.env.LOG_LEVEL ?? config.get<string>('LOG_LEVEL') ?? 'info';
+
+        return {
+          pinoHttp: {
+            level: logLevel,
+            redact: {
+              paths: ['req.headers.authorization'],
+              censor: '[REDACTED]',
+            },
+            transport:
+              logLevel !== 'silent' &&
+              config.get<string>('NODE_ENV') !== 'production'
+                ? { target: 'pino-pretty' }
+                : undefined,
           },
-          transport:
-            config.get<string>('NODE_ENV') !== 'production'
-              ? { target: 'pino-pretty' }
-              : undefined,
-        },
-        exclude: [{ method: RequestMethod.GET, path: 'api/v1/health' }],
-        forRoutes: [{ method: RequestMethod.ALL, path: '{*path}' }],
-      }),
+          exclude: [{ method: RequestMethod.GET, path: 'api/v1/health' }],
+          forRoutes: [{ method: RequestMethod.ALL, path: '{*path}' }],
+        };
+      },
     }),
     PrismaModule,
     AuthModule,

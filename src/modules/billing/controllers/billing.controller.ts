@@ -42,7 +42,7 @@ export class BillingController {
 
   @Post()
   @ApiOperation({
-    summary: 'Gera uma cobranca para uma ordem de servico concluida',
+    summary: 'Gera uma cobrança para uma ordem de serviço finalizada',
   })
   @ApiCreatedResponse({ type: BillingResponseDto })
   @ApiConflictResponse({ description: 'Service order cannot be billed' })
@@ -56,7 +56,7 @@ export class BillingController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lista cobrancas ou busca por ordem de servico' })
+  @ApiOperation({ summary: 'Lista cobranças ou busca por ordem de serviço' })
   @ApiOkResponse({ type: BillingResponseDto, isArray: true })
   @ApiBearerAuth()
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
@@ -75,7 +75,7 @@ export class BillingController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Busca uma cobranca por id' })
+  @ApiOperation({ summary: 'Busca uma cobrança por id' })
   @ApiOkResponse({ type: BillingResponseDto })
   @ApiNotFoundResponse({ description: 'Cobrança não encontrada' })
   @ApiBearerAuth()
@@ -110,7 +110,7 @@ export class BillingController {
 
   @Post(':id/expire')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Expira uma cobranca aguardando pagamento' })
+  @ApiOperation({ summary: 'Expira uma cobrança aguardando pagamento' })
   @ApiOkResponse({ type: BillingResponseDto })
   @ApiNotFoundResponse({ description: 'Cobrança não encontrada' })
   @ApiBearerAuth()
@@ -142,7 +142,7 @@ export class BillingController {
 
   @Post(':id/deliver-service-order')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Entrega a ordem de servico apos quitacao' })
+  @ApiOperation({ summary: 'Entrega a ordem de serviço após a quitação' })
   @ApiNoContentResponse({ description: 'Service order delivered' })
   @ApiConflictResponse({
     description: 'A cobrança precisa estar paga para entregar a OS',

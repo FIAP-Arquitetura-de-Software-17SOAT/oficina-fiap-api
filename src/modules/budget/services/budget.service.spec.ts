@@ -691,10 +691,7 @@ describe('BudgetService', () => {
       });
 
       expect(result.getStatus()).toBe(BudgetStatus.BUDGET_REFUSED);
-      expect(serviceOrderController.cancel).toHaveBeenCalledWith(
-        '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
-        { reason: 'Orçamento recusado: Achou caro' },
-      );
+      expect(serviceOrderController.cancel).not.toHaveBeenCalled();
     });
   });
 });

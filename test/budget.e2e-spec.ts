@@ -7,6 +7,7 @@ import {
   Budget,
   BudgetItemType,
 } from '../src/modules/budget/entities/budget.entity';
+import { Money } from '../src/shared/domain/value-objects/money.vo';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
@@ -35,13 +36,13 @@ describe('InMemoryBudgetRepository', () => {
           description: 'Oil change',
           type: BudgetItemType.SERVICE,
           quantity: 1,
-          unitPrice: 120,
+          unitPrice: Money.fromDecimal(120),
         },
       ],
     });
 
     await repository.create(budget);
-    budget.sendToCustomer();
+    budget.sendToClient();
 
     const persisted = await repository.findById(budget.getId());
 
@@ -59,7 +60,7 @@ describe('InMemoryBudgetRepository', () => {
           description: 'Oil change',
           type: BudgetItemType.SERVICE,
           quantity: 1,
-          unitPrice: 120,
+          unitPrice: Money.fromDecimal(120),
         },
       ],
     });
@@ -71,7 +72,7 @@ describe('InMemoryBudgetRepository', () => {
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 1,
-          unitPrice: 80,
+          unitPrice: Money.fromDecimal(80),
         },
       ],
     });
@@ -134,7 +135,7 @@ describe('Budget (e2e)', () => {
 
   const openServiceOrderAwaitingApproval = async (): Promise<string> => {
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send({
         name: 'Maria Silva',
         document: '529.982.247-25',
@@ -144,7 +145,7 @@ describe('Budget (e2e)', () => {
       .expect(201);
 
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId: client.body.id,
         plate: 'ABC1D23',
@@ -155,7 +156,7 @@ describe('Budget (e2e)', () => {
       .expect(201);
 
     const serviceOrder = await request(http)
-      .post('/api/v1/service-order')
+      .post('/api/v1/service-orders')
       .send({
         clientId: client.body.id,
         vehicleId: vehicle.body.id,
@@ -168,7 +169,7 @@ describe('Budget (e2e)', () => {
     // Para em IN_DIAGNOSIS de propósito: quem move a OS para
     // AWAITING_APPROVAL é a política de geração do orçamento.
     await request(http)
-      .patch(`/api/v1/service-order/${id}/assign`)
+      .patch(`/api/v1/service-orders/${id}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
 
@@ -311,7 +312,7 @@ describe('Budget (e2e)', () => {
       });
 
     await request(http)
-      .get(`/api/v1/budgets/service-order/${serviceOrderId}`)
+      .get(`/api/v1/budgets/service-orders/${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveLength(1);
@@ -331,7 +332,7 @@ describe('Budget (e2e)', () => {
             description: 'Brake adjustment',
             type: BudgetItemType.SERVICE,
             quantity: 1,
-            unitPrice: 180,
+            unitPrice: Money.fromDecimal(180),
           },
         ],
       }),
@@ -399,11 +400,9 @@ describe('Budget (e2e)', () => {
 
   it('rejects budget service-order list requests without a valid service order id', async () => {
     await request(http).get('/api/v1/budgets').expect(200);
+    await request(http).get('/api/v1/budgets/service-orders/').expect(400);
     await request(http)
-      .get('/api/v1/budgets/service-order/')
-      .expect(400);
-    await request(http)
-      .get('/api/v1/budgets/service-order/%20%20%20')
+      .get('/api/v1/budgets/service-orders/%20%20%20')
       .expect(400);
   });
 
@@ -530,7 +529,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
     http = app.getHttpServer();
 
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send({
         name: 'Maria Silva',
         document: '529.982.247-25',
@@ -539,7 +538,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
       })
       .expect(201);
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId: client.body.id,
         plate: 'ABC1D23',
@@ -549,7 +548,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
       })
       .expect(201);
     const serviceOrder = await request(http)
-      .post('/api/v1/service-order')
+      .post('/api/v1/service-orders')
       .send({
         clientId: client.body.id,
         vehicleId: vehicle.body.id,
@@ -559,7 +558,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
     serviceOrderId = serviceOrder.body.id as string;
 
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/assign`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
   });

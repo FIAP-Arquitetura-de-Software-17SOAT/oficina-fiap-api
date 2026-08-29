@@ -29,6 +29,7 @@ describe('seedAdmin', () => {
     expect(hash).toHaveBeenCalledWith('correct-password');
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
+        id: expect.any(String),
         email: 'admin@example.com',
         passwordHash: '$2b$12$hashed-password',
         role: 'ADMIN',

@@ -63,13 +63,13 @@ describe('ServiceOrder (integração)', () => {
     vehicleId: string;
   }> => {
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send(clientPayload)
       .expect(201);
     const clientId = client.body.id as string;
 
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId,
         plate: 'ABC1D23',
@@ -83,15 +83,15 @@ describe('ServiceOrder (integração)', () => {
   };
 
   const open = (body: Record<string, unknown>) =>
-    request(http).post('/api/v1/service-order').send(body);
+    request(http).post('/api/v1/service-orders').send(body);
 
   const advance = (
     id: string,
     action: string,
     body: Record<string, unknown> = {},
-  ) => request(http).patch(`/api/v1/service-order/${id}/${action}`).send(body);
+  ) => request(http).patch(`/api/v1/service-orders/${id}/${action}`).send(body);
 
-  describe('POST /api/v1/service-order', () => {
+  describe('POST /api/v1/service-orders', () => {
     it('abre a OS com status RECEIVED', async () => {
       const { clientId, vehicleId } = await createClientWithVehicle();
 
@@ -132,10 +132,10 @@ describe('ServiceOrder (integração)', () => {
     });
   });
 
-  describe('GET /api/v1/service-order', () => {
+  describe('GET /api/v1/service-orders', () => {
     it('lista vazia quando não há OS', async () => {
       const response = await request(http)
-        .get('/api/v1/service-order')
+        .get('/api/v1/service-orders')
         .expect(200);
 
       expect(response.body).toEqual([]);
@@ -146,17 +146,17 @@ describe('ServiceOrder (integração)', () => {
       await open(openPayload(clientId, vehicleId)).expect(201);
 
       const response = await request(http)
-        .get('/api/v1/service-order')
+        .get('/api/v1/service-orders')
         .expect(200);
 
       expect(response.body).toHaveLength(1);
     });
   });
 
-  describe('GET /api/v1/service-order/metrics/average-execution-time', () => {
+  describe('GET /api/v1/service-orders/metrics/average-execution-time', () => {
     it('devolve null e amostra 0 sem OS finalizada', async () => {
       const response = await request(http)
-        .get('/api/v1/service-order/metrics/average-execution-time')
+        .get('/api/v1/service-orders/metrics/average-execution-time')
         .expect(200);
 
       expect(response.body).toEqual({
@@ -179,7 +179,7 @@ describe('ServiceOrder (integração)', () => {
       await advance(created.id, 'await-approval').expect(404);
 
       const response = await request(http)
-        .get('/api/v1/service-order/metrics/average-execution-time')
+        .get('/api/v1/service-orders/metrics/average-execution-time')
         .expect(200);
 
       expect(response.body).toEqual({
@@ -189,7 +189,7 @@ describe('ServiceOrder (integração)', () => {
     });
   });
 
-  describe('GET /api/v1/service-order/:id', () => {
+  describe('GET /api/v1/service-orders/:id', () => {
     it('busca por id', async () => {
       const { clientId, vehicleId } = await createClientWithVehicle();
       const { body: created } = await open(
@@ -197,7 +197,7 @@ describe('ServiceOrder (integração)', () => {
       ).expect(201);
 
       const response = await request(http)
-        .get(`/api/v1/service-order/${created.id}`)
+        .get(`/api/v1/service-orders/${created.id}`)
         .expect(200);
 
       expect(response.body.id).toBe(created.id);
@@ -205,12 +205,12 @@ describe('ServiceOrder (integração)', () => {
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .get('/api/v1/service-order/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
+        .get('/api/v1/service-orders/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
         .expect(404);
     });
 
     it('devolve 400 para id que não é uuid', async () => {
-      await request(http).get('/api/v1/service-order/nao-e-uuid').expect(400);
+      await request(http).get('/api/v1/service-orders/nao-e-uuid').expect(400);
     });
   });
 
@@ -351,7 +351,7 @@ describe('ServiceOrder (integração)', () => {
     });
   });
 
-  describe('GET /api/v1/service-order/client/:clientId', () => {
+  describe('GET /api/v1/service-orders/clients/:clientId', () => {
     it('cliente acompanha o status das próprias OS', async () => {
       const { clientId, vehicleId } = await createClientWithVehicle();
       const { body: created } = await open(
@@ -363,7 +363,7 @@ describe('ServiceOrder (integração)', () => {
       }).expect(200);
 
       await request(http)
-        .get(`/api/v1/service-order/client/${clientId}`)
+        .get(`/api/v1/service-orders/clients/${clientId}`)
         .expect(200)
         .expect(({ body }) => {
           expect(body).toHaveLength(1);
@@ -376,7 +376,7 @@ describe('ServiceOrder (integração)', () => {
       const { clientId } = await createClientWithVehicle();
 
       await request(http)
-        .get(`/api/v1/service-order/client/${clientId}`)
+        .get(`/api/v1/service-orders/clients/${clientId}`)
         .expect(200)
         .expect(({ body }) => {
           expect(body).toEqual([]);
@@ -386,7 +386,7 @@ describe('ServiceOrder (integração)', () => {
     it('404 para cliente inexistente', async () => {
       await request(http)
         .get(
-          '/api/v1/service-order/client/eeeeeeee-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+          '/api/v1/service-orders/clients/eeeeeeee-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
         )
         .expect(404);
     });

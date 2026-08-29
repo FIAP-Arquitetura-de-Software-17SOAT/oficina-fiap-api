@@ -255,12 +255,12 @@ describe('Authentication and authorization (e2e)', () => {
   });
 
   it('protege as rotas administrativas: sem token não passa', async () => {
-    await request(http).get('/api/v1/client').expect(401);
-    await request(http).get('/api/v1/service-order').expect(401);
+    await request(http).get('/api/v1/clients').expect(401);
+    await request(http).get('/api/v1/service-orders').expect(401);
     await request(http).get('/api/v1/budgets?serviceOrderId=x').expect(401);
     await request(http).get('/api/v1/purchase-orders').expect(401);
-    await request(http).get('/api/v1/vehicle').expect(401);
-    await request(http).get('/api/v1/stock').expect(401);
+    await request(http).get('/api/v1/vehicles').expect(401);
+    await request(http).get('/api/v1/parts').expect(401);
   });
 
   it('deixa públicos apenas o health e a autenticação', async () => {

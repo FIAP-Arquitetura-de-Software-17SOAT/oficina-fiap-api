@@ -82,8 +82,15 @@ npm install
 docker compose up -d db
 npx prisma migrate dev
 npx prisma db seed
+npm run seed:demo
 npm run start:dev
 ```
+
+`npm run seed:demo` e opcional e inclui dados demonstrativos para consulta no
+Swagger: clientes, veiculos, catalogo de servicos, pecas, ordens de servico em
+todos os estados, orcamentos, pedido de compra e cobrancas. O comando e
+idempotente, nao remove ou altera dados existentes e recusa execucao com
+`NODE_ENV=production`. Ele nao e executado pelo Docker Compose.
 
 Nesse modo, defina `DATABASE_URL` no `.env` com a mesma senha de `POSTGRES_PASSWORD`, por exemplo:
 
@@ -105,3 +112,4 @@ Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto
 
 - [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
 - [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.
+- [docs/c4-diagrams/](docs/c4-diagrams/) — modelo C4 niveis 1 (contexto) e 2 (containers), em `.drawio`.

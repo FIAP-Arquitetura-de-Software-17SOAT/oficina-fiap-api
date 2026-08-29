@@ -69,7 +69,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
 
   const openServiceOrderInDiagnosis = async (): Promise<string> => {
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send({
         name: 'Maria Silva',
         document: '529.982.247-25',
@@ -79,7 +79,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
       .expect(201);
 
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId: client.body.id,
         plate: 'ABC1D23',
@@ -90,7 +90,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
       .expect(201);
 
     const serviceOrder = await request(http)
-      .post('/api/v1/service-order')
+      .post('/api/v1/service-orders')
       .send({
         clientId: client.body.id,
         vehicleId: vehicle.body.id,
@@ -99,7 +99,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
       .expect(201);
 
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrder.body.id}/assign`)
+      .patch(`/api/v1/service-orders/${serviceOrder.body.id}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
 

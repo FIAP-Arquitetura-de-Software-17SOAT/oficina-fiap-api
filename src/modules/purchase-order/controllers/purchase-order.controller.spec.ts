@@ -31,6 +31,9 @@ describe('PurchaseOrderController', () => {
       removeItem: jest.fn(),
       registerPurchase: jest.fn(),
       markAsDelivered: jest.fn(),
+      // O controller pede o nome das peças ao service, que fala com o módulo
+      // de estoque. Sem peça resolvida o item sai com partName null.
+      resolvePartNames: jest.fn().mockResolvedValue(new Map()),
     };
 
     const module: TestingModule = await Test.createTestingModule({

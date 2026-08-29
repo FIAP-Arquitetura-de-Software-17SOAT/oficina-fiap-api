@@ -118,6 +118,8 @@ Esse comando apaga os dados locais do PostgreSQL.
 
 ## Arquitetura
 
+Os diagramas C4 de contexto e de containers estao em [../c4-diagrams/](../c4-diagrams/).
+
 O projeto e um monolito NestJS organizado por modulos de dominio. Cada modulo segue a separacao:
 
 | Diretorio        | Responsabilidade                            |
@@ -137,6 +139,8 @@ Sao sete os agregados de negocio implementados: **Cliente**, **Veiculo**, **Orde
 
 O fluxo da ordem de servico e: `Recebida` -> `Em diagnostico` -> `Aguardando aprovacao` -> `Aguardando pecas` -> `Em execucao` -> `Finalizada` -> `Entregue`. De qualquer estado nao terminal tambem se chega a `Cancelada`. Um orcamento so de servicos pula `Aguardando pecas`, porque nao ha o que baixar do estoque.
 
+**Recusar orcamento nao encerra a OS.** A OS fica em `Aguardando aprovacao` e o mecanico gera quantas versoes de orcamento precisar para a mesma OS. Desistir do atendimento e decisao manual, via `PATCH /api/v1/service-orders/{id}/cancel`, que exige motivo.
+
 ## Convencoes de codigo
 
 O vocabulario do projeto e o mapeamento entre termo de negocio e identificador no codigo estao em [linguagem-ubiqua.md](linguagem-ubiqua.md), que e a fonte da verdade. As regras que mais aparecem em revisao:
@@ -148,9 +152,34 @@ O vocabulario do projeto e o mapeamento entre termo de negocio e identificador n
 - **Sempre mapeie entidade para DTO no controller.** Devolver a entidade direto serializa o VO como `{ "value": "..." }` e quebra o contrato do Swagger.
 - **Um conceito, uma classe.** VO usado por mais de um modulo sobe para `src/shared/domain/value-objects/` em vez de ser duplicado.
 - **A entidade protege as proprias invariantes** e lanca `DomainException` — nunca `Error` generico, que viraria 500.
-- **Value Object onde ha regra propria** (CPF/CNPJ, placa, dinheiro, quantidade). Nome e telefone continuam `string`; VO em tudo e overengineering.
+- **Value Object onde ha regra propria** (documento, placa, dinheiro, quantidade). Nome e telefone continuam `string`; VO em tudo e overengineering.
 - **Nao crie um `PrismaService` por modulo.** O `PrismaModule` e `@Global`; basta injetar `PrismaService` no repositorio. Um por modulo significaria um pool de conexoes por modulo.
 - **Documente toda rota** com `@ApiOperation` e as respostas de erro.
+
+### Nomenclatura
+
+- **Um termo, um identificador — inclusive o tipo.** Nao basta o campo ter o nome certo; o tipo dele tambem. `getDocument(): CpfCnpj` dava dois nomes ao mesmo conceito na mesma assinatura: hoje e `getDocument(): Document`.
+- **Nao misturar os dois idiomas num mesmo identificador.** `getPecaId` numa classe `PurchaseOrderItem` e o caso a evitar; o correto e `getPartId`. Vale tambem para metodo: `isPessoaJuridica` virou `isLegalEntity`.
+- **Cliente e `Client`.** `Customer` nao e sinonimo aceito, nem em metodo nem em exemplo de Swagger.
+- **Nomeie pelo conceito, nao pelo formato.** `Document` aceita CPF e CNPJ; chamar a classe de `CpfCnpj` nomearia a validacao em vez do conceito.
+- Ao escrever texto: **Ordem de Servico** na primeira ocorrencia e **OS** nas seguintes; evitar "pedido" sozinho, que confunde OS com Pedido de Compra. Evento em participio (`Orcamento gerado`), comando em infinitivo (`Gerar orcamento`).
+
+## Decisoes de modelagem
+
+Onde o modelo conceitual do Event Storming e o codigo nao se sobrepoem, esta e a leitura adotada.
+
+- **Diagnostico nao tem entidade propria.** O desenho traz *Diagnostico* e *ItemOrdemServico* como entidades da OS. No codigo a OS guarda so uma `description`, e os itens ficam em `BudgetItem`. O termo de negocio continua valendo; a modelagem detalhada e evolucao futura.
+- **Pagamento vive dentro da Cobranca.** `paymentMethod`, `paidAt` e o identificador da transacao sao campos de `Billing`; as sessoes de checkout ficam em `BillingCheckoutSession`.
+- **`StockMovement` nao e entidade rica.** Existe como registro persistido; quem protege o saldo e a `Part`. Cada movimentacao carrega chave de idempotencia.
+- **`Budget.serviceOrderId` e referencia externa, sem FK.** Orcamento e OS sao agregados distintos e se ligam por identidade, como a OS faz com o mecanico. Ja a relacao `PurchaseOrderItem` -> `Part` tem FK, porque ambos vivem no contexto Estoque e Compras.
+- **Nao ha barramento de eventos.** Os fatos do board sao realizados por chamadas sincronas entre controllers e por notificacoes registradas. Se um barramento for adicionado, reaproveitar os nomes de evento da linguagem ubiqua nos contratos.
+
+## Decisoes pendentes
+
+1. Definir se `Diagnostico` sera entidade propria da OS ou seguira representado pela descricao da OS e pelos itens do orcamento.
+2. Definir o tratamento de reparos adicionais numa OS ja em execucao. O codigo permite varias versoes de orcamento, mas a maquina de estados nao contempla `Em execucao` -> `Aguardando pecas`: hoje `Em execucao` so leva a `Finalizada` ou `Cancelada`.
+3. Definir se a entrega de um Pedido de Compra deve apenas atualizar o estoque ou tambem disparar nova tentativa de despacho da OS. Hoje so da entrada no estoque, e o despacho precisa ser solicitado de novo.
+4. Resolver o Swagger do modulo `service-order`, que segue em ingles por causa do teste `uses ASCII-only Swagger operation metadata for service orders`, enquanto o resto do projeto usa portugues.
 
 ## Regras de negocio implementadas
 

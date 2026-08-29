@@ -5,6 +5,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
+import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
+import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
+import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
@@ -16,6 +20,7 @@ import { StockMovementRepository } from '../src/modules/stock/repositories/stock
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
+import { InMemoryBillingRepository } from './in-memory-billing.repository';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryPartRepository } from './in-memory-part.repository';
@@ -32,6 +37,7 @@ import { allowAuthenticated } from './allow-authenticated';
  *   estoque consultado com saldo -> baixa -> OS em execução
  *   estoque sem saldo -> necessidade de compra -> pedido entregue -> reposição
  *   orçamento recusado -> OS encerrada
+ *   OS concluída -> cobrança gerada -> pagamento confirmado -> OS entregue
  */
 describe('Fluxo da oficina (e2e)', () => {
   let app: INestApplication<App>;
@@ -78,6 +84,10 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(new InMemoryStockMovementRepository(parts))
         .overrideProvider(PurchaseOrderRepository)
         .useValue(new InMemoryPurchaseOrderRepository())
+        .overrideProvider(BillingRepository)
+        .useValue(new InMemoryBillingRepository())
+        .overrideProvider(PaymentGateway)
+        .useValue(new FakePaymentGateway())
         .overrideProvider(NotificationService)
         .useValue(notifications)
         .overrideProvider(ConfigService)
@@ -85,7 +95,7 @@ describe('Fluxo da oficina (e2e)', () => {
     ).compile();
 
     app = configureApp(
-      moduleFixture.createNestApplication(),
+      moduleFixture.createNestApplication({ rawBody: true }),
     ) as INestApplication<App>;
     await app.init();
     http = app.getHttpServer();
@@ -102,7 +112,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
   const createPart = async (quantity: number): Promise<string> => {
     const part = await request(http)
-      .post('/api/v1/stock')
+      .post('/api/v1/parts')
       .set('Authorization', `Bearer ${token}`)
       .send({
         code: 'OIL-FILTER-123',
@@ -118,7 +128,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
     if (quantity > 0) {
       await request(http)
-        .post(`/api/v1/stock/${partId}/stock/in`)
+        .post(`/api/v1/parts/${partId}/movements/in`)
         .set('Authorization', `Bearer ${token}`)
         .send({ quantity, idempotencyKey: `seed-${partId}` })
         .expect(201);
@@ -129,7 +139,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
   const openServiceOrderAwaitingApproval = async (): Promise<string> => {
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send({
         name: 'Maria Silva',
         document: '529.982.247-25',
@@ -139,7 +149,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(201);
 
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId: client.body.id,
         plate: 'ABC1D23',
@@ -150,7 +160,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(201);
 
     const serviceOrder = await request(http)
-      .post('/api/v1/service-order')
+      .post('/api/v1/service-orders')
       .send({
         clientId: client.body.id,
         vehicleId: vehicle.body.id,
@@ -163,7 +173,7 @@ describe('Fluxo da oficina (e2e)', () => {
     // Para em IN_DIAGNOSIS de propósito: quem move a OS para
     // AWAITING_APPROVAL é a política de geração do orçamento.
     await request(http)
-      .patch(`/api/v1/service-order/${id}/assign`)
+      .patch(`/api/v1/service-orders/${id}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
 
@@ -201,7 +211,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
   const status = async (serviceOrderId: string): Promise<string> => {
     const response = await request(http)
-      .get(`/api/v1/service-order/${serviceOrderId}`)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
       .expect(200);
 
     return response.body.status as string;
@@ -209,7 +219,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
   const dispatch = (serviceOrderId: string) =>
     request(http)
-      .post(`/api/v1/stock/service-orders/${serviceOrderId}/dispatch`)
+      .post(`/api/v1/parts/service-orders/${serviceOrderId}/dispatch`)
       .set('Authorization', `Bearer ${token}`);
 
   it('com saldo: aceite solicita peças, a baixa move a OS para execução', async () => {
@@ -230,7 +240,7 @@ describe('Fluxo da oficina (e2e)', () => {
     expect(await status(serviceOrderId)).toBe('IN_PROGRESS');
 
     await request(http)
-      .get(`/api/v1/stock/${partId}`)
+      .get(`/api/v1/parts/${partId}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect(({ body }) => {
@@ -239,7 +249,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
     // Fluxo completo até a entrega, com o timer fechando o ciclo.
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/complete`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/complete`)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status).toBe('COMPLETED');
@@ -248,16 +258,85 @@ describe('Fluxo da oficina (e2e)', () => {
       });
 
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/deliver`)
       .expect(404);
 
     await request(http)
-      .get('/api/v1/service-order/metrics/average-execution-time')
+      .get('/api/v1/service-orders/metrics/average-execution-time')
       .expect(200)
       .expect(({ body }) => {
         expect(body.sampleSize).toBe(1);
         expect(body.averageExecutionTimeMs).toBeGreaterThanOrEqual(0);
       });
+  });
+
+  it('conclusão gera cobrança, pagamento confirmado libera a entrega', async () => {
+    const partId = await createPart(5);
+    const serviceOrderId = await openServiceOrderAwaitingApproval();
+
+    await acceptBudgetWithPart(serviceOrderId, partId, 2);
+    await dispatch(serviceOrderId).expect(200);
+    await request(http)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/complete`)
+      .expect(200);
+
+    notifications.enqueue.mockClear();
+
+    const billing = await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId })
+      .expect(201);
+
+    expect(billing.body).toMatchObject({
+      serviceOrderId,
+      status: 'WAITING_PAYMENT',
+      paymentLink: expect.stringContaining(
+        'https://fake.stripe.test/checkout/',
+      ),
+    });
+
+    // Política: link de pagamento disponibilizado -> notificar cliente.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: NotificationType.PAYMENT_LINK_READY,
+        to: 'maria@example.com',
+        text: expect.stringContaining(billing.body.paymentLink),
+      }),
+    );
+
+    // Entrega bloqueada até o pagamento ser confirmado pelo gateway.
+    await request(http)
+      .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)
+      .expect(409);
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    gateway.queueWebhookResult({
+      type: 'payment_confirmed',
+      gatewayTransactionId: billing.body.gatewayTransactionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    await request(http)
+      .post('/api/v1/billings/stripe/webhook')
+      .set('stripe-signature', 'fake-signature')
+      .send({ id: 'evt_workshop_flow_paid' })
+      .expect(204);
+
+    await request(http)
+      .get(`/api/v1/billings/${billing.body.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('PAID');
+      });
+
+    await request(http)
+      .post(`/api/v1/billings/${billing.body.id}/deliver-service-order`)
+      .expect(204);
+
+    expect(await status(serviceOrderId)).toBe('DELIVERED');
   });
 
   it('o aceite enfileira somente as peças para o e-mail de estoque', async () => {
@@ -313,18 +392,18 @@ describe('Fluxo da oficina (e2e)', () => {
 
     // As três rotas que deixavam pular o fluxo foram despublicadas.
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/start-diagnosis`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/start-diagnosis`)
       .expect(404);
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/await-parts`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/await-parts`)
       .expect(404);
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/start-progress`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/start-progress`)
       .expect(404);
 
     // E finalizar sem passar por execução continua sendo transição inválida.
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/complete`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/complete`)
       .expect(400);
 
     expect(await status(serviceOrderId)).toBe('IN_DIAGNOSIS');
@@ -370,7 +449,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(200);
 
     await request(http)
-      .get(`/api/v1/stock/${partId}`)
+      .get(`/api/v1/parts/${partId}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect(({ body }) => {
@@ -387,7 +466,7 @@ describe('Fluxo da oficina (e2e)', () => {
     expect(await status(serviceOrderId)).toBe('IN_PROGRESS');
   });
 
-  it('orçamento recusado encerra a ordem de serviço', async () => {
+  it('orçamento recusado mantém a OS aguardando aprovação e aceita nova versão', async () => {
     const partId = await createPart(5);
     const serviceOrderId = await openServiceOrderAwaitingApproval();
 
@@ -420,12 +499,86 @@ describe('Fluxo da oficina (e2e)', () => {
         expect(body.refusalReason).toBe('Achou caro');
       });
 
+    // A recusa é resposta a uma proposta, não desistência do atendimento: a OS
+    // continua aberta para o mecânico refazer o orçamento.
     await request(http)
-      .get(`/api/v1/service-order/${serviceOrderId}`)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('AWAITING_APPROVAL');
+        expect(body.cancellationReason).toBeNull();
+      });
+
+    // Nova versão para a mesma OS, e ela pode seguir o fluxo normalmente.
+    const revised = await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId,
+        items: [
+          {
+            partId,
+            description: 'Filtro de óleo',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 99.9,
+          },
+        ],
+      })
+      .expect(201);
+
+    expect(revised.body.version).toBe(2);
+
+    await request(http)
+      .post(`/api/v1/budgets/${revised.body.id}/send`)
+      .expect(200);
+
+    await request(http)
+      .post(`/api/v1/budgets/${revised.body.id}/accept`)
+      .expect(200);
+
+    expect(await status(serviceOrderId)).toBe('AWAITING_PARTS');
+  });
+
+  it('cancelar a OS continua sendo decisão manual, com motivo', async () => {
+    const partId = await createPart(5);
+    const serviceOrderId = await openServiceOrderAwaitingApproval();
+
+    const budget = await request(http)
+      .post('/api/v1/budgets')
+      .send({
+        serviceOrderId,
+        items: [
+          {
+            partId,
+            description: 'Filtro de oleo',
+            type: 'PART',
+            quantity: 1,
+            unitPrice: 149.9,
+          },
+        ],
+      })
+      .expect(201);
+
+    await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/send`)
+      .expect(200);
+
+    await request(http)
+      .post(`/api/v1/budgets/${budget.body.id}/refuse`)
+      .send({ reason: 'Achou caro' })
+      .expect(200);
+
+    await request(http)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/cancel`)
+      .send({ reason: 'Cliente desistiu do reparo' })
+      .expect(200);
+
+    await request(http)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status).toBe('CANCELLED');
-        expect(body.cancellationReason).toContain('Achou caro');
+        expect(body.cancellationReason).toContain('Cliente desistiu');
       });
 
     await request(http)
@@ -445,7 +598,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(409);
 
     await request(http)
-      .get(`/api/v1/budgets/service-order/${serviceOrderId}`)
+      .get(`/api/v1/budgets/service-orders/${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveLength(1);
