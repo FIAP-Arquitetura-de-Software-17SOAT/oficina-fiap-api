@@ -45,7 +45,7 @@ describe('Vehicle (integração)', () => {
     http = app.getHttpServer();
 
     const { body } = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send(clientPayload)
       .expect(201);
     clientId = body.id;
@@ -64,9 +64,9 @@ describe('Vehicle (integração)', () => {
   });
 
   const create = (body: Record<string, unknown> = payload()) =>
-    request(http).post('/api/v1/vehicle').send(body);
+    request(http).post('/api/v1/vehicles').send(body);
 
-  describe('POST /api/v1/vehicle', () => {
+  describe('POST /api/v1/vehicles', () => {
     it('cadastra normalizando a placa e aparando os textos', async () => {
       const response = await create().expect(201);
 
@@ -127,9 +127,9 @@ describe('Vehicle (integração)', () => {
     });
   });
 
-  describe('GET /api/v1/vehicle', () => {
+  describe('GET /api/v1/vehicles', () => {
     it('lista vazia quando não há veículos', async () => {
-      const response = await request(http).get('/api/v1/vehicle').expect(200);
+      const response = await request(http).get('/api/v1/vehicles').expect(200);
 
       expect(response.body).toEqual([]);
     });
@@ -139,7 +139,7 @@ describe('Vehicle (integração)', () => {
       await create({ ...payload(), plate: 'XYZ9876' }).expect(201);
 
       const response = await request(http)
-        .get(`/api/v1/vehicle?clientId=${clientId}`)
+        .get(`/api/v1/vehicles?clientId=${clientId}`)
         .expect(200);
 
       expect(response.body).toHaveLength(2);
@@ -147,21 +147,21 @@ describe('Vehicle (integração)', () => {
 
     it('devolve 404 ao filtrar por cliente inexistente', async () => {
       await request(http)
-        .get(`/api/v1/vehicle?clientId=${UUID_INEXISTENTE}`)
+        .get(`/api/v1/vehicles?clientId=${UUID_INEXISTENTE}`)
         .expect(404);
     });
 
     it('devolve 400 quando o filtro não é uuid', async () => {
-      await request(http).get('/api/v1/vehicle?clientId=xpto').expect(400);
+      await request(http).get('/api/v1/vehicles?clientId=xpto').expect(400);
     });
   });
 
-  describe('GET /api/v1/vehicle/:id', () => {
+  describe('GET /api/v1/vehicles/:id', () => {
     it('busca por id', async () => {
       const { body: created } = await create().expect(201);
 
       const response = await request(http)
-        .get(`/api/v1/vehicle/${created.id}`)
+        .get(`/api/v1/vehicles/${created.id}`)
         .expect(200);
 
       expect(response.body.id).toBe(created.id);
@@ -169,21 +169,21 @@ describe('Vehicle (integração)', () => {
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .get(`/api/v1/vehicle/${UUID_INEXISTENTE}`)
+        .get(`/api/v1/vehicles/${UUID_INEXISTENTE}`)
         .expect(404);
     });
 
     it('devolve 400 para id que não é uuid', async () => {
-      await request(http).get('/api/v1/vehicle/nao-e-uuid').expect(400);
+      await request(http).get('/api/v1/vehicles/nao-e-uuid').expect(400);
     });
   });
 
-  describe('PATCH /api/v1/vehicle/:id', () => {
+  describe('PATCH /api/v1/vehicles/:id', () => {
     it('atualiza apenas os campos enviados', async () => {
       const { body: created } = await create().expect(201);
 
       const response = await request(http)
-        .patch(`/api/v1/vehicle/${created.id}`)
+        .patch(`/api/v1/vehicles/${created.id}`)
         .send({ brand: 'Volkswagen' })
         .expect(200);
 
@@ -199,31 +199,31 @@ describe('Vehicle (integração)', () => {
       const { body: created } = await create().expect(201);
 
       await request(http)
-        .patch(`/api/v1/vehicle/${created.id}`)
+        .patch(`/api/v1/vehicles/${created.id}`)
         .send(body)
         .expect(400);
     });
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .patch(`/api/v1/vehicle/${UUID_INEXISTENTE}`)
+        .patch(`/api/v1/vehicles/${UUID_INEXISTENTE}`)
         .send({ brand: 'X' })
         .expect(404);
     });
   });
 
-  describe('DELETE /api/v1/vehicle/:id', () => {
+  describe('DELETE /api/v1/vehicles/:id', () => {
     it('remove o veículo e devolve 204', async () => {
       const { body: created } = await create().expect(201);
 
-      await request(http).delete(`/api/v1/vehicle/${created.id}`).expect(204);
+      await request(http).delete(`/api/v1/vehicles/${created.id}`).expect(204);
 
-      await request(http).get(`/api/v1/vehicle/${created.id}`).expect(404);
+      await request(http).get(`/api/v1/vehicles/${created.id}`).expect(404);
     });
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .delete(`/api/v1/vehicle/${UUID_INEXISTENTE}`)
+        .delete(`/api/v1/vehicles/${UUID_INEXISTENTE}`)
         .expect(404);
     });
   });

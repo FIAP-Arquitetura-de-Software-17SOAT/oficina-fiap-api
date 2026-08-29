@@ -57,7 +57,7 @@ describe('Stock (e2e)', () => {
     );
 
   it('rejects an unauthenticated stock request', async () => {
-    await request(http).get('/api/v1/stock').expect(401);
+    await request(http).get('/api/v1/parts').expect(401);
   });
 
   it.each(['ADMIN', 'EMPLOYEE'])(
@@ -66,7 +66,7 @@ describe('Stock (e2e)', () => {
       const token = await accessToken(role);
 
       await request(http)
-        .get('/api/v1/stock')
+        .get('/api/v1/parts')
         .auth(token, { type: 'bearer' })
         .expect(200);
     },
@@ -76,7 +76,7 @@ describe('Stock (e2e)', () => {
     const token = await accessToken('CUSTOMER');
 
     await request(http)
-      .get('/api/v1/stock')
+      .get('/api/v1/parts')
       .auth(token, { type: 'bearer' })
       .expect(403);
   });
@@ -84,7 +84,7 @@ describe('Stock (e2e)', () => {
   it('performs the protected part CRUD', async () => {
     const token = await accessToken('ADMIN');
     const created = await request(http)
-      .post('/api/v1/stock')
+      .post('/api/v1/parts')
       .auth(token, { type: 'bearer' })
       .send(payload)
       .expect(201);
@@ -95,7 +95,7 @@ describe('Stock (e2e)', () => {
     });
 
     const updated = await request(http)
-      .patch(`/api/v1/stock/${created.body.id}`)
+      .patch(`/api/v1/parts/${created.body.id}`)
       .auth(token, { type: 'bearer' })
       .send({ minimumQuantity: 12 })
       .expect(200);
@@ -103,12 +103,12 @@ describe('Stock (e2e)', () => {
     expect(updated.body.minimumQuantity).toBe(12);
 
     await request(http)
-      .delete(`/api/v1/stock/${created.body.id}`)
+      .delete(`/api/v1/parts/${created.body.id}`)
       .auth(token, { type: 'bearer' })
       .expect(204);
 
     await request(http)
-      .get(`/api/v1/stock/${created.body.id}`)
+      .get(`/api/v1/parts/${created.body.id}`)
       .auth(token, { type: 'bearer' })
       .expect(404);
   });
@@ -117,7 +117,7 @@ describe('Stock (e2e)', () => {
     const token = await accessToken('ADMIN');
 
     await request(http)
-      .post('/api/v1/stock')
+      .post('/api/v1/parts')
       .auth(token, { type: 'bearer' })
       .send({ ...payload, minimumQuantity: -1, unexpected: true })
       .expect(400);
@@ -127,7 +127,7 @@ describe('Stock (e2e)', () => {
     const token = await accessToken('ADMIN');
 
     await request(http)
-      .post('/api/v1/stock')
+      .post('/api/v1/parts')
       .auth(token, { type: 'bearer' })
       .send({ ...payload, code: 'OIL-FILTER-123 AND 1=1 --' })
       .expect(400);

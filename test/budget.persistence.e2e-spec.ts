@@ -67,13 +67,13 @@ describeDatabase('Budget persistence (e2e)', () => {
     }
 
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send(clientPayload)
       .expect(201);
     clientId = client.body.id as string;
 
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId,
         plate: 'ABC1D23',
@@ -85,7 +85,7 @@ describeDatabase('Budget persistence (e2e)', () => {
     vehicleId = vehicle.body.id as string;
 
     const serviceOrder = await request(http)
-      .post('/api/v1/service-order')
+      .post('/api/v1/service-orders')
       .send({ clientId, vehicleId, description: 'Barulho no motor' })
       .expect(201);
     serviceOrderId = serviceOrder.body.id as string;
@@ -93,7 +93,7 @@ describeDatabase('Budget persistence (e2e)', () => {
     // Basta atribuir: gerar o orçamento é o que move a OS para
     // AWAITING_APPROVAL, e é dali que aceite e recusa partem.
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/assign`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
   });
@@ -200,7 +200,7 @@ describeDatabase('Budget persistence (e2e)', () => {
 
     // Política: todo orçamento aceito passa pela solicitação de peças.
     await request(http)
-      .get(`/api/v1/service-order/${serviceOrderId}`)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
       .expect(200)
       .expect(({ body }) => {
         expect(body.status).toBe('AWAITING_PARTS');

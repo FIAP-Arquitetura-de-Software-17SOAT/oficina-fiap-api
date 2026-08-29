@@ -45,15 +45,15 @@ describe('Swagger', () => {
   it('documenta as rotas de cliente e veículo sob o prefixo da API', () => {
     expect(Object.keys(document.paths)).toEqual(
       expect.arrayContaining([
-        '/api/v1/client',
-        '/api/v1/client/{id}',
-        '/api/v1/vehicle',
-        '/api/v1/vehicle/{id}',
+        '/api/v1/clients',
+        '/api/v1/clients/{id}',
+        '/api/v1/vehicles',
+        '/api/v1/vehicles/{id}',
       ]),
     );
   });
 
-  it.each([['client'], ['vehicle']])(
+  it.each([['clients'], ['vehicles']])(
     'documenta todos os verbos do CRUD de %s',
     (recurso) => {
       expect(Object.keys(document.paths[`/api/v1/${recurso}`])).toEqual(
@@ -95,11 +95,11 @@ describe('Swagger', () => {
   });
 
   it('documents protected stock CRUD routes and their schemas', () => {
-    const collection = document.paths['/api/v1/stock'];
-    const item = document.paths['/api/v1/stock/{id}'];
+    const collection = document.paths['/api/v1/parts'];
+    const item = document.paths['/api/v1/parts/{id}'];
 
     expect(Object.keys(document.paths)).toEqual(
-      expect.arrayContaining(['/api/v1/stock', '/api/v1/stock/{id}']),
+      expect.arrayContaining(['/api/v1/parts', '/api/v1/parts/{id}']),
     );
     expect(Object.keys(collection)).toEqual(
       expect.arrayContaining(['post', 'get']),
@@ -181,7 +181,7 @@ describe('Swagger', () => {
   });
 
   it('a listagem de veículos documenta o filtro por cliente', () => {
-    const parameters = document.paths['/api/v1/vehicle'].get?.parameters ?? [];
+    const parameters = document.paths['/api/v1/vehicles'].get?.parameters ?? [];
 
     expect(parameters.map((p) => (p as { name: string }).name)).toContain(
       'clientId',
@@ -217,10 +217,10 @@ describe('Swagger', () => {
     ]);
     // A proteção virou o padrão: as rotas administrativas declaram bearer, e só
     // health e autenticação ficam sem.
-    expect(document.paths['/api/v1/client'].get!.security).toEqual([
+    expect(document.paths['/api/v1/clients'].get!.security).toEqual([
       { bearer: [] },
     ]);
-    expect(document.paths['/api/v1/service-order'].get!.security).toEqual([
+    expect(document.paths['/api/v1/service-orders'].get!.security).toEqual([
       { bearer: [] },
     ]);
     expect(document.paths['/api/v1/billings'].post!.security).toEqual([
@@ -280,7 +280,7 @@ describe('Swagger', () => {
   });
 
   it('cada operação tem summary e respostas de erro documentadas', () => {
-    const post = document.paths['/api/v1/client'].post!;
+    const post = document.paths['/api/v1/clients'].post!;
 
     expect(post.summary).toBeTruthy();
     expect(Object.keys(post.responses)).toEqual(
@@ -342,13 +342,13 @@ describe('Swagger', () => {
   it('documenta as rotas de ordem de serviço sob o prefixo da API', () => {
     expect(Object.keys(document.paths)).toEqual(
       expect.arrayContaining([
-        '/api/v1/service-order',
-        '/api/v1/service-order/{id}',
-        '/api/v1/service-order/metrics/average-execution-time',
-        '/api/v1/service-order/client/{clientId}',
-        '/api/v1/service-order/{id}/assign',
-        '/api/v1/service-order/{id}/complete',
-        '/api/v1/service-order/{id}/cancel',
+        '/api/v1/service-orders',
+        '/api/v1/service-orders/{id}',
+        '/api/v1/service-orders/metrics/average-execution-time',
+        '/api/v1/service-orders/clients/{clientId}',
+        '/api/v1/service-orders/{id}/assign',
+        '/api/v1/service-orders/{id}/complete',
+        '/api/v1/service-orders/{id}/cancel',
       ]),
     );
   });
@@ -364,35 +364,35 @@ describe('Swagger', () => {
       'start-progress',
     ]) {
       expect(
-        document.paths[`/api/v1/service-order/{id}/${removed}`],
+        document.paths[`/api/v1/service-orders/{id}/${removed}`],
       ).toBeUndefined();
     }
   });
 
   it('documenta todos os verbos das rotas de ordem de serviço', () => {
-    expect(Object.keys(document.paths['/api/v1/service-order'])).toEqual(
+    expect(Object.keys(document.paths['/api/v1/service-orders'])).toEqual(
       expect.arrayContaining(['post', 'get']),
     );
-    expect(Object.keys(document.paths['/api/v1/service-order/{id}'])).toEqual(
+    expect(Object.keys(document.paths['/api/v1/service-orders/{id}'])).toEqual(
       expect.arrayContaining(['get']),
     );
 
     for (const action of ['assign', 'complete', 'cancel']) {
       expect(
-        Object.keys(document.paths[`/api/v1/service-order/{id}/${action}`]),
+        Object.keys(document.paths[`/api/v1/service-orders/{id}/${action}`]),
       ).toEqual(expect.arrayContaining(['patch']));
     }
 
     expect(
       Object.keys(
-        document.paths['/api/v1/service-order/metrics/average-execution-time'],
+        document.paths['/api/v1/service-orders/metrics/average-execution-time'],
       ),
     ).toEqual(expect.arrayContaining(['get']));
   });
 
   it('uses ASCII-only Swagger operation metadata for service orders', () => {
     const serviceOrderOperations = Object.entries(document.paths)
-      .filter(([path]) => path.startsWith('/api/v1/service-order'))
+      .filter(([path]) => path.startsWith('/api/v1/service-orders'))
       .flatMap(([, pathItem]) =>
         Object.values(pathItem ?? {}).filter(
           (

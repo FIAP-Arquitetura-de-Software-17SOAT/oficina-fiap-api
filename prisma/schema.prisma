@@ -204,7 +204,9 @@ enum NotificationStatus {
 
 model Budget {
   id             String       @id @db.Uuid
-  serviceOrderId String       @db.Uuid
+  // Referência externa ao agregado OrdemDeServico: sem FK de propósito, já que
+  // o desenho de Event Storming trata orçamento e OS como agregados distintos.
+  serviceOrderId String
   version        Int
   status         BudgetStatus
   totalCents     Int
@@ -214,9 +216,8 @@ model Budget {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  items        BudgetItem[]
-  billings     Billing[]
-  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  items    BudgetItem[]
+  billings Billing[]
 
   @@unique([serviceOrderId, version])
   @@index([serviceOrderId])
@@ -321,7 +322,6 @@ model ServiceOrder {
   client  Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   billing Billing?
-  budgets Budget[]
 
   @@index([clientId])
   @@index([vehicleId])
