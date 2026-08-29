@@ -2,6 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { Service } from '../entities/service.entity';
 import { ServiceRepository } from './service.repository';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 const row = {
   id: 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
@@ -18,7 +19,7 @@ const makeService = () =>
   Service.create({
     name: 'Troca de óleo',
     description: 'Sintético',
-    price: 149.9,
+    price: Money.fromDecimal(149.9),
   });
 
 describe('ServiceRepository', () => {
@@ -122,7 +123,10 @@ describe('ServiceRepository', () => {
 
   it('atualiza mandando descrição nula quando ausente', async () => {
     prisma.service.update.mockResolvedValue({ ...row, description: null });
-    const service = Service.create({ name: 'Alinhamento', price: 80 });
+    const service = Service.create({
+      name: 'Alinhamento',
+      price: Money.fromDecimal(80),
+    });
 
     await repository.update(service);
 

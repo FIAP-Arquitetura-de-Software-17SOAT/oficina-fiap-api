@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Money as SharedMoney } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { Injectable } from '@nestjs/common';
 import {
   StockMovementType as PrismaStockMovementType,
@@ -7,11 +7,9 @@ import {
 } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { MeasurementUnit, Part, PartType } from '../entities/part.entity';
+import { StockMovementType } from '../enums/stock-movement-type.enum';
 
-export enum StockMovementType {
-  IN = 'IN',
-  OUT = 'OUT',
-}
+export { StockMovementType };
 
 export interface ApplyStockMovementInput {
   partId: string;
@@ -162,7 +160,7 @@ export class StockMovementRepository {
       description: row.description ?? undefined,
       type: row.type as PartType,
       unit: row.unit as MeasurementUnit,
-      unitPrice: SharedMoney.fromCents(row.unitPriceCents).value,
+      unitPrice: Money.fromCents(row.unitPriceCents).value,
       quantity: row.quantity,
       minimumQuantity: row.minimumQuantity,
       createdAt: row.createdAt,

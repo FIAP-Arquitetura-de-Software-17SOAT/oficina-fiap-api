@@ -97,7 +97,7 @@ export class ServiceRepository {
     return Service.restore(row.id, {
       name: row.name,
       description: row.description,
-      price: Money.fromCents(row.priceCents).value,
+      price: Money.fromCents(row.priceCents),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });

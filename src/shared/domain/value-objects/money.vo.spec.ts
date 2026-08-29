@@ -70,11 +70,24 @@ describe('Money', () => {
       expect(result.value).toBe(301);
     });
 
-    it('should reject decimal quantity', () => {
+    it('multiplica por quantidade fracionária arredondando para o centavo', () => {
+      // 2,5 litros de óleo a R$ 45,90.
+      expect(Money.fromCents(4590).multiply(2.5).valueInCents).toBe(11475);
+      // Meio centavo arredonda para cima, e não some.
+      expect(Money.fromCents(333).multiply(1.5).valueInCents).toBe(500);
+    });
+
+    it('recusa quantidade negativa', () => {
+      expect(() => Money.fromCents(100).multiply(-1)).toThrow(
+        'A quantidade utilizada no cálculo não pode ser negativa',
+      );
+    });
+
+    it('recusa quantidade não numérica', () => {
       const money = Money.fromCents(1000);
 
-      expect(() => money.multiply(1.5)).toThrow(
-        'A quantidade utilizada no cálculo deve ser inteira',
+      expect(() => money.multiply(Number.NaN)).toThrow(
+        'A quantidade utilizada no cálculo é inválida',
       );
     });
   });

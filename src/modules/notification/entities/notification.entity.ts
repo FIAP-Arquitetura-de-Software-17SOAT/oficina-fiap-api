@@ -71,7 +71,9 @@ export class Notification {
 
   prepareRetry(): void {
     if (this.status !== NotificationStatus.FAILED) {
-      throw new DomainException('Only failed notifications can be retried');
+      throw new DomainException(
+        'Somente notificação que falhou pode ser reenviada',
+      );
     }
 
     this.status = NotificationStatus.PENDING;

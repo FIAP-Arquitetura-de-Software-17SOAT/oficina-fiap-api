@@ -1,20 +1,20 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { BudgetItemType } from '../enums/budget-item-type.enum';
+import { BudgetStatus } from '../enums/budget-status.enum';
 
-const MAX_DECIMAL_AMOUNT = 99_999_999.99;
+export { BudgetItemType, BudgetStatus };
+
+/** Teto que o schema suporta: `totalCents Int` no Postgres. */
 const MAX_CENTS = 9_999_999_999;
 
-export enum BudgetStatus {
-  GENERATED = 'GENERATED',
-  WAITING_APPROVAL = 'WAITING_APPROVAL',
-  ACCEPTED = 'ACCEPTED',
-  REFUSED = 'REFUSED',
-}
-
-export enum BudgetItemType {
-  SERVICE = 'SERVICE',
-  PART = 'PART',
-}
+/**
+ * A quantidade do item de orçamento é decimal de propósito: um item pode ser
+ * medido em litro ou quilo (2,5 L de óleo). É a única quantidade do domínio que
+ * não passa pelo VO `Quantity`, que existe para o estoque e é inteiro (§9).
+ */
+const MAX_QUANTITY = 99_999_999.99;
 
 export interface BudgetItemProps {
   id?: string;
@@ -28,7 +28,8 @@ export interface BudgetItemProps {
   description: string;
   type: BudgetItemType;
   quantity: number;
-  unitPrice: number;
+  /** Cópia do preço no momento da proposta: reajuste depois não muda o acordo. */
+  unitPrice: Money;
 }
 
 export interface CreateBudgetProps {
@@ -53,7 +54,7 @@ export class BudgetItem {
   private readonly description: string;
   private readonly type: BudgetItemType;
   private readonly quantity: number;
-  private readonly unitPrice: number;
+  private readonly unitPrice: Money;
 
   constructor(props: BudgetItemProps) {
     this.id = props.id ?? randomUUID();
@@ -61,8 +62,8 @@ export class BudgetItem {
     this.serviceId = this.validateServiceId(props.serviceId, props.type);
     this.description = this.validateDescription(props.description);
     this.type = props.type;
-    this.quantity = this.validateDecimalAmount(props.quantity, 'Quantity');
-    this.unitPrice = this.validateDecimalAmount(props.unitPrice, 'Unit price');
+    this.quantity = this.validateQuantity(props.quantity);
+    this.unitPrice = this.validateUnitPrice(props.unitPrice);
     this.assertSubtotalFits();
   }
 
@@ -90,18 +91,12 @@ export class BudgetItem {
     return this.quantity;
   }
 
-  getUnitPrice(): number {
+  getUnitPrice(): Money {
     return this.unitPrice;
   }
 
-  getSubtotal(): number {
-    return this.getSubtotalInCents() / 100;
-  }
-
-  getSubtotalInCents(): number {
-    return Math.round(
-      (this.toCents(this.quantity) * this.toCents(this.unitPrice)) / 100,
-    );
+  getSubtotal(): Money {
+    return this.unitPrice.multiply(this.quantity);
   }
 
   private validatePartId(
@@ -113,7 +108,9 @@ export class BudgetItem {
     if (!trimmed) return null;
 
     if (type !== BudgetItemType.PART) {
-      throw new DomainException('Only part items can reference a part');
+      throw new DomainException(
+        'Somente item de peça pode referenciar uma peça',
+      );
     }
 
     return trimmed;
@@ -128,7 +125,9 @@ export class BudgetItem {
     if (!trimmed) return null;
 
     if (type !== BudgetItemType.SERVICE) {
-      throw new DomainException('Only service items can reference a service');
+      throw new DomainException(
+        'Somente item de serviço pode referenciar um serviço do catálogo',
+      );
     }
 
     return trimmed;
@@ -136,42 +135,53 @@ export class BudgetItem {
 
   private validateDescription(description: string): string {
     const trimmed = (description ?? '').trim();
-    if (!trimmed) throw new DomainException('Item description is required');
+    if (!trimmed) {
+      throw new DomainException('Descrição do item é obrigatória');
+    }
     return trimmed;
   }
 
-  private validateDecimalAmount(value: number, field: string): number {
-    const cents = this.toCents(value);
-
+  /**
+   * Quantidade decimal com no máximo duas casas, que é o que a coluna
+   * `Decimal(10, 2)` guarda. Sem o corte de casas, 1,005 seria aceito aqui e
+   * voltaria do banco como 1,00 — o subtotal mudaria sozinho entre gravar e ler.
+   */
+  private validateQuantity(quantity: number): number {
     if (
-      !Number.isFinite(value) ||
-      value <= 0 ||
-      !Number.isSafeInteger(cents) ||
-      Math.abs(value * 100 - cents) > 0.000001 ||
-      value > MAX_DECIMAL_AMOUNT
+      !Number.isFinite(quantity) ||
+      quantity <= 0 ||
+      quantity > MAX_QUANTITY ||
+      Math.abs(quantity * 100 - Math.round(quantity * 100)) > 0.000001
     ) {
-      throw new DomainException(`${field} must be greater than zero`);
+      throw new DomainException(
+        'Quantidade do item deve ser maior que zero e ter no máximo duas casas decimais',
+      );
     }
-    return value;
+
+    return quantity;
+  }
+
+  private validateUnitPrice(unitPrice: Money): Money {
+    // Money já barra negativo. Item de graça dentro de um orçamento é erro de
+    // digitação, não desconto: desconto seria um item próprio.
+    if (unitPrice.valueInCents === 0) {
+      throw new DomainException(
+        'Preço unitário do item deve ser maior que zero',
+      );
+    }
+
+    return unitPrice;
   }
 
   private assertSubtotalFits(): void {
-    const quantityCents = this.toCents(this.quantity);
-    const unitPriceCents = this.toCents(this.unitPrice);
-
-    if (quantityCents > (MAX_CENTS * 100) / unitPriceCents) {
-      throw new DomainException('Item subtotal exceeds supported range');
+    if (this.getSubtotal().valueInCents > MAX_CENTS) {
+      throw new DomainException('Subtotal do item excede o limite suportado');
     }
-  }
-
-  private toCents(value: number): number {
-    return Math.round(value * 100);
   }
 }
 
 export class Budget {
   private readonly id: string;
-  // TODO: Replace this string with the real ServiceOrder/Service integration.
   private readonly serviceOrderId: string;
   private readonly version: number;
   private readonly items: BudgetItem[];
@@ -218,20 +228,21 @@ export class Budget {
     this.assertGenerated();
 
     if (this.items.length === 1) {
-      throw new DomainException('Budget must have at least one item');
+      throw new DomainException('Orçamento deve ter ao menos um item');
     }
 
     const itemIndex = this.items.findIndex((item) => item.getId() === itemId);
 
     if (itemIndex === -1) {
-      throw new DomainException('Budget item not found');
+      throw new DomainException('Item não encontrado no orçamento');
     }
 
     this.items.splice(itemIndex, 1);
     this.touch();
   }
 
-  sendToCustomer(): void {
+  /** Comando "Enviar orçamento ao cliente" (§6.2). */
+  sendToClient(): void {
     this.assertGenerated();
     this.status = BudgetStatus.WAITING_APPROVAL;
     this.sentAt = new Date();
@@ -249,7 +260,9 @@ export class Budget {
   refuse(reason: string): void {
     this.assertWaitingApproval();
     const trimmed = (reason ?? '').trim();
-    if (!trimmed) throw new DomainException('Refusal reason is required');
+    if (!trimmed) {
+      throw new DomainException('Motivo da recusa é obrigatório');
+    }
     this.status = BudgetStatus.REFUSED;
     this.refusalReason = trimmed;
     this.answeredAt = new Date();
@@ -276,8 +289,12 @@ export class Budget {
     return this.status;
   }
 
-  getTotalAmount(): number {
-    return this.getTotalInCents() / 100;
+  /** Total calculado pelo sistema (regra 5). */
+  getTotal(): Money {
+    return this.items.reduce(
+      (total, item) => total.add(item.getSubtotal()),
+      Money.fromCents(0),
+    );
   }
 
   getRefusalReason(): string | null {
@@ -302,20 +319,24 @@ export class Budget {
 
   private validateServiceOrderId(serviceOrderId: string): string {
     const trimmed = (serviceOrderId ?? '').trim();
-    if (!trimmed) throw new DomainException('Service order is required');
+    if (!trimmed) {
+      throw new DomainException('Ordem de serviço do orçamento é obrigatória');
+    }
     return trimmed;
   }
 
   private validateVersion(version: number): number {
     if (!Number.isInteger(version) || version <= 0) {
-      throw new DomainException('Version must be an integer greater than zero');
+      throw new DomainException(
+        'Versão do orçamento deve ser um inteiro maior que zero',
+      );
     }
     return version;
   }
 
   private validateItems(items: BudgetItemProps[]): BudgetItem[] {
     if (!items?.length) {
-      throw new DomainException('Budget must have at least one item');
+      throw new DomainException('Orçamento deve ter ao menos um item');
     }
     const budgetItems = items.map((item) => new BudgetItem(item));
     this.assertTotalFits(budgetItems);
@@ -323,32 +344,29 @@ export class Budget {
   }
 
   private assertTotalFits(items: BudgetItem[]): void {
-    if (
-      items.reduce((total, item) => total + item.getSubtotalInCents(), 0) >
-      MAX_CENTS
-    ) {
-      throw new DomainException('Budget total exceeds supported range');
-    }
-  }
-
-  private getTotalInCents(): number {
-    return this.items.reduce(
-      (total, item) => total + item.getSubtotalInCents(),
-      0,
+    const total = items.reduce(
+      (accumulated, item) => accumulated.add(item.getSubtotal()),
+      Money.fromCents(0),
     );
+
+    if (total.valueInCents > MAX_CENTS) {
+      throw new DomainException('Total do orçamento excede o limite suportado');
+    }
   }
 
   private assertWaitingApproval(): void {
     if (this.status !== BudgetStatus.WAITING_APPROVAL) {
       throw new DomainException(
-        'Only budgets waiting for approval can be answered',
+        'Somente orçamento aguardando aprovação pode ser respondido',
       );
     }
   }
 
   private assertGenerated(): void {
     if (this.status !== BudgetStatus.GENERATED) {
-      throw new DomainException('Only generated budgets can be changed');
+      throw new DomainException(
+        'Somente orçamento em GERADO pode ser alterado',
+      );
     }
   }
 

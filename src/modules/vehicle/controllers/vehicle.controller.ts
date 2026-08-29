@@ -37,8 +37,8 @@ import { Roles } from '../../../shared/http/auth/roles.decorator';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Roles(Role.ADMIN, Role.EMPLOYEE)
-@ApiTags('vehicle')
-@Controller('vehicle')
+@ApiTags('vehicles')
+@Controller('vehicles')
 export class VehicleController {
   constructor(private readonly vehicleService: VehicleService) {}
 

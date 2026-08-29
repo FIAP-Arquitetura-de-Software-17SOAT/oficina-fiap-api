@@ -1,5 +1,5 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
-import { PartCode } from './part-code';
+import { PartCode } from './part-code.vo';
 
 describe('PartCode', () => {
   it('normalizes a SKU by trimming and uppercasing it', () => {

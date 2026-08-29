@@ -34,7 +34,7 @@ export class BudgetMapper {
       serviceOrderId: budget.getServiceOrderId(),
       version: budget.getVersion(),
       status: budget.getStatus(),
-      totalAmount: budget.getTotalAmount(),
+      totalAmount: budget.getTotal().value,
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
@@ -47,8 +47,8 @@ export class BudgetMapper {
         description: item.getDescription(),
         type: item.getType(),
         quantity: item.getQuantity(),
-        unitPrice: item.getUnitPrice(),
-        subtotal: item.getSubtotal(),
+        unitPrice: item.getUnitPrice().value,
+        subtotal: item.getSubtotal().value,
       })),
     };
   }
@@ -63,7 +63,7 @@ export class BudgetMapper {
       serviceOrderId: budget.getServiceOrderId(),
       version: budget.getVersion(),
       status: budget.getStatus(),
-      totalCents: Money.fromDecimal(budget.getTotalAmount()).valueInCents,
+      totalCents: budget.getTotal().valueInCents,
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
@@ -78,8 +78,9 @@ export class BudgetMapper {
   }
 
   /**
-   * Dinheiro é persistido sempre em centavos inteiros. A API continua em
-   * decimais; a conversão acontece só aqui, na fronteira de persistência.
+   * Dinheiro é persistido em centavos inteiros e sai na API em decimais. O
+   * domínio não participa dessas duas formas: ele só conhece `Money`, e a
+   * conversão acontece aqui, na fronteira.
    */
   static itemToPersistence(
     item: Budget['getItems'] extends never
@@ -93,8 +94,8 @@ export class BudgetMapper {
       description: item.getDescription(),
       type: item.getType(),
       quantity: item.getQuantity(),
-      unitPriceCents: Money.fromDecimal(item.getUnitPrice()).valueInCents,
-      subtotalCents: Money.fromDecimal(item.getSubtotal()).valueInCents,
+      unitPriceCents: item.getUnitPrice().valueInCents,
+      subtotalCents: item.getSubtotal().valueInCents,
     };
   }
 
@@ -115,7 +116,7 @@ export class BudgetMapper {
         description: item.description,
         type: item.type,
         quantity: Number(item.quantity),
-        unitPrice: Money.fromCents(item.unitPriceCents).value,
+        unitPrice: Money.fromCents(item.unitPriceCents),
       })),
     });
   }

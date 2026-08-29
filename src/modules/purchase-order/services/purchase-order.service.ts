@@ -23,7 +23,7 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import { Quantity } from '../value-objects/quantity.vo';
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -69,7 +69,7 @@ export class PurchaseOrderService {
     const item = new PurchaseOrderItem({
       partId: dto.partId,
 
-      quantity: Quantity.create(dto.quantity),
+      quantity: Quantity.positive(dto.quantity),
 
       unitPrice: Money.fromDecimal(dto.unitPrice),
     });
@@ -107,8 +107,8 @@ export class PurchaseOrderService {
     // recebidas". A chave de idempotencia deriva do pedido e do item, entao
     // reentregar o mesmo pedido nao soma duas vezes.
     for (const item of delivered.getItems()) {
-      await this.partController.increaseStock(item.getPecaId(), {
-        quantity: item.getQuantity().value,
+      await this.partController.increaseStock(item.getPartId(), {
+        quantity: item.getQuantity().getValue(),
         idempotencyKey: `purchase-order:${delivered.getId()}:${item.getId()}`,
       });
     }
@@ -138,7 +138,7 @@ export class PurchaseOrderService {
         new PurchaseOrderItem({
           partId: shortage.partId,
 
-          quantity: Quantity.create(shortage.quantity),
+          quantity: Quantity.positive(shortage.quantity),
 
           unitPrice: Money.fromDecimal(part.unitPrice),
         }),

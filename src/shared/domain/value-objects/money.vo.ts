@@ -29,14 +29,27 @@ export class Money {
     return Money.fromCents(this.cents + other.cents);
   }
 
+  /**
+   * Multiplica pelo número de itens. A quantidade pode ser fracionária porque
+   * item de orçamento é medido em litro e quilo além de unidade (2,5 L de
+   * óleo); o resultado é arredondado para o centavo, que é a menor unidade que
+   * o domínio conhece.
+   *
+   * O estoque continua restrito a inteiros, mas quem garante isso é o VO
+   * `Quantity`, não este método — é lá que a regra 17 mora.
+   */
   multiply(quantity: number): Money {
-    if (!Number.isInteger(quantity)) {
+    if (!Number.isFinite(quantity)) {
+      throw new DomainException('A quantidade utilizada no cálculo é inválida');
+    }
+
+    if (quantity < 0) {
       throw new DomainException(
-        'A quantidade utilizada no cálculo deve ser inteira',
+        'A quantidade utilizada no cálculo não pode ser negativa',
       );
     }
 
-    return Money.fromCents(this.cents * quantity);
+    return Money.fromCents(Math.round(this.cents * quantity));
   }
 
   equals(other: Money): boolean {

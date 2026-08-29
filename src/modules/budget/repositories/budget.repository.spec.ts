@@ -5,12 +5,13 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { BudgetRepository } from './budget.repository';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 // O banco guarda dinheiro em centavos inteiros; o domínio trabalha em
 // decimais. As duas formas são fixtures distintas de propósito.
 const row = {
   id: 'budget-123',
-  serviceOrderId: 'service-123',
+  serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
   version: 1,
   status: BudgetStatus.GENERATED,
   totalCents: 10000,
@@ -42,7 +43,7 @@ const makeBudget = () =>
         description: 'Oil change',
         type: BudgetItemType.SERVICE,
         quantity: 2,
-        unitPrice: 50,
+        unitPrice: Money.fromDecimal(50),
       },
     ],
     createdAt: row.createdAt,
@@ -118,7 +119,7 @@ describe('BudgetRepository', () => {
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
-      unitPrice: 30,
+      unitPrice: Money.fromDecimal(30),
     });
     prisma.$transaction.mockImplementation((callback) =>
       Promise.resolve(
@@ -166,7 +167,7 @@ describe('BudgetRepository', () => {
         ]),
       }),
     );
-    expect(updated?.getTotalAmount()).toBe(130);
+    expect(updated?.getTotal().value).toBe(130);
   });
 
   it('does not persist a generated-state change after the budget was sent', async () => {
@@ -189,7 +190,7 @@ describe('BudgetRepository', () => {
 
   it('persists waiting-approval decisions only while the stored status is WAITING_APPROVAL', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     budget.accept();
     prisma.$transaction.mockImplementation((callback) =>
       Promise.resolve(

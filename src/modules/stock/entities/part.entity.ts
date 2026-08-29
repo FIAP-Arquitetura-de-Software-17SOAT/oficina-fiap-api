@@ -1,19 +1,12 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
-import { PartCode } from '../value-objects/part-code';
-import { Quantity } from '../value-objects/quantity';
+import { PartCode } from '../value-objects/part-code.vo';
+import { MeasurementUnit } from '../enums/measurement-unit.enum';
+import { PartType } from '../enums/part-type.enum';
 
-export enum PartType {
-  PART = 'PART',
-  SUPPLY = 'SUPPLY',
-}
-
-export enum MeasurementUnit {
-  UNIT = 'UNIT',
-  LITER = 'LITER',
-  KILOGRAM = 'KILOGRAM',
-}
+export { MeasurementUnit, PartType };
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 export interface PartProps {
   code: string;
@@ -111,31 +104,30 @@ export class Part {
     return this.updatedAt;
   }
 
+  /** Disponibilidade (§3): o saldo em relação à quantidade necessária. */
   hasAvailability(quantity: number): boolean {
-    return this.quantity.getValue() >= Quantity.create(quantity).getValue();
+    return this.quantity.isAtLeast(Quantity.positive(quantity));
   }
 
+  /** Saída de estoque (regra 17: movimento é inteiro e positivo). */
   decreaseStock(quantity: number): void {
-    const requestedQuantity = Quantity.create(quantity);
+    const requestedQuantity = Quantity.positive(quantity);
 
-    if (!this.hasAvailability(requestedQuantity.getValue())) {
+    if (!this.quantity.isAtLeast(requestedQuantity)) {
       throw new DomainException(
         'Quantidade solicitada indisponível em estoque',
       );
     }
 
-    this.quantity = Quantity.create(
-      this.quantity.getValue() - requestedQuantity.getValue(),
-    );
+    // subtract já recusa saldo negativo (regra 18): a checagem acima existe
+    // para dar a mensagem de negócio, não para evitar o estouro.
+    this.quantity = this.quantity.subtract(requestedQuantity);
     this.touch();
   }
 
+  /** Entrada de estoque (regra 17). */
   increaseStock(quantity: number): void {
-    const increasedQuantity = Quantity.create(
-      this.quantity.getValue() + Quantity.create(quantity).getValue(),
-    );
-
-    this.quantity = increasedQuantity;
+    this.quantity = this.quantity.add(Quantity.positive(quantity));
     this.touch();
   }
 
@@ -171,8 +163,9 @@ export class Part {
     this.touch();
   }
 
+  /** Regra 19: repor quando o saldo for menor ou igual à quantidade mínima. */
   needsReorder(): boolean {
-    return this.quantity.getValue() <= this.minimumQuantity.getValue();
+    return this.minimumQuantity.isAtLeast(this.quantity);
   }
 
   private static normalizeName(name: string): string {

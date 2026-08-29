@@ -50,7 +50,7 @@ const acceptedBudget = (version: number, total: number) =>
         description: 'Service',
         type: BudgetItemType.SERVICE,
         quantity: 1,
-        unitPrice: total,
+        unitPrice: Money.fromDecimal(total),
       },
     ],
   });
@@ -311,7 +311,7 @@ describe('BillingService', () => {
 
     await expect(
       service.generateForServiceOrder({ serviceOrderId }),
-    ).rejects.toThrow('Billing was changed by another request');
+    ).rejects.toThrow('A cobrança foi alterada por outra requisição');
 
     const retried = await service.generateForServiceOrder({ serviceOrderId });
 

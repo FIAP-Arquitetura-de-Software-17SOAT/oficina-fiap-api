@@ -2,9 +2,10 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Service } from '../entities/service.entity';
 import { ServiceRepository } from '../repositories/service.repository';
 import { ServiceCatalogService } from './service-catalog.service';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 const makeService = (name = 'Troca de óleo', price = 149.9) =>
-  Service.create({ name, price });
+  Service.create({ name, price: Money.fromDecimal(price) });
 
 describe('ServiceCatalogService', () => {
   let catalog: ServiceCatalogService;

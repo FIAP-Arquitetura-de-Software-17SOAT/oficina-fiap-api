@@ -14,7 +14,7 @@ import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 
-import { Quantity } from '../value-objects/quantity.vo';
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 import { PartController } from '../../stock/controllers/part.controller';
 
@@ -142,7 +142,7 @@ describe('PurchaseOrderService', () => {
 
           partId: '550e8400-e29b-41d4-a716-446655440000',
 
-          quantity: Quantity.create(1),
+          quantity: Quantity.positive(1),
 
           unitPrice: Money.fromDecimal(100),
         }),
@@ -170,7 +170,7 @@ describe('PurchaseOrderService', () => {
         new PurchaseOrderItem({
           partId: 'peca-id',
 
-          quantity: Quantity.create(1),
+          quantity: Quantity.positive(1),
 
           unitPrice: Money.fromDecimal(100),
         }),
@@ -198,7 +198,7 @@ describe('PurchaseOrderService', () => {
         new PurchaseOrderItem({
           partId: 'peca-id',
 
-          quantity: Quantity.create(1),
+          quantity: Quantity.positive(1),
 
           unitPrice: Money.fromDecimal(100),
         }),
@@ -231,7 +231,7 @@ describe('PurchaseOrderService', () => {
 
           partId: 'part-id',
 
-          quantity: Quantity.create(4),
+          quantity: Quantity.positive(4),
 
           unitPrice: Money.fromDecimal(100),
         }),
@@ -275,7 +275,7 @@ describe('PurchaseOrderService', () => {
       expect(result.getStatus()).toBe(PurchaseOrderStatus.NEEDS_PURCHASE);
       expect(result.getItems()).toHaveLength(1);
       expect(result.getItems()[0].getUnitPrice().valueInCents).toBe(14_990);
-      expect(result.getItems()[0].getQuantity().value).toBe(3);
+      expect(result.getItems()[0].getQuantity().getValue()).toBe(3);
     });
   });
 });

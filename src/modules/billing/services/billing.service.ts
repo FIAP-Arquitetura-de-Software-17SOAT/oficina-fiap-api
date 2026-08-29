@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { isUniqueViolation } from '../../../shared/database/prisma-errors';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { paymentLinkReadyEmail } from '../../../shared/notifications/email/notification-templates';
 import { BudgetStatus } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
@@ -42,7 +41,7 @@ export class BillingService {
 
     if (serviceOrder.getStatus() !== ServiceOrderStatus.COMPLETED) {
       throw new ConflictException(
-        'Service order must be completed before billing',
+        'A ordem de serviço precisa estar finalizada para gerar cobrança',
       );
     }
 
@@ -53,7 +52,9 @@ export class BillingService {
       if (existing.getStatus() === BillingStatus.PENDING) {
         return this.createAndPersistPaymentLink(existing);
       }
-      throw new ConflictException('Billing already exists for service order');
+      throw new ConflictException(
+        'Já existe cobrança para esta ordem de serviço',
+      );
     }
 
     const budgets =
@@ -63,13 +64,17 @@ export class BillingService {
       .sort((a, b) => b.getVersion() - a.getVersion())[0];
 
     if (!acceptedBudget) {
-      throw new ConflictException('Accepted budget is required before billing');
+      throw new ConflictException(
+        'É preciso um orçamento aceito para gerar a cobrança',
+      );
     }
 
     const billing = Billing.create({
       serviceOrderId,
       budgetId: acceptedBudget.getId(),
-      amount: Money.fromDecimal(acceptedBudget.getTotalAmount()),
+      // Regra 14: o valor da cobrança é o total do orçamento aceito. Os dois
+      // lados falam Money, então não há ida e volta por decimal no meio.
+      amount: acceptedBudget.getTotal(),
     });
 
     try {
@@ -77,7 +82,9 @@ export class BillingService {
       return await this.createAndPersistPaymentLink(created);
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ConflictException('Billing already exists for service order');
+        throw new ConflictException(
+          'Já existe cobrança para esta ordem de serviço',
+        );
       }
 
       throw error;
@@ -88,7 +95,7 @@ export class BillingService {
     const billing = await this.billingRepository.findById(id);
 
     if (!billing) {
-      throw new NotFoundException('Billing not found');
+      throw new NotFoundException('Cobrança não encontrada');
     }
 
     return billing;
@@ -100,7 +107,7 @@ export class BillingService {
     );
 
     if (!billing) {
-      throw new NotFoundException('Billing not found');
+      throw new NotFoundException('Cobrança não encontrada');
     }
 
     return billing;
@@ -151,12 +158,14 @@ export class BillingService {
   async renewPaymentLink(id: string, now = new Date()): Promise<Billing> {
     const billing = await this.findById(id);
     if (billing.getStatus() === BillingStatus.PAID) {
-      throw new ConflictException('Paid billing is terminal');
+      throw new ConflictException('Cobrança paga é terminal');
     }
 
     const penalty = billing.calculatePenalty(now);
     if (!penalty) {
-      throw new BadRequestException('Billing payment link has not expired yet');
+      throw new BadRequestException(
+        'O link de pagamento da cobrança ainda não expirou',
+      );
     }
 
     const expectedUpdatedAt = new Date(billing.getUpdatedAt());
@@ -187,7 +196,9 @@ export class BillingService {
       });
     } catch (error) {
       if (error instanceof InvalidPaymentWebhookSignatureError) {
-        throw new BadRequestException('Invalid Stripe webhook signature');
+        throw new BadRequestException(
+          'Assinatura do webhook do Stripe inválida',
+        );
       }
       throw error;
     }
@@ -196,7 +207,7 @@ export class BillingService {
     const billing = await this.billingRepository.findByGatewayTransactionId(
       event.gatewayTransactionId,
     );
-    if (!billing) throw new NotFoundException('Billing not found');
+    if (!billing) throw new NotFoundException('Cobrança não encontrada');
 
     await this.billingRepository.recordCheckoutSessionPayment(
       event.gatewayTransactionId,
@@ -228,14 +239,16 @@ export class BillingService {
       return;
     }
 
-    throw new ConflictException('Billing was changed by another request');
+    throw new ConflictException('A cobrança foi alterada por outra requisição');
   }
 
   async deliverServiceOrder(id: string): Promise<void> {
     const billing = await this.findById(id);
 
     if (billing.getStatus() !== BillingStatus.PAID) {
-      throw new ConflictException('Billing must be paid before delivery');
+      throw new ConflictException(
+        'A cobrança precisa estar paga para entregar a OS',
+      );
     }
 
     await this.serviceOrderService.deliver(billing.getServiceOrderId());
@@ -251,7 +264,9 @@ export class BillingService {
     );
 
     if (!updated) {
-      throw new ConflictException('Billing was changed by another request');
+      throw new ConflictException(
+        'A cobrança foi alterada por outra requisição',
+      );
     }
 
     return updated;
