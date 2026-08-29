@@ -1,0 +1,30 @@
+---
+env:
+  contexts:
+    - name: oficina-api
+      urls:
+        - "http://localhost:8090/api/v1"
+      includePaths:
+        - "http://localhost:8090/api/v1.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    continueOnFailure: true
+    progressToStdout: true
+
+jobs:
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: "."
+      reportFile: "zap-authenticated-report.html"
+      reportTitle: "OWASP ZAP Authenticated Scan - Oficina FIAP API"
+      reportDescription: "Authenticated ZAP scan against local NestJS API at http://localhost:8090/api/v1."
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: "."
+      reportFile: "zap-authenticated-report.json"
+      reportTitle: "OWASP ZAP Authenticated Scan - Oficina FIAP API"
+      reportDescription: "Authenticated ZAP scan against local NestJS API at http://localhost:8090/api/v1."

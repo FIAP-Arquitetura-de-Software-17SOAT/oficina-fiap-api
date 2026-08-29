@@ -1,0 +1,4 @@
+interface:
+  display_name: "API Insomnia Report"
+  short_description: "Insomnia export and API report workflow"
+  default_prompt: "Use $api-insomnia-report to regenerate the Insomnia collection and prepare the API evidence report."

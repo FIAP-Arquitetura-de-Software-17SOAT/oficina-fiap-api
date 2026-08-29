@@ -1,0 +1,3409 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "AppController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPairDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid login payload"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        },
+        "summary": "Autentica o administrador",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPairDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid refresh payload"
+          },
+          "401": {
+            "description": "Invalid refresh token"
+          }
+        },
+        "summary": "Rotaciona o refresh token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Refresh token revoked"
+          },
+          "400": {
+            "description": "Invalid logout payload"
+          },
+          "401": {
+            "description": "Invalid refresh token"
+          }
+        },
+        "summary": "Revoga o refresh token atual",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/stock/service-orders/{serviceOrderId}/dispatch": {
+      "post": {
+        "description": "Havendo saldo, baixa as peças e move a OS para EM_EXECUCAO. Faltando peça, nada é baixado e um pedido de compra é aberto com a diferença.",
+        "operationId": "PartController_dispatchServiceOrderParts",
+        "parameters": [
+          {
+            "name": "serviceOrderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartsDispatchResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OS sem orçamento aceito ou com item de peça sem referência"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "404": {
+            "description": "Part not found"
+          },
+          "409": {
+            "description": "Insufficient stock"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consulta e baixa as peças do orçamento aceito de uma OS",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/stock": {
+      "post": {
+        "operationId": "PartController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid part data"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "409": {
+            "description": "Part code already in use"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Creates a stock part",
+        "tags": [
+          "stock"
+        ]
+      },
+      "get": {
+        "operationId": "PartController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists stock parts",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/stock/{id}": {
+      "get": {
+        "operationId": "PartController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid part id"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "404": {
+            "description": "Part not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gets a stock part by id",
+        "tags": [
+          "stock"
+        ]
+      },
+      "patch": {
+        "operationId": "PartController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid part id or data"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "404": {
+            "description": "Part not found"
+          },
+          "409": {
+            "description": "Part code already in use"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Updates a stock part",
+        "tags": [
+          "stock"
+        ]
+      },
+      "delete": {
+        "operationId": "PartController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Part deleted"
+          },
+          "400": {
+            "description": "Invalid part id"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "404": {
+            "description": "Part not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletes a stock part",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/stock/{id}/stock/in": {
+      "post": {
+        "operationId": "PartController_increaseStock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStockMovementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockMovementResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid part id or movement data"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "404": {
+            "description": "Part not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Records an inbound stock movement",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/stock/{id}/stock/out": {
+      "post": {
+        "operationId": "PartController_decreaseStock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStockMovementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockMovementResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid part id or movement data"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Authenticated role is not allowed"
+          },
+          "404": {
+            "description": "Part not found"
+          },
+          "409": {
+            "description": "Insufficient stock or idempotency key conflict"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Records an outbound stock movement",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/budgets": {
+      "post": {
+        "operationId": "BudgetController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBudgetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados do orcamento invalidos"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "409": {
+            "description": "Budget version already exists"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cria um orcamento",
+        "tags": [
+          "budget"
+        ]
+      },
+      "get": {
+        "operationId": "BudgetController_findByServiceOrderId",
+        "parameters": [
+          {
+            "name": "serviceOrderId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "service-123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BudgetResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lista orcamentos por ordem de servico",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}/items": {
+      "post": {
+        "operationId": "BudgetController_addItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBudgetItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Item ou status do orcamento invalido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          },
+          "409": {
+            "description": "Budget was changed by another request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adiciona um item ao orcamento",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}/items/{itemId}": {
+      "delete": {
+        "operationId": "BudgetController_removeItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Item ou status do orcamento invalido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          },
+          "409": {
+            "description": "Budget was changed by another request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove um item do orcamento",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}/total": {
+      "get": {
+        "operationId": "BudgetController_calculateTotal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetTotalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Calcula o total do orcamento",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}/send": {
+      "post": {
+        "operationId": "BudgetController_send",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Budget status is invalid"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          },
+          "409": {
+            "description": "Budget was changed by another request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Envia o orcamento ao cliente",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}/accept": {
+      "post": {
+        "operationId": "BudgetController_accept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Budget status is invalid"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          },
+          "409": {
+            "description": "Budget was changed by another request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aceita o orcamento",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}/refuse": {
+      "post": {
+        "operationId": "BudgetController_refuse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefuseBudgetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Motivo ou status do orcamento invalido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          },
+          "409": {
+            "description": "Budget was changed by another request"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Recusa o orcamento",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}": {
+      "get": {
+        "operationId": "BudgetController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Budget not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Busca um orcamento por id",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/service-order": {
+      "post": {
+        "operationId": "ServiceOrderController_openServiceOrder",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenServiceOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Required fields are missing"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a service order",
+        "tags": [
+          "service-order"
+        ]
+      },
+      "get": {
+        "operationId": "ServiceOrderController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List service orders",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/service-order/metrics/average-execution-time": {
+      "get": {
+        "operationId": "ServiceOrderController_getAverageExecutionTime",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AverageExecutionTimeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Average execution time for completed service orders",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/service-order/client/{clientId}": {
+      "get": {
+        "description": "Returns the customer service orders from newest to oldest with their current status. Returns an empty list when the customer has none.",
+        "operationId": "ServiceOrderController_findByClientId",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Track a customer service orders",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/service-order/{id}": {
+      "get": {
+        "operationId": "ServiceOrderController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Service order not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a service order by id",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/service-order/{id}/assign": {
+      "patch": {
+        "description": "Moves the service order to IN_DIAGNOSIS and starts the execution timer. A mechanic cannot take another service order before completing the current one.",
+        "operationId": "ServiceOrderController_assignToMechanic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignMechanicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status transition or service order already assigned"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Service order not found"
+          },
+          "409": {
+            "description": "Mechanic already has an open service order"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign a mechanic to a service order",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/service-order/{id}/complete": {
+      "patch": {
+        "operationId": "ServiceOrderController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status transition"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Service order not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete a service order",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/service-order/{id}/cancel": {
+      "patch": {
+        "operationId": "ServiceOrderController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelServiceOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceOrderResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status transition or missing cancellation reason"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Service order not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel a service order",
+        "tags": [
+          "service-order"
+        ]
+      }
+    },
+    "/api/v1/client": {
+      "post": {
+        "operationId": "ClientController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "CPF/CNPJ, e-mail ou telefone inválido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "409": {
+            "description": "Client already exists"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cadastra um cliente",
+        "tags": [
+          "client"
+        ]
+      },
+      "get": {
+        "operationId": "ClientController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClientResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lista os clientes",
+        "tags": [
+          "client"
+        ]
+      }
+    },
+    "/api/v1/client/{id}": {
+      "get": {
+        "operationId": "ClientController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Busca um cliente por id",
+        "tags": [
+          "client"
+        ]
+      },
+      "patch": {
+        "operationId": "ClientController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-mail ou telefone inválido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          },
+          "409": {
+            "description": "E-mail already in use"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atualiza um cliente",
+        "tags": [
+          "client"
+        ]
+      },
+      "delete": {
+        "operationId": "ClientController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cliente removido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove um cliente",
+        "tags": [
+          "client"
+        ]
+      }
+    },
+    "/api/v1/vehicle": {
+      "post": {
+        "operationId": "VehicleController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Placa ou ano inválido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          },
+          "409": {
+            "description": "Vehicle already exists"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cadastra um veículo",
+        "tags": [
+          "vehicle"
+        ]
+      },
+      "get": {
+        "operationId": "VehicleController_findAll",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": false,
+            "in": "query",
+            "description": "Filtra os veículos de um cliente",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VehicleResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Client not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lista os veículos, opcionalmente de um cliente",
+        "tags": [
+          "vehicle"
+        ]
+      }
+    },
+    "/api/v1/vehicle/{id}": {
+      "get": {
+        "operationId": "VehicleController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Vehicle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Busca um veículo por id",
+        "tags": [
+          "vehicle"
+        ]
+      },
+      "patch": {
+        "operationId": "VehicleController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ano inválido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Vehicle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atualiza marca, modelo ou ano de um veículo",
+        "tags": [
+          "vehicle"
+        ]
+      },
+      "delete": {
+        "operationId": "VehicleController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Veículo removido"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Vehicle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove um veículo",
+        "tags": [
+          "vehicle"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders": {
+      "post": {
+        "operationId": "PurchaseOrderController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePurchaseOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pedido de compra criado com sucesso"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Criar pedido de compra",
+        "tags": [
+          "Purchase Orders"
+        ]
+      },
+      "get": {
+        "operationId": "PurchaseOrderController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar pedidos de compra",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/shortages": {
+      "post": {
+        "operationId": "PurchaseOrderController_registerShortage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterShortageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pedido de compra aberto em NEEDS_PURCHASE"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar necessidade de compra a partir da falta de estoque",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{id}": {
+      "get": {
+        "operationId": "PurchaseOrderController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar pedido de compra por ID",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{id}/items": {
+      "post": {
+        "operationId": "PurchaseOrderController_addItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPurchaseOrderItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adicionar item ao pedido de compra",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{id}/items/{itemId}": {
+      "delete": {
+        "operationId": "PurchaseOrderController_removeItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remover item do pedido de compra",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{id}/register-purchase": {
+      "patch": {
+        "operationId": "PurchaseOrderController_registerPurchase",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar compra junto ao fornecedor",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/purchase-orders/{id}/deliver": {
+      "patch": {
+        "operationId": "PurchaseOrderController_markAsDelivered",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar entrega do pedido de compra",
+        "tags": [
+          "Purchase Orders"
+        ]
+      }
+    },
+    "/api/v1/billings": {
+      "post": {
+        "operationId": "BillingController_generate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateBillingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Service order not found"
+          },
+          "409": {
+            "description": "Service order cannot be billed"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gera uma cobranca para uma ordem de servico concluida",
+        "tags": [
+          "billings"
+        ]
+      },
+      "get": {
+        "operationId": "BillingController_findAll",
+        "parameters": [
+          {
+            "name": "serviceOrderId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lista cobrancas ou busca por ordem de servico",
+        "tags": [
+          "billings"
+        ]
+      }
+    },
+    "/api/v1/billings/{id}": {
+      "get": {
+        "operationId": "BillingController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Billing not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Busca uma cobranca por id",
+        "tags": [
+          "billings"
+        ]
+      }
+    },
+    "/api/v1/billings/stripe/webhook": {
+      "post": {
+        "operationId": "BillingController_handleStripeWebhook",
+        "parameters": [
+          {
+            "name": "stripe-signature",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Stripe webhook processed"
+          }
+        },
+        "summary": "Processa o webhook de pagamento do Stripe",
+        "tags": [
+          "billings"
+        ]
+      }
+    },
+    "/api/v1/billings/{id}/expire": {
+      "post": {
+        "operationId": "BillingController_expire",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Billing not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Expira uma cobranca aguardando pagamento",
+        "tags": [
+          "billings"
+        ]
+      }
+    },
+    "/api/v1/billings/{id}/renew-payment-link": {
+      "post": {
+        "operationId": "BillingController_renewPaymentLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Billing payment link has not expired yet"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Billing not found"
+          },
+          "409": {
+            "description": "Paid billing is terminal"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Renova link de pagamento vencido com multa",
+        "tags": [
+          "billings"
+        ]
+      }
+    },
+    "/api/v1/billings/{id}/deliver-service-order": {
+      "post": {
+        "operationId": "BillingController_deliverServiceOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Service order delivered"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "404": {
+            "description": "Billing not found"
+          },
+          "409": {
+            "description": "Billing must be paid before delivery"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Entrega a ordem de servico apos quitacao",
+        "tags": [
+          "billings"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Oficina FIAP API",
+    "description": "API de gestão da oficina",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Access token returned by POST /api/v1/auth/login"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "admin@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "correct-horse-battery-staple",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "TokenPairDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "PartRequirementDto": {
+        "type": "object",
+        "properties": {
+          "partId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partName": {
+            "type": "string",
+            "example": "Filtro de óleo"
+          },
+          "required": {
+            "type": "number",
+            "example": 3,
+            "description": "Quantidade que o orçamento aceito exige, arredondada para cima."
+          },
+          "available": {
+            "type": "number",
+            "example": 1,
+            "description": "Saldo no momento da consulta."
+          }
+        },
+        "required": [
+          "partId",
+          "partName",
+          "required",
+          "available"
+        ]
+      },
+      "PartsDispatchResponseDto": {
+        "type": "object",
+        "properties": {
+          "serviceOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dispatched": {
+            "type": "boolean",
+            "example": true,
+            "description": "true quando o estoque foi baixado e a OS avançou para EM_EXECUCAO; false quando faltou peça e um pedido de compra foi aberto."
+          },
+          "purchaseOrderId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Pedido de compra aberto pela falta de peças."
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartRequirementDto"
+            }
+          }
+        },
+        "required": [
+          "serviceOrderId",
+          "dispatched",
+          "requirements"
+        ]
+      },
+      "CreatePartDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "OIL-FILTER-123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Oil filter"
+          },
+          "description": {
+            "type": "string",
+            "example": "Filter for engine oil"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PART",
+              "SUPPLY"
+            ],
+            "example": "PART"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "UNIT",
+              "LITER",
+              "KILOGRAM"
+            ],
+            "example": "UNIT"
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 149.9,
+            "minimum": 0,
+            "description": "Valor em decimal, com até duas casas. É convertido para centavos inteiros no domínio e no banco."
+          },
+          "minimumQuantity": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "type",
+          "unit",
+          "unitPrice",
+          "minimumQuantity"
+        ]
+      },
+      "PartResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "OIL-FILTER-123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Oil filter"
+          },
+          "description": {
+            "type": "string",
+            "example": "Filter for engine oil"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PART",
+              "SUPPLY"
+            ],
+            "example": "PART"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "UNIT",
+              "LITER",
+              "KILOGRAM"
+            ],
+            "example": "UNIT"
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 149.9
+          },
+          "quantity": {
+            "type": "number",
+            "example": 10
+          },
+          "minimumQuantity": {
+            "type": "number",
+            "example": 3
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "type",
+          "unit",
+          "unitPrice",
+          "quantity",
+          "minimumQuantity",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdatePartDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "OIL-FILTER-123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Oil filter"
+          },
+          "description": {
+            "type": "string",
+            "example": "Filter for engine oil",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PART",
+              "SUPPLY"
+            ],
+            "example": "PART"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "UNIT",
+              "LITER",
+              "KILOGRAM"
+            ],
+            "example": "UNIT"
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 149.9,
+            "minimum": 0,
+            "description": "Valor em decimal, com até duas casas. É convertido para centavos inteiros no domínio e no banco."
+          },
+          "minimumQuantity": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0
+          }
+        }
+      },
+      "CreateStockMovementDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "minimum": 1
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "example": "5ee0df9c-01b5-4fba-a02a-9d859557da83",
+            "description": "Unique key generated once by the caller for safe retries."
+          }
+        },
+        "required": [
+          "quantity",
+          "idempotencyKey"
+        ]
+      },
+      "StockMovementResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "movement-id"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "example": "request-1"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "IN",
+              "OUT"
+            ]
+          },
+          "quantity": {
+            "type": "number",
+            "example": 2
+          },
+          "partId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "idempotencyKey",
+          "type",
+          "quantity",
+          "partId",
+          "createdAt"
+        ]
+      },
+      "CreateBudgetItemDto": {
+        "type": "object",
+        "properties": {
+          "partId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Peca referenciada pelo item. Obrigatorio para itens do tipo PART serem solicitados ao estoque quando o orcamento for aceito."
+          },
+          "description": {
+            "type": "string",
+            "example": "Oil change"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SERVICE",
+              "PART"
+            ],
+            "example": "SERVICE"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 1,
+            "minimum": 0.01,
+            "maximum": 99999999.99
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 120,
+            "minimum": 0.01,
+            "maximum": 99999999.99
+          }
+        },
+        "required": [
+          "description",
+          "type",
+          "quantity",
+          "unitPrice"
+        ]
+      },
+      "CreateBudgetDto": {
+        "type": "object",
+        "properties": {
+          "serviceOrderId": {
+            "type": "string",
+            "example": "service-123"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateBudgetItemDto"
+            }
+          }
+        },
+        "required": [
+          "serviceOrderId",
+          "items"
+        ]
+      },
+      "BudgetItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "example": "Oil change"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SERVICE",
+              "PART"
+            ],
+            "example": "SERVICE"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 1
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 120
+          },
+          "subtotal": {
+            "type": "number",
+            "example": 120
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "type",
+          "quantity",
+          "unitPrice",
+          "subtotal"
+        ]
+      },
+      "BudgetResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serviceOrderId": {
+            "type": "string",
+            "example": "service-123"
+          },
+          "version": {
+            "type": "number",
+            "example": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "GENERATED",
+              "WAITING_APPROVAL",
+              "ACCEPTED",
+              "REFUSED"
+            ],
+            "example": "GENERATED"
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 120
+          },
+          "refusalReason": {
+            "type": "object",
+            "example": "Customer found it expensive",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BudgetItemResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "serviceOrderId",
+          "version",
+          "status",
+          "totalAmount",
+          "createdAt",
+          "updatedAt",
+          "items"
+        ]
+      },
+      "BudgetTotalResponseDto": {
+        "type": "object",
+        "properties": {
+          "budgetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 120
+          }
+        },
+        "required": [
+          "budgetId",
+          "totalAmount"
+        ]
+      },
+      "RefuseBudgetDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Customer found it expensive"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "OpenServiceOrderDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id do cliente dono da ordem de serviço"
+          },
+          "vehicleId": {
+            "type": "string",
+            "example": "a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c",
+            "description": "Id do veículo. Precisa existir e pertencer ao cliente informado."
+          },
+          "description": {
+            "type": "string",
+            "example": "Barulho no motor ao acelerar"
+          }
+        },
+        "required": [
+          "clientId",
+          "vehicleId",
+          "description"
+        ]
+      },
+      "ServiceOrderResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vehicleId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED",
+              "IN_DIAGNOSIS",
+              "AWAITING_APPROVAL",
+              "AWAITING_PARTS",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "DELIVERED",
+              "CANCELLED"
+            ]
+          },
+          "cancellationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "mechanicId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Início do timer: quando a OS foi atribuída ao mecânico."
+          },
+          "partsDispatchedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Quando o estoque registrou que atendeu a OS. Nulo enquanto as peças não forem despachadas — e sem isso a OS não entra em execução."
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "executionTimeMs": {
+            "type": "number",
+            "nullable": true,
+            "description": "assignedAt até completedAt, em milissegundos."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "clientId",
+          "vehicleId",
+          "description",
+          "status",
+          "cancellationReason",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AverageExecutionTimeResponseDto": {
+        "type": "object",
+        "properties": {
+          "averageExecutionTimeMs": {
+            "type": "number",
+            "nullable": true,
+            "description": "Tempo médio de execução em milissegundos (assignedAt até completedAt) das OS finalizadas que passaram por atribuição a um mecânico. Null se ainda não há amostra."
+          },
+          "sampleSize": {
+            "type": "number",
+            "description": "Quantidade de OS finalizadas consideradas no cálculo"
+          }
+        },
+        "required": [
+          "averageExecutionTimeMs",
+          "sampleSize"
+        ]
+      },
+      "AssignMechanicDto": {
+        "type": "object",
+        "properties": {
+          "mechanicId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id do mecânico que assume a OS. Atribuir move a OS para IN_DIAGNOSIS e inicia o timer de execução."
+          }
+        },
+        "required": [
+          "mechanicId"
+        ]
+      },
+      "CancelServiceOrderDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Cliente desistiu do serviço"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "CreateClientDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Maria Silva"
+          },
+          "document": {
+            "type": "string",
+            "example": "529.982.247-25",
+            "description": "CPF ou CNPJ do cliente. Aceita com ou sem máscara; é persistido apenas com dígitos."
+          },
+          "email": {
+            "type": "string",
+            "example": "maria@example.com",
+            "description": "Normalizado para minúsculas."
+          },
+          "phone": {
+            "type": "string",
+            "example": "(11) 99999-8888",
+            "description": "Telefone com DDD. Aceita com ou sem máscara; é persistido apenas com dígitos."
+          }
+        },
+        "required": [
+          "name",
+          "document",
+          "email",
+          "phone"
+        ]
+      },
+      "ClientResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Maria Silva"
+          },
+          "document": {
+            "type": "string",
+            "example": "52998224725",
+            "description": "Apenas dígitos"
+          },
+          "email": {
+            "type": "string",
+            "example": "maria@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "11999998888",
+            "description": "Apenas dígitos"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "document",
+          "email",
+          "phone",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateClientDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Maria Silva"
+          },
+          "email": {
+            "type": "string",
+            "example": "maria@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "(11) 99999-8888"
+          }
+        }
+      },
+      "CreateVehicleDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Cliente dono do veículo"
+          },
+          "plate": {
+            "type": "string",
+            "example": "ABC1D23",
+            "description": "Placa no formato antigo (ABC1234) ou Mercosul (ABC1D23). Aceita com hífen ou minúsculas; é persistida normalizada."
+          },
+          "brand": {
+            "type": "string",
+            "example": "Fiat"
+          },
+          "model": {
+            "type": "string",
+            "example": "Argo"
+          },
+          "year": {
+            "type": "number",
+            "example": 2022,
+            "description": "Entre 1900 e o ano que vem"
+          }
+        },
+        "required": [
+          "clientId",
+          "plate",
+          "brand",
+          "model",
+          "year"
+        ]
+      },
+      "VehicleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plate": {
+            "type": "string",
+            "example": "ABC1D23",
+            "description": "Sem hífen, em maiúsculas"
+          },
+          "brand": {
+            "type": "string",
+            "example": "Fiat"
+          },
+          "model": {
+            "type": "string",
+            "example": "Argo"
+          },
+          "year": {
+            "type": "number",
+            "example": 2022
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "clientId",
+          "plate",
+          "brand",
+          "model",
+          "year",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateVehicleDto": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "example": "Fiat"
+          },
+          "model": {
+            "type": "string",
+            "example": "Argo"
+          },
+          "year": {
+            "type": "number",
+            "example": 2022
+          }
+        }
+      },
+      "CreatePurchaseOrderDto": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "example": "PC-2026-0042"
+          },
+          "supplier": {
+            "type": "string",
+            "example": "Auto Peças São Paulo"
+          }
+        },
+        "required": [
+          "number",
+          "supplier"
+        ]
+      },
+      "ShortageItemDto": {
+        "type": "object",
+        "properties": {
+          "partId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "minimum": 1,
+            "description": "Quantidade faltante para atender a ordem de servico."
+          }
+        },
+        "required": [
+          "partId",
+          "quantity"
+        ]
+      },
+      "RegisterShortageDto": {
+        "type": "object",
+        "properties": {
+          "supplier": {
+            "type": "string",
+            "example": "Auto Pecas Sao Paulo",
+            "description": "Fornecedor. Fica \"A definir\" quando o pedido nasce da falta."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShortageItemDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AddPurchaseOrderItemDto": {
+        "type": "object",
+        "properties": {
+          "partId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "minimum": 1
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 150.5,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "partId",
+          "quantity",
+          "unitPrice"
+        ]
+      },
+      "GenerateBillingDto": {
+        "type": "object",
+        "properties": {
+          "serviceOrderId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "serviceOrderId"
+        ]
+      },
+      "BillingPenaltyResponseDto": {
+        "type": "object",
+        "properties": {
+          "originalAmount": {
+            "type": "number",
+            "example": 100
+          },
+          "fixedPenaltyAmount": {
+            "type": "number",
+            "example": 2
+          },
+          "interestAmount": {
+            "type": "number",
+            "example": 0.03
+          },
+          "overdueDays": {
+            "type": "number",
+            "example": 1
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 102.03
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "originalAmount",
+          "fixedPenaltyAmount",
+          "interestAmount",
+          "overdueDays",
+          "totalAmount",
+          "calculatedAt"
+        ]
+      },
+      "BillingResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serviceOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "budgetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "WAITING_PAYMENT",
+              "PAID",
+              "EXPIRED"
+            ],
+            "example": "WAITING_PAYMENT"
+          },
+          "amount": {
+            "type": "number",
+            "example": 120
+          },
+          "amountDue": {
+            "type": "number",
+            "description": "Current payable amount, including penalty when overdue",
+            "example": 124
+          },
+          "paymentLink": {
+            "type": "object",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_123"
+          },
+          "gatewayTransactionId": {
+            "type": "object",
+            "example": "cs_test_123"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "PIX",
+              "CARD",
+              "CASH"
+            ],
+            "example": "CARD"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "penalty": {
+            "$ref": "#/components/schemas/BillingPenaltyResponseDto"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "serviceOrderId",
+          "budgetId",
+          "status",
+          "amount",
+          "amountDue",
+          "generatedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      }
+    }
+  }
+}

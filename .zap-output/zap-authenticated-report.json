@@ -1,0 +1,115 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.17.0",
+	"@generated": "qui., 27 ago. 2026 20:05:25",
+	"created": "2026-08-27T23:05:25.777705100Z",
+	"insights":[
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.code.2xx",
+			"description": "Percentage of responses with status code 2xx",
+			"statistic": "14"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.code.4xx",
+			"description": "Percentage of responses with status code 4xx",
+			"statistic": "85"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.endpoint.ctype.application/json",
+			"description": "Percentage of endpoints with content type application/json",
+			"statistic": "100"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.endpoint.method.DELETE",
+			"description": "Percentage of endpoints with method DELETE",
+			"statistic": "9"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.endpoint.method.GET",
+			"description": "Percentage of endpoints with method GET",
+			"statistic": "35"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.endpoint.method.PATCH",
+			"description": "Percentage of endpoints with method PATCH",
+			"statistic": "14"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.endpoint.method.POST",
+			"description": "Percentage of endpoints with method POST",
+			"statistic": "40"
+		},
+		{
+			"level": "Informações",
+			"reason": "Informativo",
+			"site": "http://localhost:8090",
+			"key": "insight.endpoint.total",
+			"description": "Count of total endpoints",
+			"statistic": "54"
+		}
+	],
+	"site":[ 
+		{
+			"@name": "http://localhost:8090",
+			"@host": "localhost",
+			"@port": "8090",
+			"@ssl": "false",
+			"alerts": [ 
+				{
+					"pluginid": "10111",
+					"alertRef": "10111",
+					"alert": "Solicita\u00E7\u00E3o de autentica\u00E7\u00E3o identificada",
+					"name": "Solicita\u00E7\u00E3o de autentica\u00E7\u00E3o identificada",
+					"riskcode": "0",
+					"confidence": "3",
+					"riskdesc": "Informativo (Alto)",
+					"desc": "<p>A solicita\u00E7\u00E3o em quest\u00E3o foi identificada como uma solicita\u00E7\u00E3o de autentica\u00E7\u00E3o. O campo \"Outras Informa\u00E7\u00F5es\" cont\u00E9m um conjunto de linhas chave=valor que identificam quaisquer campos relevantes. Se a solicita\u00E7\u00E3o estiver em um contexto com um M\u00E9todo de Autentica\u00E7\u00E3o definido como \"Detec\u00E7\u00E3o Autom\u00E1tica\", esta regra alterar\u00E1 a autentica\u00E7\u00E3o para corresponder \u00E0 solicita\u00E7\u00E3o identificada.</p>",
+					"instances":[ 
+						{
+							"id": "0",
+							"uri": "http://localhost:8090/api/v1/auth/login",
+							"nodeName": "http:\/\/localhost:8090\/api\/v1\/auth\/login ()({email,password})",
+							"method": "POST",
+							"param": "email",
+							"attack": "",
+							"evidence": "password",
+							"otherinfo": "userParam=email\nuserValue=zaproxy@example.com\npasswordParam=password"
+						}
+					],
+					"count": "1",
+					"systemic": false,
+					"solution": "<p>Este \u00E9 um alerta informativo e n\u00E3o uma vulnerabilidade, portanto n\u00E3o h\u00E1 nada a ser corrigido.</p>",
+					"otherinfo": "<p>userParam=email</p><p>userValue=zaproxy@example.com</p><p>passwordParam=password</p>",
+					"reference": "<p>https://www.zaproxy.org/docs/desktop/addons/authentication-helper/auth-req-id/</p>",
+					"cweid": "-1",
+					"wascid": "-1",
+					"sourceid": "7"
+				}
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}

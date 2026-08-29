@@ -1,0 +1,1744 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: Oficina FIAP API - Revisada
+meta:
+  id: wrk_046b86001fb2444ab8ffb8e85a22c9c2
+  created: 1787979009511
+  modified: 1787979009511
+  description: ""
+collection:
+  - name: 10 - Notificacoes
+    meta:
+      id: fld_00afdcd7d31f4b7bbd1e6635f2545b3a
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 10
+      description: Endpoints de /api/v1/notifications ausentes na colecao original.
+    children:
+      - url: "{{ _.base_url }}/api/v1/notifications/{{ _.notification_id }}/retry"
+        name: Reenviar notificacao com falha
+        meta:
+          id: req_618f01df21b74ee28b61422c5f6f698b
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie notification_id de uma notificacao com status FAILED.
+          sortKey: 1
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/notifications"
+        name: Listar notificacoes
+        meta:
+          id: req_90ef443086b944aea9c82194fa1db38c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Ative filtros status/type conforme necessario.
+          sortKey: 0
+        method: GET
+        parameters:
+          - name: status
+            value: FAILED
+            disabled: true
+          - name: type
+            value: BUDGET_READY
+            disabled: true
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 08 - Pedidos de compra
+    meta:
+      id: fld_2022536007584505a72a20433e393ce3
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 8
+      description: Para testar manualmente, crie uma peca antes. O fluxo automatico
+        tambem pode criar pedido ao despachar pecas sem estoque suficiente.
+    children:
+      - url: "{{ _.base_url }}/api/v1/purchase-orders/{{ _.purchase_order_id }}/items"
+        name: Adicionar item ao pedido
+        meta:
+          id: req_69374ae396014ebb8f09832f76e2e8d5
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id do item retornado para purchase_order_item_id.
+          sortKey: 3
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "partId": "{{ _.part_id }}",
+              "quantity": 2,
+              "unitPrice": 49.9
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders/shortages"
+        name: Registrar falta de estoque manualmente
+        meta:
+          id: req_813a6093aadf49ad8f5bcc92dd5b6383
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Abre pedido de compra a partir de falta de estoque.
+          sortKey: 7
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "supplier": "Auto Pecas Sao Paulo",
+              "items": [
+                {
+                  "partId": "{{ _.part_id }}",
+                  "quantity": 2
+                }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders/{{ _.purchase_order_id }}/deliver"
+        name: Registrar entrega do pedido
+        meta:
+          id: req_8a233c8a603c4a25b7833e92a5a12e69
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Ao entregar, o estoque da peca deve ser atualizado.
+          sortKey: 6
+        method: PATCH
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders"
+        name: Listar pedidos de compra
+        meta:
+          id: req_a5a1b35d27d843268d11b79fc75c17d9
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 1
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders/{{ _.purchase_order_id
+          }}/register-purchase"
+        name: Registrar compra no fornecedor
+        meta:
+          id: req_be51f91f534a4592ba3046fe0e06498c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Move o pedido para comprado.
+          sortKey: 5
+        method: PATCH
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders/{{ _.purchase_order_id }}"
+        name: Buscar pedido por ID
+        meta:
+          id: req_dca2e6dcc826484db0f45f06f6f4559c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders"
+        name: Criar pedido de compra
+        meta:
+          id: req_ee2a53ed41f349849b45111597fc95b6
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para purchase_order_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "number": "PC-2026-0042",
+              "supplier": "Auto Pecas Sao Paulo"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/purchase-orders/{{ _.purchase_order_id }}/items/{{
+          _.purchase_order_item_id }}"
+        name: Remover item do pedido
+        meta:
+          id: req_f22a7bfbad134462b20fcf3752cd4bd3
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use antes de registrar a compra.
+          sortKey: 4
+        method: DELETE
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 00 - Guia rapido
+    meta:
+      id: fld_36d4d9b0e96b4f34986292d83c7d1e42
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 0
+      description: "Comece por Health, depois Login. Copie accessToken para
+        access_token e refreshToken para refresh_token no ambiente. Em seguida
+        execute os modulos na ordem: clientes, veiculos, servicos/estoque, ordem
+        de servico, orcamento, estoque, cobranca."
+    children:
+      - url: "{{ _.base_url }}/api/v1/health"
+        name: Health check
+        meta:
+          id: req_1299cb7a35d740ccba7830f9f7de131c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Confirma que a API esta no ar.
+          sortKey: 0
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/docs"
+        name: Swagger UI
+        meta:
+          id: req_c95254db658540c89e2a2672f2526656
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Abre a documentacao Swagger exposta pela aplicacao.
+          sortKey: 1
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 03 - Veiculos
+    meta:
+      id: fld_487bd88a404740e9bd35636c50ee261d
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 3
+      description: Crie um cliente antes de criar o veiculo.
+    children:
+      - url: "{{ _.base_url }}/api/v1/vehicle/{{ _.vehicle_id }}"
+        name: Remover veiculo
+        meta:
+          id: req_04e132b5d85e454b9e0aa0e3c2e8456b
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use apenas no fim do teste, pois a OS depende do veiculo.
+          sortKey: 4
+        method: DELETE
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/vehicle/{{ _.vehicle_id }}"
+        name: Atualizar veiculo
+        meta:
+          id: req_1b2bde4f629a4369b0ec9d840621a249
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: clientId e plate nao podem ser alterados nesta rota.
+          sortKey: 3
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "brand": "Fiat",
+              "model": "Argo Trekking",
+              "year": 2023
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/vehicle"
+        name: Listar veiculos
+        meta:
+          id: req_2f4519cd458b4b669c090412d90d6134
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Ative o query param clientId para filtrar por cliente.
+          sortKey: 1
+        method: GET
+        parameters:
+          - name: clientId
+            value: "{{ _.client_id }}"
+            disabled: true
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/vehicle"
+        name: Criar veiculo
+        meta:
+          id: req_404a803ae9ec44aa8a2a139d53adf5dc
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para vehicle_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "clientId": "{{ _.client_id }}",
+              "plate": "ABC1D23",
+              "brand": "Fiat",
+              "model": "Argo",
+              "year": 2022
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/vehicle/{{ _.vehicle_id }}"
+        name: Buscar veiculo por ID
+        meta:
+          id: req_8e64c521e6e843dbba70a795c19b9654
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 01 - Autenticacao
+    meta:
+      id: fld_70fcfaf236f74b739e6ef51609e42935
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 1
+      description: "Use as credenciais criadas pelo seed: ADMIN_EMAIL e
+        ADMIN_PASSWORD. A API nao aceita tokens antigos fixos; sempre faca login
+        antes de testar rotas protegidas."
+    children:
+      - url: "{{ _.base_url }}/api/v1/auth/login"
+        name: Login - gerar tokens
+        meta:
+          id: req_05c3b4d3b10e47e2981f8e9fe96bce73
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie accessToken para access_token e refreshToken para
+            refresh_token no ambiente.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "email": "{{ _.admin_email }}",
+              "password": "{{ _.admin_password }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/auth/logout"
+        name: Logout - revogar refresh token
+        meta:
+          id: req_5836ddff4b8844e98d42b36955433430
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Revoga o refresh token atual.
+          sortKey: 2
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "refreshToken": "{{ _.refresh_token }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/auth/refresh"
+        name: Refresh - rotacionar refresh token
+        meta:
+          id: req_6afd99fa849d4486a2667bea68ee2962
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Depois de executar, substitua access_token e refresh_token pelos
+            novos valores retornados.
+          sortKey: 1
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "refreshToken": "{{ _.refresh_token }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 09 - Cobrancas
+    meta:
+      id: fld_76241d22d2a244ff98a909bc6dabee0b
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 9
+      description: Gere a cobranca apenas depois de concluir a OS. A entrega da OS usa
+        o billing_id, nao o service_order_id.
+    children:
+      - url: "{{ _.base_url }}/api/v1/billings/{{ _.billing_id }}/expire"
+        name: Expirar cobranca aguardando pagamento
+        meta:
+          id: req_0c2782edd52e4cb885aebdb85eb76685
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Fluxo para testar multa e renovacao de link.
+          sortKey: 3
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/billings"
+        name: Gerar cobranca para OS concluida
+        meta:
+          id: req_1cb98c36166f409299c4fc46c1eacf3e
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para billing_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "serviceOrderId": "{{ _.service_order_id }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/billings/stripe/webhook"
+        name: Webhook Stripe
+        meta:
+          id: req_3e27d0f695c84d338658309c4a6221d2
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Endpoint publico, mas exige header stripe-signature valido e raw
+            body. Para teste real, use a CLI do Stripe ou assinatura gerada com
+            o segredo configurado.
+          sortKey: 6
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "type": "checkout.session.completed",
+              "data": {
+                "object": {
+                  "id": "cs_test_123"
+                }
+              }
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: stripe-signature
+            value: "{{ _.stripe_signature }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/billings"
+        name: Listar cobrancas
+        meta:
+          id: req_8215294f1c924732bfe34a9af32ecbab
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Ative serviceOrderId para filtrar por OS.
+          sortKey: 1
+        method: GET
+        parameters:
+          - name: serviceOrderId
+            value: "{{ _.service_order_id }}"
+            disabled: true
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/billings/{{ _.billing_id }}/deliver-service-order"
+        name: Entregar OS apos quitacao
+        meta:
+          id: req_b0e3cda7bdd0452c9613786ca6aee331
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Requer cobranca paga. Em ambiente real, o pagamento normalmente vem
+            pelo webhook Stripe.
+          sortKey: 5
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/billings/{{ _.billing_id }}/renew-payment-link"
+        name: Renovar link de pagamento vencido
+        meta:
+          id: req_cb5de53354c74f508eac54ac4ea1b3a3
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use depois de expirar a cobranca.
+          sortKey: 4
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/billings/{{ _.billing_id }}"
+        name: Buscar cobranca por ID
+        meta:
+          id: req_fc933f7a449c4d8491b940feac9fc440
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 06 - Ordens de servico
+    meta:
+      id: fld_8eaf920de1d4446bb38a7f49cbda74cf
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 6
+      description: "Fluxo principal: abrir OS, atribuir mecanico, gerar orcamento,
+        aceitar, despachar pecas, concluir, gerar cobranca e entregar apos
+        pagamento."
+    children:
+      - url: "{{ _.base_url }}/api/v1/service-order/{{ _.service_order_id }}/assign"
+        name: Atribuir mecanico
+        meta:
+          id: req_55ea3cd893d045c796d0e689d7e4c537
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Move a OS para IN_DIAGNOSIS. O mesmo mecanico nao pode ter duas OS
+            abertas ao mesmo tempo.
+          sortKey: 4
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "mechanicId": "{{ _.mechanic_id }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order/{{ _.service_order_id }}/complete"
+        name: Concluir OS
+        meta:
+          id: req_606ef0461b514e6db3de96309d69091e
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use depois de despachar as pecas, quando a OS estiver em IN_PROGRESS.
+          sortKey: 5
+        method: PATCH
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order/metrics/average-execution-time"
+        name: Metrica - tempo medio de execucao
+        meta:
+          id: req_64ca302d80e84510bd3a27bd5756763a
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Retorna null ate existir amostra de OS concluidas com mecanico.
+          sortKey: 7
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order/{{ _.service_order_id }}"
+        name: Buscar OS por ID
+        meta:
+          id: req_687cd7c6efd54c93879f28cb44c7f631
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order"
+        name: Abrir ordem de servico
+        meta:
+          id: req_a99518559d764b979f05f147ce41c5fb
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para service_order_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "clientId": "{{ _.client_id }}",
+              "vehicleId": "{{ _.vehicle_id }}",
+              "description": "Vazamento de oleo no motor"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order"
+        name: Listar ordens de servico
+        meta:
+          id: req_ac9b39aeccfc43d8bfed79180709e14b
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 1
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order/{{ _.service_order_id }}/cancel"
+        name: Cancelar OS
+        meta:
+          id: req_d1a5af18b9ca423d91082d6d2a854b7e
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Fluxo alternativo. Nao use na mesma OS que sera concluida.
+          sortKey: 6
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "reason": "Cliente desistiu do servico"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/service-order/client/{{ _.client_id }}"
+        name: Rastrear OS do cliente
+        meta:
+          id: req_d2cca0a352c34cbd9de8381699217a51
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Lista as OS do cliente da mais recente para a mais antiga.
+          sortKey: 3
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 02 - Clientes
+    meta:
+      id: fld_9439ef9e64504890844c4af71f867195
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 2
+      description: "Fluxo basico: criar, listar, buscar, atualizar e remover cliente."
+    children:
+      - url: "{{ _.base_url }}/api/v1/client"
+        name: Criar cliente
+        meta:
+          id: req_2145c816441b48cca4df20c285d20b5e
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para client_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "name": "Maria Ferreira",
+              "document": "529.982.247-25",
+              "email": "maria.ferreira@example.com",
+              "phone": "(11) 99999-8888"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/client/{{ _.client_id }}"
+        name: Buscar cliente por ID
+        meta:
+          id: req_268f30b27dd24472aaaa5c6fbd1e7637
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/client/{{ _.client_id }}"
+        name: Remover cliente
+        meta:
+          id: req_61b1c0a1eef843ea864be383d75a4e3c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use apenas no fim do teste, pois outros recursos dependem do cliente.
+          sortKey: 4
+        method: DELETE
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/client/{{ _.client_id }}"
+        name: Atualizar cliente
+        meta:
+          id: req_b30e22d00aee40fbb1e0a0b53c556317
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: document nao pode ser alterado nesta rota.
+          sortKey: 3
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "name": "Maria Ferreira Silva",
+              "email": "maria.silva@example.com",
+              "phone": "(11) 98888-7777"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/client"
+        name: Listar clientes
+        meta:
+          id: req_c0695d46049248fcb6631e0fbb1bef17
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 1
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 04 - Catalogo de servicos
+    meta:
+      id: fld_ab6d4c51fa854776a6078fc6a1bbe230
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 4
+      description: Endpoints de /api/v1/services que nao existiam na colecao original.
+    children:
+      - url: "{{ _.base_url }}/api/v1/services"
+        name: Listar servicos
+        meta:
+          id: req_03eb9db83e394ff0be9a53ffa3f61108
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 1
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/services/{{ _.service_id }}"
+        name: Atualizar servico
+        meta:
+          id: req_3237319b81ad43c69727585b592455fc
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Envie apenas os campos que deseja alterar.
+          sortKey: 3
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "name": "Troca de oleo completa",
+              "description": "Inclui oleo sintetico 5W30.",
+              "price": 169.9
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/services"
+        name: Criar servico
+        meta:
+          id: req_52ba5ef7ab3b4b679e599bdc7b7b463c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para service_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: >-
+            {
+              "name": "Troca de oleo e filtro",
+              "description": "Inclui oleo sintetico 5W30 e substituicao do filtro.",
+              "price": 149.9
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/services/{{ _.service_id }}"
+        name: Buscar servico por ID
+        meta:
+          id: req_7dec0abd311c42ed86235a90b7a504f8
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/services/{{ _.service_id }}"
+        name: Remover servico
+        meta:
+          id: req_b0d198eb4cd74e07a72318366f42d122
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use apenas no fim se nenhum orcamento depender deste servico.
+          sortKey: 4
+        method: DELETE
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 07 - Orcamentos
+    meta:
+      id: fld_e51440e7ab4a486f95961e16180dc74c
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 7
+      description: Corrige a rota de listar por OS e adiciona listar todos, buscar por
+        ID e recusar orcamento, que estavam ausentes ou inconsistentes.
+    children:
+      - url: "{{ _.base_url }}/api/v1/budgets"
+        name: Listar orcamentos
+        meta:
+          id: req_046e6f4049614960bc286ba3be8667a9
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Ative serviceOrderId para filtrar por OS.
+          sortKey: 1
+        method: GET
+        parameters:
+          - name: serviceOrderId
+            value: "{{ _.service_order_id }}"
+            disabled: true
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}/items/{{
+          _.budget_item_id }}"
+        name: Remover item do orcamento
+        meta:
+          id: req_19c1a80d31954121be0ddefbcd2833c2
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use antes de enviar/aceitar o orcamento.
+          sortKey: 5
+        method: DELETE
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}/accept"
+        name: Aceitar orcamento
+        meta:
+          id: req_2e9030f4fdcf4936894c28bda786af46
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Fluxo feliz. Depois disso, teste despacho de pecas em estoque.
+          sortKey: 8
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}/refuse"
+        name: Recusar orcamento
+        meta:
+          id: req_63704f90a2774e9591c043f1c899cdb8
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Fluxo alternativo. Nao use no mesmo orcamento que sera aceito.
+          sortKey: 9
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "reason": "Cliente considerou o valor alto"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}/send"
+        name: Enviar orcamento ao cliente
+        meta:
+          id: req_7224813b9232452a81a5edf5ec7ff8fa
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Move o orcamento para enviado e pode registrar notificacao.
+          sortKey: 7
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets"
+        name: Criar orcamento
+        meta:
+          id: req_79c32d2247ad493fa57cad7c19782a54
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para budget_id. Para PART, informe partId se
+            quiser testar despacho de estoque. Para SERVICE, informe serviceId
+            se quiser ligar ao catalogo.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "serviceOrderId": "{{ _.service_order_id }}",
+              "items": [
+                {
+                  "serviceId": "{{ _.service_id }}",
+                  "description": "Troca de oleo e filtro",
+                  "type": "SERVICE",
+                  "quantity": 1,
+                  "unitPrice": 149.9
+                },
+                {
+                  "partId": "{{ _.part_id }}",
+                  "description": "Filtro de oleo",
+                  "type": "PART",
+                  "quantity": 1,
+                  "unitPrice": 49.9
+                }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}/total"
+        name: Calcular total do orcamento
+        meta:
+          id: req_ac23e61f568449c9be3b2fa3e27c46da
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 6
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}"
+        name: Buscar orcamento por ID
+        meta:
+          id: req_ca1fbd85477245dd835cbc41c437f607
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 3
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/{{ _.budget_id }}/items"
+        name: Adicionar item ao orcamento
+        meta:
+          id: req_da5d67fffeb942cd8c95f993a51d6e7c
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id do item retornado para budget_item_id se for remove-lo.
+          sortKey: 4
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "description": "Higienizacao do motor",
+              "type": "SERVICE",
+              "quantity": 1,
+              "unitPrice": 80
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/budgets/service-order/{{ _.service_order_id }}"
+        name: Listar orcamentos por OS
+        meta:
+          id: req_f1c4f6b8f5bb4e7db9b9258a2430427d
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: "Rota correta: /budgets/service-order/:serviceOrderId."
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 05 - Estoque
+    meta:
+      id: fld_ef4888295d0f402cacc8bebbf587b0c3
+      created: 1787979000000
+      modified: 1787979000000
+      sortKey: 5
+      description: Inclui cadastro da peca, consulta e movimentos de entrada/saida. As
+        rotas de stock/in e stock/out faltavam na colecao original.
+    children:
+      - url: "{{ _.base_url }}/api/v1/stock/{{ _.part_id }}/stock/in"
+        name: Registrar entrada de estoque
+        meta:
+          id: req_035aa6642db24af4b3605463f7c237e0
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: idempotencyKey deve ser unico por tentativa logica. Repetir a mesma
+            chave deve reaproveitar o movimento.
+          sortKey: 3
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "quantity": 10,
+              "idempotencyKey": "{{ _.stock_in_key }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock/{{ _.part_id }}"
+        name: Buscar peca por ID
+        meta:
+          id: req_1af0fc46e0bf42d392ce57b02135d1d2
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 2
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock"
+        name: Listar pecas
+        meta:
+          id: req_4e74f129d6c545829dd885eb3a702ca2
+          created: 1787979000000
+          modified: 1787979031075
+          isPrivate: false
+          description: ""
+          sortKey: 1
+        method: GET
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock"
+        name: Criar peca
+        meta:
+          id: req_6ccd5dd2b0b94fff91a523d397751399
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Copie o id retornado para part_id.
+          sortKey: 0
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "code": "OIL-FILTER-123",
+              "name": "Filtro de oleo",
+              "description": "Filtro para oleo de motor",
+              "type": "PART",
+              "unit": "UNIT",
+              "unitPrice": 49.9,
+              "minimumQuantity": 3
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock/{{ _.part_id }}"
+        name: Atualizar peca
+        meta:
+          id: req_952040ea007a43da8fa961f136ae47e4
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: ""
+          sortKey: 5
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "code": "OIL-FILTER-123",
+              "name": "Filtro de oleo premium",
+              "description": "Filtro para oleo de motor",
+              "type": "PART",
+              "unit": "UNIT",
+              "unitPrice": 59.9,
+              "minimumQuantity": 5
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock/{{ _.part_id }}/stock/out"
+        name: Registrar saida de estoque
+        meta:
+          id: req_9c029f9a446648c3b48acd690f69ea51
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Falha com 409 se nao houver saldo suficiente.
+          sortKey: 4
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "quantity": 1,
+              "idempotencyKey": "{{ _.stock_out_key }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock/service-orders/{{ _.service_order_id
+          }}/dispatch"
+        name: Despachar pecas da OS
+        meta:
+          id: req_c114b380b55447c78a67ab5c50791014
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use depois de aceitar um orcamento com item PART que tenha partId.
+            Se houver estoque, baixa as pecas e move a OS para IN_PROGRESS. Se
+            faltar, abre pedido de compra.
+          sortKey: 6
+        method: POST
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/v1/stock/{{ _.part_id }}"
+        name: Remover peca
+        meta:
+          id: req_e1c647e6c0434a4cb6bdd519574e3a5f
+          created: 1787979000000
+          modified: 1787979000000
+          isPrivate: false
+          description: Use apenas no fim se nenhum orcamento ou compra depender da peca.
+          sortKey: 7
+        method: DELETE
+        headers:
+          - name: Authorization
+            value: Bearer {{ _.access_token }}
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_9f939ed672af49469aa6db09ed942099
+    created: 1787979000000
+    modified: 1787979000000
+environments:
+  name: Base Environment
+  meta:
+    id: env_698f1d0c63c64dc08ee5247ea88e0397
+    created: 1787979000000
+    modified: 1787979000000
+    isPrivate: false
+  data:
+    base_url: http://localhost:8090
+    admin_email: admin@example.com
+    admin_password: correct-password
+    access_token: cole-o-accessToken-do-login
+    refresh_token: cole-o-refreshToken-do-login
+    client_id: cole-o-id-do-cliente
+    vehicle_id: cole-o-id-do-veiculo
+    service_id: cole-o-id-do-servico
+    part_id: cole-o-id-da-peca
+    service_order_id: cole-o-id-da-os
+    budget_id: cole-o-id-do-orcamento
+    budget_item_id: cole-o-id-do-item-do-orcamento
+    purchase_order_id: cole-o-id-do-pedido-de-compra
+    purchase_order_item_id: cole-o-id-do-item-do-pedido
+    billing_id: cole-o-id-da-cobranca
+    notification_id: cole-o-id-da-notificacao
+    mechanic_id: cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c
+    stock_in_key: stock-in-001
+    stock_out_key: stock-out-001
+    stripe_signature: cole-a-assinatura-valida-do-stripe

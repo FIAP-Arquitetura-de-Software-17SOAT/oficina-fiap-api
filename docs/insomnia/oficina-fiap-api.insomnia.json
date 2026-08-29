@@ -1,0 +1,1796 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-27T23:04:47.340Z",
+  "__export_source": "oficina-fiap-api swagger export",
+  "resources": [
+    {
+      "_id": "wrk_oficina_fiap_api",
+      "parentId": null,
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "Oficina FIAP API",
+      "description": "API de gestão da oficina",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_oficina_fiap_api_base",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3000",
+        "token": "",
+        "id": "replace-with-id",
+        "clientId": "replace-with-client-id",
+        "vehicleId": "replace-with-vehicle-id",
+        "serviceOrderId": "replace-with-service-order-id",
+        "budgetId": "replace-with-budget-id",
+        "partId": "replace-with-part-id",
+        "purchaseOrderId": "replace-with-purchase-order-id",
+        "billingId": "replace-with-billing-id"
+      },
+      "dataPropertyOrder": null,
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1787871887340,
+      "_type": "environment"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "auth",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 0,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_post_api_v1_auth_login_authcontroller_login",
+      "parentId": "fld_auth",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/auth/login",
+      "name": "Autentica o administrador",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"correct-horse-battery-staple\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 1,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_auth_logout_authcontroller_logout",
+      "parentId": "fld_auth",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/auth/logout",
+      "name": "Revoga o refresh token atual",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 2,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_auth_refresh_authcontroller_refresh",
+      "parentId": "fld_auth",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/auth/refresh",
+      "name": "Rotaciona o refresh token",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 3,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_billings",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "billings",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 4,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_billings_billingcontroller_findall",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings",
+      "name": "Lista cobrancas ou busca por ordem de servico",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "name": "serviceOrderId",
+          "value": "{{ _.serviceOrderId }}",
+          "disabled": true
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 5,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_billings_billingcontroller_generate",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings",
+      "name": "Gera uma cobranca para uma ordem de servico concluida",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"serviceOrderId\": \"{{ _.serviceOrderId }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 6,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_billings_id_billingcontroller_findbyid",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings/{{ _.id }}",
+      "name": "Busca uma cobranca por id",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 7,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_billings_id_deliver_service_order_billingcontroller_deliverserviceor",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings/{{ _.id }}/deliver-service-order",
+      "name": "Entrega a ordem de servico apos quitacao",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 8,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_billings_id_expire_billingcontroller_expire",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings/{{ _.id }}/expire",
+      "name": "Expira uma cobranca aguardando pagamento",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 9,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_billings_id_renew_payment_link_billingcontroller_renewpaymentlink",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings/{{ _.id }}/renew-payment-link",
+      "name": "Renova link de pagamento vencido com multa",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 10,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_billings_stripe_webhook_billingcontroller_handlestripewebhook",
+      "parentId": "fld_billings",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/billings/stripe/webhook",
+      "name": "Processa o webhook de pagamento do Stripe",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 11,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_budget",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "budget",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 12,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_budgets_budgetcontroller_findbyserviceorderid",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets",
+      "name": "Lista orcamentos por ordem de servico",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "name": "serviceOrderId",
+          "value": "service-123",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 13,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_budgets_budgetcontroller_create",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets",
+      "name": "Cria um orcamento",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"serviceOrderId\": \"service-123\",\n  \"items\": [\n    {\n      \"partId\": \"{{ _.partId }}\",\n      \"description\": \"Oil change\",\n      \"type\": \"SERVICE\",\n      \"quantity\": 1,\n      \"unitPrice\": 120\n    }\n  ]\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 14,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_budgets_id_budgetcontroller_findbyid",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}",
+      "name": "Busca um orcamento por id",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 15,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_budgets_id_accept_budgetcontroller_accept",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}/accept",
+      "name": "Aceita o orcamento",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 16,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_budgets_id_items_budgetcontroller_additem",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}/items",
+      "name": "Adiciona um item ao orcamento",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"partId\": \"{{ _.partId }}\",\n  \"description\": \"Oil change\",\n  \"type\": \"SERVICE\",\n  \"quantity\": 1,\n  \"unitPrice\": 120\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 17,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_delete_api_v1_budgets_id_items_itemid_budgetcontroller_removeitem",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}/items/{{ _.itemId }}",
+      "name": "Remove um item do orcamento",
+      "description": "",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 18,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_budgets_id_refuse_budgetcontroller_refuse",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}/refuse",
+      "name": "Recusa o orcamento",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"reason\": \"Customer found it expensive\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 19,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_budgets_id_send_budgetcontroller_send",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}/send",
+      "name": "Envia o orcamento ao cliente",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 20,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_budgets_id_total_budgetcontroller_calculatetotal",
+      "parentId": "fld_budget",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/budgets/{{ _.id }}/total",
+      "name": "Calcula o total do orcamento",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 21,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_client",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "client",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 22,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_client_clientcontroller_findall",
+      "parentId": "fld_client",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/client",
+      "name": "Lista os clientes",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 23,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_client_clientcontroller_create",
+      "parentId": "fld_client",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/client",
+      "name": "Cadastra um cliente",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Maria Silva\",\n  \"document\": \"529.982.247-25\",\n  \"email\": \"maria@example.com\",\n  \"phone\": \"(11) 99999-8888\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 24,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_client_id_clientcontroller_findbyid",
+      "parentId": "fld_client",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/client/{{ _.id }}",
+      "name": "Busca um cliente por id",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 25,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_client_id_clientcontroller_update",
+      "parentId": "fld_client",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/client/{{ _.id }}",
+      "name": "Atualiza um cliente",
+      "description": "",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Maria Silva\",\n  \"email\": \"maria@example.com\",\n  \"phone\": \"(11) 99999-8888\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 26,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_delete_api_v1_client_id_clientcontroller_delete",
+      "parentId": "fld_client",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/client/{{ _.id }}",
+      "name": "Remove um cliente",
+      "description": "",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 27,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_app",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "App",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 28,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_health_appcontroller_health",
+      "parentId": "fld_app",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/health",
+      "name": "GET /api/v1/health",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 29,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_purchase_orders",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "Purchase Orders",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 30,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_purchase_orders_purchaseordercontroller_findall",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders",
+      "name": "Listar pedidos de compra",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 31,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_purchase_orders_purchaseordercontroller_create",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders",
+      "name": "Criar pedido de compra",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"number\": \"PC-2026-0042\",\n  \"supplier\": \"Auto Peças São Paulo\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 32,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_purchase_orders_id_purchaseordercontroller_findbyid",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders/{{ _.id }}",
+      "name": "Consultar pedido de compra por ID",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 33,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_purchase_orders_id_deliver_purchaseordercontroller_markasdelivered",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders/{{ _.id }}/deliver",
+      "name": "Registrar entrega do pedido de compra",
+      "description": "",
+      "method": "PATCH",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 34,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_purchase_orders_id_items_purchaseordercontroller_additem",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders/{{ _.id }}/items",
+      "name": "Adicionar item ao pedido de compra",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"partId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"quantity\": 2,\n  \"unitPrice\": 150.5\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 35,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_delete_api_v1_purchase_orders_id_items_itemid_purchaseordercontroller_removeitem",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders/{{ _.id }}/items/{{ _.itemId }}",
+      "name": "Remover item do pedido de compra",
+      "description": "",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 36,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_purchase_orders_id_register_purchase_purchaseordercontroller_regist",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders/{{ _.id }}/register-purchase",
+      "name": "Registrar compra junto ao fornecedor",
+      "description": "",
+      "method": "PATCH",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 37,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_purchase_orders_shortages_purchaseordercontroller_registershortage",
+      "parentId": "fld_purchase_orders",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/purchase-orders/shortages",
+      "name": "Registrar necessidade de compra a partir da falta de estoque",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"supplier\": \"Auto Pecas Sao Paulo\",\n  \"items\": [\n    {\n      \"partId\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"quantity\": 2\n    }\n  ]\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 38,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_service_order",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "service-order",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 39,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_service_order_serviceordercontroller_findall",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order",
+      "name": "List service orders",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 40,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_service_order_serviceordercontroller_openserviceorder",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order",
+      "name": "Open a service order",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clientId\": \"{{ _.clientId }}\",\n  \"vehicleId\": \"a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c\",\n  \"description\": \"Barulho no motor ao acelerar\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 41,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_service_order_id_serviceordercontroller_findbyid",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order/{{ _.id }}",
+      "name": "Find a service order by id",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 42,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_service_order_id_assign_serviceordercontroller_assigntomechanic",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order/{{ _.id }}/assign",
+      "name": "Assign a mechanic to a service order",
+      "description": "",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"mechanicId\": \"{{ _.mechanicId }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 43,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_service_order_id_cancel_serviceordercontroller_cancel",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order/{{ _.id }}/cancel",
+      "name": "Cancel a service order",
+      "description": "",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"reason\": \"Cliente desistiu do serviço\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 44,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_service_order_id_complete_serviceordercontroller_complete",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order/{{ _.id }}/complete",
+      "name": "Complete a service order",
+      "description": "",
+      "method": "PATCH",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 45,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_service_order_client_clientid_serviceordercontroller_findbyclientid",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order/client/{{ _.clientId }}",
+      "name": "Track a customer service orders",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 46,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_service_order_metrics_average_execution_time_serviceordercontroller_g",
+      "parentId": "fld_service_order",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/service-order/metrics/average-execution-time",
+      "name": "Average execution time for completed service orders",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 47,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_stock",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "stock",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 48,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_stock_partcontroller_findall",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock",
+      "name": "Lists stock parts",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 49,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_stock_partcontroller_create",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock",
+      "name": "Creates a stock part",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"code\": \"OIL-FILTER-123\",\n  \"name\": \"Oil filter\",\n  \"description\": \"Filter for engine oil\",\n  \"type\": \"PART\",\n  \"unit\": \"UNIT\",\n  \"unitPrice\": 149.9,\n  \"minimumQuantity\": 3\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 50,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_stock_id_partcontroller_findbyid",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock/{{ _.id }}",
+      "name": "Gets a stock part by id",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 51,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_stock_id_partcontroller_update",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock/{{ _.id }}",
+      "name": "Updates a stock part",
+      "description": "",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"code\": \"OIL-FILTER-123\",\n  \"name\": \"Oil filter\",\n  \"description\": \"Filter for engine oil\",\n  \"type\": \"PART\",\n  \"unit\": \"UNIT\",\n  \"unitPrice\": 149.9,\n  \"minimumQuantity\": 3\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 52,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_delete_api_v1_stock_id_partcontroller_delete",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock/{{ _.id }}",
+      "name": "Deletes a stock part",
+      "description": "",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 53,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_stock_id_stock_in_partcontroller_increasestock",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock/{{ _.id }}/stock/in",
+      "name": "Records an inbound stock movement",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"quantity\": 2,\n  \"idempotencyKey\": \"5ee0df9c-01b5-4fba-a02a-9d859557da83\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 54,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_stock_id_stock_out_partcontroller_decreasestock",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock/{{ _.id }}/stock/out",
+      "name": "Records an outbound stock movement",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"quantity\": 2,\n  \"idempotencyKey\": \"5ee0df9c-01b5-4fba-a02a-9d859557da83\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 55,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_stock_service_orders_serviceorderid_dispatch_partcontroller_dispatch",
+      "parentId": "fld_stock",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/stock/service-orders/{{ _.serviceOrderId }}/dispatch",
+      "name": "Consulta e baixa as peças do orçamento aceito de uma OS",
+      "description": "",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 56,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_vehicle",
+      "parentId": "wrk_oficina_fiap_api",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "name": "vehicle",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 57,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_get_api_v1_vehicle_vehiclecontroller_findall",
+      "parentId": "fld_vehicle",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/vehicle",
+      "name": "Lista os veículos, opcionalmente de um cliente",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "name": "clientId",
+          "value": "{{ _.clientId }}",
+          "disabled": true
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 58,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_post_api_v1_vehicle_vehiclecontroller_create",
+      "parentId": "fld_vehicle",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/vehicle",
+      "name": "Cadastra um veículo",
+      "description": "",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clientId\": \"{{ _.clientId }}\",\n  \"plate\": \"ABC1D23\",\n  \"brand\": \"Fiat\",\n  \"model\": \"Argo\",\n  \"year\": 2022\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 59,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_api_v1_vehicle_id_vehiclecontroller_findbyid",
+      "parentId": "fld_vehicle",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/vehicle/{{ _.id }}",
+      "name": "Busca um veículo por id",
+      "description": "",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 60,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_patch_api_v1_vehicle_id_vehiclecontroller_update",
+      "parentId": "fld_vehicle",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/vehicle/{{ _.id }}",
+      "name": "Atualiza marca, modelo ou ano de um veículo",
+      "description": "",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"brand\": \"Fiat\",\n  \"model\": \"Argo\",\n  \"year\": 2022\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 61,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_delete_api_v1_vehicle_id_vehiclecontroller_delete",
+      "parentId": "fld_vehicle",
+      "modified": 1787871887340,
+      "created": 1787871887340,
+      "url": "{{ _.base_url }}/api/v1/vehicle/{{ _.id }}",
+      "name": "Remove um veículo",
+      "description": "",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 62,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    }
+  ]
+}
