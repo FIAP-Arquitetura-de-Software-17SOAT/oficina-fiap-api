@@ -5,9 +5,12 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
+  forwardRef,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -17,7 +20,6 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -26,7 +28,7 @@ import {
   BudgetTotalResponseDto,
   CreateBudgetDto,
   CreateBudgetItemDto,
-  FindBudgetsByServiceOrderParamsDto,
+  FindBudgetsQueryDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { BudgetMapper } from '../mappers/budget.mapper';
@@ -40,12 +42,21 @@ import { Roles } from '../../../shared/http/auth/roles.decorator';
 @ApiTags('budgets')
 @Controller('budgets')
 export class BudgetController {
-  constructor(private readonly budgetService: BudgetService) {}
+  // O orçamento passou a consultar a peça referenciada por cada item, e o
+  // despacho de peças já lia o orçamento aceito: orçamento e estoque agora se
+  // referenciam em ciclo, e o forwardRef é o que deixa o Nest fechá-lo.
+  constructor(
+    @Inject(forwardRef(() => BudgetService))
+    private readonly budgetService: BudgetService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Gera um orçamento' })
   @ApiCreatedResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({ description: 'Dados do orçamento inválidos' })
+  @ApiNotFoundResponse({
+    description: 'Peça ou serviço referenciado por um item não existe',
+  })
   @ApiConflictResponse({ description: 'Versão do orçamento já existe' })
   async create(@Body() dto: CreateBudgetDto): Promise<BudgetResponseDto> {
     return BudgetMapper.toResponse(await this.budgetService.create(dto));
@@ -60,7 +71,10 @@ export class BudgetController {
   @ApiConflictResponse({
     description: 'O orçamento foi alterado por outra requisição',
   })
-  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
+  @ApiNotFoundResponse({
+    description:
+      'Orçamento não encontrado, ou peça/serviço referenciado pelo item não existe',
+  })
   async addItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateBudgetItemDto,
@@ -158,26 +172,21 @@ export class BudgetController {
     return BudgetMapper.toResponse(await this.budgetService.findById(id));
   }
 
-  @Get('service-orders/:serviceOrderId')
-  @ApiOperation({ summary: 'Lista orçamentos por ordem de serviço' })
-  @ApiParam({
-    name: 'serviceOrderId',
-    format: 'uuid',
-    example: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+  @Get()
+  @ApiOperation({
+    summary: 'Lista orçamentos, opcionalmente os de uma ordem de serviço',
   })
   @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
-  async findByServiceOrderId(
-    @Param() params: FindBudgetsByServiceOrderParamsDto,
+  @ApiBadRequestResponse({ description: 'Filtro inválido' })
+  async findAll(
+    @Query() query: FindBudgetsQueryDto,
   ): Promise<BudgetResponseDto[]> {
-    return BudgetMapper.toResponseList(
-      await this.budgetService.findByServiceOrderId(params.serviceOrderId),
-    );
-  }
+    if (query.serviceOrderId) {
+      return BudgetMapper.toResponseList(
+        await this.budgetService.findByServiceOrderId(query.serviceOrderId),
+      );
+    }
 
-  @Get()
-  @ApiOperation({ summary: 'Lista todos os orçamentos' })
-  @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
-  async findAll(): Promise<BudgetResponseDto[]> {
     return BudgetMapper.toResponseList(await this.budgetService.findAll());
   }
 }

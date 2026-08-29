@@ -5,6 +5,8 @@ import { BudgetService } from '../services/budget.service';
 import { BudgetController } from './budget.controller';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 
+const PART_ID = 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
 const makeBudget = () =>
   Budget.create({
     serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
@@ -80,12 +82,14 @@ describe('BudgetController', () => {
   it('adds an item to a budget', async () => {
     const budget = makeBudget();
     budget.addItem({
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
       unitPrice: Money.fromDecimal(40),
     });
     const dto = {
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -102,6 +106,7 @@ describe('BudgetController', () => {
   it('removes an item from a budget', async () => {
     const budget = makeBudget();
     budget.addItem({
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -175,27 +180,29 @@ describe('BudgetController', () => {
     expect(result.id).toBe(budget.getId());
   });
 
-  it('lists all budgets', async () => {
+  it('lists all budgets when no filter is given', async () => {
     const budgets = [makeBudget()];
     service.findAll.mockResolvedValue(budgets);
 
-    const result = await controller.findAll();
+    const result = await controller.findAll({});
 
     expect(service.findAll).toHaveBeenCalledWith();
+    expect(service.findByServiceOrderId).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
   });
 
-  it('finds budgets by service order id', async () => {
+  it('narrows the listing to a service order when the filter is given', async () => {
     const budgets = [makeBudget()];
     service.findByServiceOrderId.mockResolvedValue(budgets);
 
-    const result = await controller.findByServiceOrderId({
+    const result = await controller.findAll({
       serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     });
 
     expect(service.findByServiceOrderId).toHaveBeenCalledWith(
       '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
+    expect(service.findAll).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
     expect(result[0].serviceOrderId).toBe(
       '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',

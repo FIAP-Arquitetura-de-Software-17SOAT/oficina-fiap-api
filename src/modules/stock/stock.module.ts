@@ -15,7 +15,7 @@ import { StockMovementService } from './services/stock-movement.service';
     AuthModule,
     // Orçamento: de onde saem as peças aprovadas. OS: para onde vai o status
     // depois da baixa. Pedido de compra: para onde vai a falta.
-    BudgetModule,
+    forwardRef(() => BudgetModule),
     ServiceOrderModule,
     forwardRef(() => PurchaseOrderModule),
   ],

@@ -99,17 +99,32 @@ export class BudgetItem {
     return this.unitPrice.multiply(this.quantity);
   }
 
+  /**
+   * Item de peça sem `partId` era aceito e só quebrava lá na frente, no
+   * despacho do estoque: a OS já estava em `Aguardando peças`, com o orçamento
+   * aceito, e não havia peça nenhuma para baixar. O item de peça é justamente o
+   * vínculo com o estoque — sem a referência ele não representa nada, então a
+   * recusa acontece aqui, no momento em que o item é montado.
+   */
   private validatePartId(
     partId: string | null | undefined,
     type: BudgetItemType,
   ): string | null {
     const trimmed = (partId ?? '').trim();
 
-    if (!trimmed) return null;
-
     if (type !== BudgetItemType.PART) {
+      if (trimmed) {
+        throw new DomainException(
+          'Somente item de peça pode referenciar uma peça',
+        );
+      }
+
+      return null;
+    }
+
+    if (!trimmed) {
       throw new DomainException(
-        'Somente item de peça pode referenciar uma peça',
+        'Item de peça deve referenciar a peça do estoque',
       );
     }
 

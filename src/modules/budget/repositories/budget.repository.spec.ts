@@ -116,6 +116,7 @@ describe('BudgetRepository', () => {
   it('persists generated-only changes only while the stored status is GENERATED', async () => {
     const budget = makeBudget();
     budget.addItem({
+      partId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -137,6 +138,7 @@ describe('BudgetRepository', () => {
         ...row.items,
         {
           id: budget.getItems()[1].getId(),
+          partId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
           description: 'Oil filter',
           type: BudgetItemType.PART,
           quantity: 1,

@@ -8,6 +8,7 @@ import {
 } from '../entities/budget.entity';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
+import { PartController } from '../../stock/controllers/part.controller';
 import { Client } from '../../client/entities/client.entity';
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
@@ -19,6 +20,8 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 type MockedRepository = {
   [K in keyof BudgetRepository]: jest.Mock;
 };
+
+const PART_ID = 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
 const makeBudget = () =>
   Budget.create({
@@ -43,6 +46,7 @@ describe('BudgetService', () => {
     cancel: jest.Mock;
   };
   let serviceCatalogController: { findById: jest.Mock };
+  let partController: { findById: jest.Mock };
   let clientRepository: { findById: jest.Mock };
   let notifications: { enqueue: jest.Mock };
   let config: { get: jest.Mock };
@@ -64,6 +68,7 @@ describe('BudgetService', () => {
       cancel: jest.fn(),
     };
     serviceCatalogController = { findById: jest.fn() };
+    partController = { findById: jest.fn() };
     clientRepository = { findById: jest.fn() };
     notifications = { enqueue: jest.fn() };
     config = { get: jest.fn() };
@@ -80,6 +85,7 @@ describe('BudgetService', () => {
           provide: ServiceController,
           useValue: serviceCatalogController,
         },
+        { provide: PartController, useValue: partController },
         { provide: ClientRepository, useValue: clientRepository },
         { provide: NotificationService, useValue: notifications },
         { provide: ConfigService, useValue: config },
@@ -182,6 +188,7 @@ describe('BudgetService', () => {
       serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
+          partId: PART_ID,
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 1,
@@ -208,6 +215,7 @@ describe('BudgetService', () => {
       serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
+          partId: PART_ID,
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 1,
@@ -232,6 +240,7 @@ describe('BudgetService', () => {
         serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
+            partId: PART_ID,
             description: 'Brake pad',
             type: BudgetItemType.PART,
             quantity: 1,
@@ -261,6 +270,7 @@ describe('BudgetService', () => {
       serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
+          partId: PART_ID,
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 1,
@@ -288,6 +298,7 @@ describe('BudgetService', () => {
       serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
+          partId: PART_ID,
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 1,
@@ -316,6 +327,7 @@ describe('BudgetService', () => {
         serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
+            partId: PART_ID,
             description: 'Brake pad',
             type: BudgetItemType.PART,
             quantity: 1,
@@ -333,6 +345,7 @@ describe('BudgetService', () => {
     repository.findById.mockResolvedValue(budget);
 
     const result = await service.addItem(budget.getId(), {
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -350,6 +363,7 @@ describe('BudgetService', () => {
   it('removes an item from a generated budget and persists the new total', async () => {
     const budget = makeBudget();
     budget.addItem({
+      partId: PART_ID,
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
@@ -418,6 +432,7 @@ describe('BudgetService', () => {
       version: 1,
       items: [
         {
+          partId: PART_ID,
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 2,
@@ -524,6 +539,7 @@ describe('BudgetService', () => {
 
     await expect(
       service.addItem(budget.getId(), {
+        partId: PART_ID,
         description: 'Oil filter',
         type: BudgetItemType.PART,
         quantity: 1,
@@ -569,7 +585,7 @@ describe('BudgetService', () => {
         version: 1,
         items: [
           {
-            partId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+            partId: PART_ID,
             description: 'Oil filter',
             type: BudgetItemType.PART,
             quantity: 1,
@@ -807,6 +823,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       findLastVersionByServiceOrderId: jest.fn().mockResolvedValue(0),
     };
     const serviceCatalogController = { findById: jest.fn() };
+    const partController = { findById: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -821,6 +838,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
           },
         },
         { provide: ServiceController, useValue: serviceCatalogController },
+        { provide: PartController, useValue: partController },
         { provide: ClientRepository, useValue: { findById: jest.fn() } },
         { provide: NotificationService, useValue: { enqueue: jest.fn() } },
         { provide: ConfigService, useValue: { get: jest.fn() } },
@@ -830,6 +848,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
     return {
       service: module.get<BudgetService>(BudgetService),
       serviceCatalogController,
+      partController,
       repository,
     };
   }

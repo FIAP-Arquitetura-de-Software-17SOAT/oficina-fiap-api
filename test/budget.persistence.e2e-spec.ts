@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -20,6 +21,9 @@ describeDatabase('Budget persistence (e2e)', () => {
   let clientId = '';
   let vehicleId = '';
   let serviceOrderId = '';
+  // Item de peça só existe apontando para uma peça de verdade, então o cenário
+  // cadastra uma no estoque antes de orçar.
+  let partId = '';
 
   // Documento é validado por dígito verificador, então não dá para gerar ao
   // acaso; e-mail e placa variam para não colidir entre execuções.
@@ -96,6 +100,23 @@ describeDatabase('Budget persistence (e2e)', () => {
       .patch(`/api/v1/service-orders/${serviceOrderId}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
+
+    // Direto no Prisma: `POST /parts` tem guard próprio de controller, que o
+    // `allowAuthenticated` não alcança, e aqui a peça é só cenário.
+    const part = await prisma.part.create({
+      data: {
+        id: randomUUID(),
+        code: `OIL-FILTER-${unique}`,
+        name: 'Filtro de óleo',
+        type: 'PART',
+        unit: 'UNIT',
+        unitPriceCents: 4000,
+        quantity: 10,
+        minimumQuantity: 1,
+      },
+      select: { id: true },
+    });
+    partId = part.id;
   });
 
   afterAll(async () => {
@@ -105,6 +126,7 @@ describeDatabase('Budget persistence (e2e)', () => {
         await prisma.serviceOrder.deleteMany({ where: { id: serviceOrderId } });
         await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
         await prisma.client.deleteMany({ where: { id: clientId } });
+        await prisma.part.deleteMany({ where: { id: partId } });
       } catch {
         // The test should report the original database connection/setup failure.
       }
@@ -145,6 +167,7 @@ describeDatabase('Budget persistence (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${budgetId}/items`)
       .send({
+        partId,
         description: 'Oil filter',
         type: 'PART',
         quantity: 1,
@@ -206,6 +229,8 @@ describeDatabase('Budget persistence (e2e)', () => {
         expect(body.status).toBe('AWAITING_PARTS');
       });
 
+    // O recorte por OS precisa ser real: o suite roda contra o banco de verdade,
+    // então sem filtro esta asserção de tamanho só passaria em banco vazio.
     await request(http)
       .get(`/api/v1/budgets?serviceOrderId=${serviceOrderId}`)
       .expect(200)
