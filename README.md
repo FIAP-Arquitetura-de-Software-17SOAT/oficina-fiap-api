@@ -82,8 +82,15 @@ npm install
 docker compose up -d db
 npx prisma migrate dev
 npx prisma db seed
+npm run seed:demo
 npm run start:dev
 ```
+
+`npm run seed:demo` e opcional e inclui dados demonstrativos para consulta no
+Swagger: clientes, veiculos, catalogo de servicos, pecas, ordens de servico em
+todos os estados, orcamentos, pedido de compra e cobrancas. O comando e
+idempotente, nao remove ou altera dados existentes e recusa execucao com
+`NODE_ENV=production`. Ele nao e executado pelo Docker Compose.
 
 Nesse modo, defina `DATABASE_URL` no `.env` com a mesma senha de `POSTGRES_PASSWORD`, por exemplo:
 
