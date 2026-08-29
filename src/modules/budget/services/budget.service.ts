@@ -15,6 +15,7 @@ import {
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
@@ -34,10 +35,13 @@ export class BudgetService {
     private readonly clientRepository: ClientRepository,
     private readonly notifications: NotificationService,
     private readonly config: ConfigService,
+    private readonly serviceCatalogController: ServiceController,
   ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
     const serviceOrderId = this.normalizeServiceOrderId(dto.serviceOrderId);
+
+    await this.assertReferencedServicesExist(dto.items);
 
     const budget = await this.createWithNextAvailableVersion(
       serviceOrderId,
@@ -58,6 +62,8 @@ export class BudgetService {
   }
 
   async addItem(id: string, dto: CreateBudgetItemDto): Promise<Budget> {
+    await this.assertReferencedServicesExist([dto]);
+
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.addItem(dto);
@@ -267,6 +273,30 @@ export class BudgetService {
     }
 
     return typeof fields === 'string' ? [fields] : [];
+  }
+
+  /**
+   * O item guarda o preço como cópia, mas o `serviceId` precisa apontar para um
+   * serviço que exista de verdade — senão o orçamento vira referência quebrada e
+   * o erro só apareceria como violação de chave estrangeira, em 500.
+   *
+   * A consulta passa pelo controller do catálogo, e não pelo repositório dele:
+   * é a convenção de integração entre módulos do projeto.
+   */
+  private async assertReferencedServicesExist(
+    items: CreateBudgetItemDto[] = [],
+  ): Promise<void> {
+    const serviceIds = [
+      ...new Set(
+        items
+          .map((item) => item.serviceId?.trim())
+          .filter((serviceId): serviceId is string => Boolean(serviceId)),
+      ),
+    ];
+
+    for (const serviceId of serviceIds) {
+      await this.serviceCatalogController.findById(serviceId);
+    }
   }
 
   private normalizeServiceOrderId(serviceOrderId: string): string {

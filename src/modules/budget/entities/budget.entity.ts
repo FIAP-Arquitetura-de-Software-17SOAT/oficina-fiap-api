@@ -21,6 +21,10 @@ export interface BudgetItemProps {
   // `referenciaId` do modelo de dominio: a peca que o item representa. Nulo em
   // itens de servico, que nao saem do estoque.
   partId?: string | null;
+  // O par do partId para itens de servico: aponta para o servico do catalogo.
+  // Descricao e preco continuam sendo copia — reajuste no catalogo nao muda
+  // orcamento ja acordado.
+  serviceId?: string | null;
   description: string;
   type: BudgetItemType;
   quantity: number;
@@ -45,6 +49,7 @@ export interface BudgetProps extends CreateBudgetProps {
 export class BudgetItem {
   private readonly id: string;
   private readonly partId: string | null;
+  private readonly serviceId: string | null;
   private readonly description: string;
   private readonly type: BudgetItemType;
   private readonly quantity: number;
@@ -53,6 +58,7 @@ export class BudgetItem {
   constructor(props: BudgetItemProps) {
     this.id = props.id ?? randomUUID();
     this.partId = this.validatePartId(props.partId, props.type);
+    this.serviceId = this.validateServiceId(props.serviceId, props.type);
     this.description = this.validateDescription(props.description);
     this.type = props.type;
     this.quantity = this.validateDecimalAmount(props.quantity, 'Quantity');
@@ -66,6 +72,10 @@ export class BudgetItem {
 
   getPartId(): string | null {
     return this.partId;
+  }
+
+  getServiceId(): string | null {
+    return this.serviceId;
   }
 
   getDescription(): string {
@@ -104,6 +114,21 @@ export class BudgetItem {
 
     if (type !== BudgetItemType.PART) {
       throw new DomainException('Only part items can reference a part');
+    }
+
+    return trimmed;
+  }
+
+  private validateServiceId(
+    serviceId: string | null | undefined,
+    type: BudgetItemType,
+  ): string | null {
+    const trimmed = (serviceId ?? '').trim();
+
+    if (!trimmed) return null;
+
+    if (type !== BudgetItemType.SERVICE) {
+      throw new DomainException('Only service items can reference a service');
     }
 
     return trimmed;

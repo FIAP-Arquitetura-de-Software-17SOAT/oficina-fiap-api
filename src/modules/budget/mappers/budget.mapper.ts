@@ -19,6 +19,7 @@ type BudgetWithItems = {
   items: Array<{
     id: string;
     partId: string | null;
+    serviceId: string | null;
     description: string;
     type: BudgetItemType;
     quantity: unknown;
@@ -42,6 +43,7 @@ export class BudgetMapper {
       items: budget.getItems().map((item) => ({
         id: item.getId(),
         partId: item.getPartId(),
+        serviceId: item.getServiceId(),
         description: item.getDescription(),
         type: item.getType(),
         quantity: item.getQuantity(),
@@ -87,6 +89,7 @@ export class BudgetMapper {
     return {
       id: item.getId(),
       partId: item.getPartId(),
+      serviceId: item.getServiceId(),
       description: item.getDescription(),
       type: item.getType(),
       quantity: item.getQuantity(),
@@ -108,6 +111,7 @@ export class BudgetMapper {
       items: record.items.map((item) => ({
         id: item.id,
         partId: item.partId,
+        serviceId: item.serviceId,
         description: item.description,
         type: item.type,
         quantity: Number(item.quantity),

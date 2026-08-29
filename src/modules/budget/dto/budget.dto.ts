@@ -37,6 +37,17 @@ export class CreateBudgetItemDto {
   @IsUUID()
   partId?: string;
 
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Servico do catalogo referenciado pelo item. So e aceito em itens do ' +
+      'tipo SERVICE. Descricao e preco continuam sendo copia do momento do ' +
+      'orcamento.',
+  })
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string;
+
   @ApiProperty({ example: 'Oil change' })
   @Transform(trim)
   @IsString()
@@ -81,6 +92,9 @@ export class BudgetItemResponseDto {
 
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   partId: string | null;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  serviceId: string | null;
 
   @ApiProperty({ example: 'Oil change' })
   description: string;

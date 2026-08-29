@@ -291,3 +291,48 @@ describe('Budget', () => {
     ).toThrow(DomainException);
   });
 });
+
+describe('BudgetItem.serviceId', () => {
+  const item = (overrides: Record<string, unknown> = {}) => ({
+    description: 'Oil change',
+    type: BudgetItemType.SERVICE,
+    quantity: 1,
+    unitPrice: 120,
+    ...overrides,
+  });
+
+  it('guarda o serviço referenciado em item de serviço', () => {
+    const budget = Budget.create({
+      serviceOrderId: 'service-123',
+      version: 1,
+      items: [item({ serviceId: '  service-catalog-1  ' })],
+    });
+
+    expect(budget.getItems()[0].getServiceId()).toBe('service-catalog-1');
+  });
+
+  it.each([[undefined], [null], ['   ']])(
+    'trata serviceId %p como ausente',
+    (serviceId) => {
+      const budget = Budget.create({
+        serviceOrderId: 'service-123',
+        version: 1,
+        items: [item({ serviceId })],
+      });
+
+      expect(budget.getItems()[0].getServiceId()).toBeNull();
+    },
+  );
+
+  it('recusa item de peça apontando para serviço do catálogo', () => {
+    expect(() =>
+      Budget.create({
+        serviceOrderId: 'service-123',
+        version: 1,
+        items: [
+          item({ type: BudgetItemType.PART, serviceId: 'service-catalog-1' }),
+        ],
+      }),
+    ).toThrow('Only service items can reference a service');
+  });
+});

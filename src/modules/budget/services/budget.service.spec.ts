@@ -7,6 +7,7 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { Client } from '../../client/entities/client.entity';
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
@@ -40,6 +41,7 @@ describe('BudgetService', () => {
     awaitParts: jest.Mock;
     cancel: jest.Mock;
   };
+  let serviceCatalogController: { findById: jest.Mock };
   let clientRepository: { findById: jest.Mock };
   let notifications: { enqueue: jest.Mock };
   let config: { get: jest.Mock };
@@ -60,6 +62,7 @@ describe('BudgetService', () => {
       awaitParts: jest.fn(),
       cancel: jest.fn(),
     };
+    serviceCatalogController = { findById: jest.fn() };
     clientRepository = { findById: jest.fn() };
     notifications = { enqueue: jest.fn() };
     config = { get: jest.fn() };
@@ -71,6 +74,10 @@ describe('BudgetService', () => {
         {
           provide: ServiceOrderController,
           useValue: serviceOrderController,
+        },
+        {
+          provide: ServiceController,
+          useValue: serviceCatalogController,
         },
         { provide: ClientRepository, useValue: clientRepository },
         { provide: NotificationService, useValue: notifications },
@@ -642,4 +649,149 @@ describe('BudgetService', () => {
       );
     });
   });
+});
+
+describe('BudgetService — referência ao catálogo de serviços', () => {
+  it('valida o serviço pelo controller do catálogo antes de criar', async () => {
+    const { service, serviceCatalogController } = await makeSubject();
+
+    await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          serviceId: 'catalog-1',
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(serviceCatalogController.findById).toHaveBeenCalledWith('catalog-1');
+  });
+
+  it('consulta cada serviço uma única vez, mesmo repetido', async () => {
+    const { service, serviceCatalogController } = await makeSubject();
+
+    await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          serviceId: 'catalog-1',
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+        {
+          serviceId: 'catalog-1',
+          description: 'Oil change (2)',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(serviceCatalogController.findById).toHaveBeenCalledTimes(1);
+  });
+
+  it('não consulta o catálogo quando nenhum item referencia serviço', async () => {
+    const { service, serviceCatalogController } = await makeSubject();
+
+    await service.create({
+      serviceOrderId: 'service-123',
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 120,
+        },
+      ],
+    });
+
+    expect(serviceCatalogController.findById).not.toHaveBeenCalled();
+  });
+
+  it('propaga o 404 do catálogo quando o serviço não existe', async () => {
+    const { service, serviceCatalogController, repository } =
+      await makeSubject();
+    serviceCatalogController.findById.mockRejectedValue(
+      new NotFoundException('Service not found'),
+    );
+
+    await expect(
+      service.create({
+        serviceOrderId: 'service-123',
+        items: [
+          {
+            serviceId: 'missing',
+            description: 'Oil change',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 120,
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('valida também ao adicionar item a um orçamento existente', async () => {
+    const { service, serviceCatalogController, repository } =
+      await makeSubject();
+    const budget = makeBudget();
+    repository.findById.mockResolvedValue(budget);
+    repository.update.mockResolvedValue(budget);
+
+    await service.addItem(budget.getId(), {
+      serviceId: 'catalog-1',
+      description: 'Wheel alignment',
+      type: BudgetItemType.SERVICE,
+      quantity: 1,
+      unitPrice: 80,
+    });
+
+    expect(serviceCatalogController.findById).toHaveBeenCalledWith('catalog-1');
+  });
+
+  async function makeSubject() {
+    const repository = {
+      create: jest.fn((budget: Budget) => Promise.resolve(budget)),
+      findById: jest.fn(),
+      findByServiceOrderId: jest.fn().mockResolvedValue([]),
+      findAll: jest.fn(),
+      update: jest.fn((budget: Budget) => Promise.resolve(budget)),
+      updateGenerated: jest.fn((budget: Budget) => Promise.resolve(budget)),
+      findLastVersionByServiceOrderId: jest.fn().mockResolvedValue(0),
+    };
+    const serviceCatalogController = { findById: jest.fn() };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BudgetService,
+        { provide: BudgetRepository, useValue: repository },
+        {
+          provide: ServiceOrderController,
+          useValue: {
+            awaitApproval: jest.fn().mockResolvedValue({ clientId: 'c-1' }),
+            awaitParts: jest.fn(),
+            cancel: jest.fn(),
+          },
+        },
+        { provide: ServiceController, useValue: serviceCatalogController },
+        { provide: ClientRepository, useValue: { findById: jest.fn() } },
+        { provide: NotificationService, useValue: { enqueue: jest.fn() } },
+        { provide: ConfigService, useValue: { get: jest.fn() } },
+      ],
+    }).compile();
+
+    return {
+      service: module.get<BudgetService>(BudgetService),
+      serviceCatalogController,
+      repository,
+    };
+  }
 });
