@@ -19,6 +19,11 @@ export function configureApp(app: INestApplication): INestApplication {
 
   app.setGlobalPrefix(API_PREFIX);
 
+  app.enableCors({
+    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
