@@ -168,4 +168,29 @@ describe('Prisma schema contracts', () => {
     expect(migration).toContain('CREATE TABLE "billing_checkout_session"');
     expect(migration).toContain('"billing_budgetId_fkey"');
   });
+
+  it('impede persistir codigo de peca que o dominio nao consegue reconstruir', () => {
+    const migrationDirectory = readdirSync(
+      join(__dirname, '../prisma/migrations'),
+    ).find((directory) => directory.endsWith('_enforce_part_code_format'));
+
+    expect(migrationDirectory).toBeDefined();
+
+    const migration = readFileSync(
+      join(
+        __dirname,
+        '../prisma/migrations',
+        migrationDirectory as string,
+        'migration.sql',
+      ),
+      { encoding: 'utf8' },
+    );
+
+    // A carga existente e conferida antes: um ALTER TABLE que falha no meio da
+    // migration e pior de diagnosticar do que a mensagem explicita.
+    expect(migration).toContain('Cannot enforce part code format');
+    expect(migration).toContain('btrim("code") !~');
+    expect(migration).toContain('CONSTRAINT "part_code_format_check"');
+    expect(migration).toContain(`btrim("code") ~ '^[A-Za-z0-9._-]+$'`);
+  });
 });

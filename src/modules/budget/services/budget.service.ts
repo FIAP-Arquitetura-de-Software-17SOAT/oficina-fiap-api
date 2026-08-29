@@ -17,6 +17,7 @@ import {
   RefuseBudgetDto,
 } from '../dto/budget.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { PartController } from '../../stock/controllers/part.controller';
 import { ClientRepository } from '../../client/repositories/client.repository';
@@ -33,6 +34,11 @@ import { BudgetRepository } from '../repositories/budget.repository';
 @Injectable()
 export class BudgetService {
   private static readonly MAX_VERSION_ALLOCATION_ATTEMPTS = 3;
+  private static readonly CLOSED_SERVICE_ORDER_STATUSES: string[] = [
+    ServiceOrderStatus.CANCELLED,
+    ServiceOrderStatus.COMPLETED,
+    ServiceOrderStatus.DELIVERED,
+  ];
 
   // A integracao entre modulos passa pelo controller do modulo alvo, nunca pelo
   // service ou repositorio dele. Guards do Nest so rodam em requisicao HTTP, entao
@@ -54,6 +60,7 @@ export class BudgetService {
     const serviceOrderId = this.normalizeServiceOrderId(dto.serviceOrderId);
 
     await this.assertReferencedCatalogsExist(dto.items);
+    await this.assertServiceOrderAcceptsNewBudget(serviceOrderId);
 
     const budget = await this.createWithNextAvailableVersion(
       serviceOrderId,
@@ -213,6 +220,30 @@ export class BudgetService {
     throw new ConflictException(
       'Não foi possível alocar a versão do orçamento',
     );
+  }
+
+  /**
+   * Recusar orçamento não encerra a OS (ver `refuse`), então a criação de uma
+   * nova versão continua liberada durante toda a negociação. O que não faz
+   * sentido é orçar um atendimento que já terminou: OS cancelada, concluída ou
+   * entregue não recebe proposta nova.
+   *
+   * Sem esta conferência a versão 2 era gravada em silêncio — só a versão 1
+   * passa por `awaitApproval`, que é quem barraria a transição inválida.
+   */
+  private async assertServiceOrderAcceptsNewBudget(
+    serviceOrderId: string,
+  ): Promise<void> {
+    const serviceOrder =
+      await this.serviceOrderController.findById(serviceOrderId);
+
+    if (
+      BudgetService.CLOSED_SERVICE_ORDER_STATUSES.includes(serviceOrder.status)
+    ) {
+      throw new ConflictException(
+        `Ordem de serviço ${serviceOrder.status} não aceita novo orçamento`,
+      );
+    }
   }
 
   private async persistGeneratedChange(
