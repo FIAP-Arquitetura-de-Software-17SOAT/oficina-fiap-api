@@ -69,7 +69,7 @@ export class ServiceOrderController {
     return this.serviceOrderService.getAverageExecutionTime();
   }
 
-  @Get('client/:clientId')
+  @Get('clients/:clientId')
   @ApiOperation({
     summary: 'Track a customer service orders',
     description:
