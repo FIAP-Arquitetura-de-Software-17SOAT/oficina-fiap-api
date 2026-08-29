@@ -282,7 +282,7 @@ export async function runDemoSeed(
           description,
           status,
           ...(index >= 1 && {
-            mechanicId: '70000000-0000-4000-8000-000000000001',
+            mechanicId: `71000000-0000-4000-8000-00000000000${index}`,
             assignedAt: new Date('2026-01-10T09:00:00.000Z'),
           }),
           ...(index === 4 && {

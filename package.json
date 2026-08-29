@@ -21,7 +21,7 @@
     "test:e2e": "cross-env LOG_LEVEL=silent jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:db": "cross-env NODE_OPTIONS=--experimental-vm-modules RUN_DATABASE_TESTS=true LOG_LEVEL=silent jest --config ./test/jest-e2e.json --runInBand",
     "test:seed": "jest --rootDir . prisma/seed.spec.ts prisma/seed-demo.spec.ts --runInBand",
-    "seed:demo": "ts-node prisma/seed-demo.ts"
+    "seed:demo": "ts-node -r dotenv/config prisma/seed-demo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

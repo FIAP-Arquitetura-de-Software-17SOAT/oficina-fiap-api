@@ -12,7 +12,15 @@ describe('runDemoSeed', () => {
   });
 
   it('creates an idempotent overview of the workshop workflow', async () => {
-    const records: Record<string, Array<Record<string, unknown>>> = {};
+    const records: Record<string, Array<Record<string, unknown>>> = {
+      serviceOrder: [
+        {
+          id: '60000000-0000-4000-8000-000000000003',
+          status: 'AWAITING_APPROVAL',
+          mechanicId: '70000000-0000-4000-8000-000000000001',
+        },
+      ],
+    };
     const prisma = Object.fromEntries(
       [
         'client',
@@ -49,16 +57,32 @@ describe('runDemoSeed', () => {
 
     expect(records.client).toHaveLength(8);
     expect(records.serviceOrder).toHaveLength(8);
-    expect(records.serviceOrder.map((order) => order.status)).toEqual([
-      'RECEIVED',
-      'IN_DIAGNOSIS',
-      'AWAITING_APPROVAL',
-      'AWAITING_PARTS',
-      'IN_PROGRESS',
-      'COMPLETED',
-      'DELIVERED',
-      'CANCELLED',
-    ]);
+    expect(records.serviceOrder.map((order) => order.status)).toEqual(
+      expect.arrayContaining([
+        'RECEIVED',
+        'IN_DIAGNOSIS',
+        'AWAITING_APPROVAL',
+        'AWAITING_PARTS',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'DELIVERED',
+        'CANCELLED',
+      ]),
+    );
+    expect(
+      new Set(
+        records.serviceOrder
+          .filter((order) =>
+            [
+              'IN_DIAGNOSIS',
+              'AWAITING_APPROVAL',
+              'AWAITING_PARTS',
+              'IN_PROGRESS',
+            ].includes(order.status as string),
+          )
+          .map((order) => order.mechanicId),
+      ).size,
+    ).toBe(4);
     expect(records.purchaseOrder).toHaveLength(1);
     expect(records.billing).toHaveLength(2);
     expect(records.notification).toBeUndefined();
