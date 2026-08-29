@@ -77,7 +77,7 @@ export class BillingController {
   @Get(':id')
   @ApiOperation({ summary: 'Busca uma cobranca por id' })
   @ApiOkResponse({ type: BillingResponseDto })
-  @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiNotFoundResponse({ description: 'Cobrança não encontrada' })
   @ApiBearerAuth()
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async findById(
@@ -96,10 +96,14 @@ export class BillingController {
     @Headers('stripe-signature') signature: string,
   ): Promise<void> {
     if (!request.rawBody) {
-      throw new BadRequestException('Raw Stripe webhook body is required');
+      throw new BadRequestException(
+        'O corpo bruto do webhook do Stripe é obrigatório',
+      );
     }
     if (!signature?.trim()) {
-      throw new BadRequestException('Stripe signature header is required');
+      throw new BadRequestException(
+        'O header de assinatura do Stripe é obrigatório',
+      );
     }
     await this.billingService.handlePaymentWebhook(request.rawBody, signature);
   }
@@ -108,7 +112,7 @@ export class BillingController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Expira uma cobranca aguardando pagamento' })
   @ApiOkResponse({ type: BillingResponseDto })
-  @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiNotFoundResponse({ description: 'Cobrança não encontrada' })
   @ApiBearerAuth()
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async expire(
@@ -122,10 +126,10 @@ export class BillingController {
   @ApiOperation({ summary: 'Renova link de pagamento vencido com multa' })
   @ApiOkResponse({ type: BillingResponseDto })
   @ApiBadRequestResponse({
-    description: 'Billing payment link has not expired yet',
+    description: 'O link de pagamento da cobrança ainda não expirou',
   })
-  @ApiConflictResponse({ description: 'Paid billing is terminal' })
-  @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiConflictResponse({ description: 'Cobrança paga é terminal' })
+  @ApiNotFoundResponse({ description: 'Cobrança não encontrada' })
   @ApiBearerAuth()
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async renewPaymentLink(
@@ -140,8 +144,10 @@ export class BillingController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Entrega a ordem de servico apos quitacao' })
   @ApiNoContentResponse({ description: 'Service order delivered' })
-  @ApiConflictResponse({ description: 'Billing must be paid before delivery' })
-  @ApiNotFoundResponse({ description: 'Billing not found' })
+  @ApiConflictResponse({
+    description: 'A cobrança precisa estar paga para entregar a OS',
+  })
+  @ApiNotFoundResponse({ description: 'Cobrança não encontrada' })
   @ApiBearerAuth()
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   async deliverServiceOrder(

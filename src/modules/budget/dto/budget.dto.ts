@@ -19,10 +19,14 @@ const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
 
 export class FindBudgetsByServiceOrderParamsDto {
-  @ApiProperty({ example: 'service-123' })
+  @ApiProperty({
+    format: 'uuid',
+    example: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+  })
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   serviceOrderId: string;
 }
 
@@ -30,8 +34,8 @@ export class CreateBudgetItemDto {
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'Peca referenciada pelo item. Obrigatorio para itens do tipo PART serem ' +
-      'solicitados ao estoque quando o orcamento for aceito.',
+      'Peça referenciada pelo item. Quando informada em item PART, permite ' +
+      'vincular o orçamento a uma peça do estoque.',
   })
   @IsOptional()
   @IsUUID()
@@ -40,15 +44,15 @@ export class CreateBudgetItemDto {
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'Servico do catalogo referenciado pelo item. So e aceito em itens do ' +
-      'tipo SERVICE. Descricao e preco continuam sendo copia do momento do ' +
-      'orcamento.',
+      'Serviço do catálogo referenciado pelo item. Só é aceito em itens do ' +
+      'tipo SERVICE. Descrição e preço continuam sendo cópia do momento do ' +
+      'orçamento.',
   })
   @IsOptional()
   @IsUUID()
   serviceId?: string;
 
-  @ApiProperty({ example: 'Oil change' })
+  @ApiProperty({ example: 'Troca de óleo' })
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
@@ -72,10 +76,14 @@ export class CreateBudgetItemDto {
 }
 
 export class CreateBudgetDto {
-  @ApiProperty({ example: 'service-123' })
+  @ApiProperty({
+    format: 'uuid',
+    example: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+  })
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   serviceOrderId: string;
 
   @ApiProperty({ type: [CreateBudgetItemDto] })
@@ -96,7 +104,7 @@ export class BudgetItemResponseDto {
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   serviceId: string | null;
 
-  @ApiProperty({ example: 'Oil change' })
+  @ApiProperty({ example: 'Troca de óleo' })
   description: string;
 
   @ApiProperty({ enum: BudgetItemType, example: BudgetItemType.SERVICE })
@@ -121,7 +129,7 @@ export class BudgetTotalResponseDto {
 }
 
 export class RefuseBudgetDto {
-  @ApiProperty({ example: 'Customer found it expensive' })
+  @ApiProperty({ example: 'Cliente achou caro' })
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
@@ -132,7 +140,10 @@ export class BudgetResponseDto {
   @ApiProperty({ format: 'uuid' })
   id: string;
 
-  @ApiProperty({ example: 'service-123' })
+  @ApiProperty({
+    format: 'uuid',
+    example: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+  })
   serviceOrderId: string;
 
   @ApiProperty({ example: 1 })
@@ -145,7 +156,7 @@ export class BudgetResponseDto {
   totalAmount: number;
 
   @ApiPropertyOptional({
-    example: 'Customer found it expensive',
+    example: 'Cliente achou caro',
     nullable: true,
   })
   refusalReason: string | null;

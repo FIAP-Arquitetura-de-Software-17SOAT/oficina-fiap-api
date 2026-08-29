@@ -20,7 +20,7 @@ export interface ParsePaymentWebhookInput {
 
 export class InvalidPaymentWebhookSignatureError extends Error {
   constructor() {
-    super('Invalid Stripe webhook signature');
+    super('Assinatura do webhook do Stripe inválida');
     this.name = InvalidPaymentWebhookSignatureError.name;
   }
 }

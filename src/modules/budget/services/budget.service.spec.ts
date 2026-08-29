@@ -14,6 +14,7 @@ import { NotificationType } from '../../notification/enums/notification-type.enu
 import { NotificationService } from '../../notification/services/notification.service';
 import { BudgetRepository } from '../repositories/budget.repository';
 import { BudgetService } from './budget.service';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 type MockedRepository = {
   [K in keyof BudgetRepository]: jest.Mock;
@@ -21,14 +22,14 @@ type MockedRepository = {
 
 const makeBudget = () =>
   Budget.create({
-    serviceOrderId: 'service-123',
+    serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     version: 1,
     items: [
       {
         description: 'Oil change',
         type: BudgetItemType.SERVICE,
         quantity: 1,
-        unitPrice: 120,
+        unitPrice: Money.fromDecimal(120),
       },
     ],
   });
@@ -106,7 +107,7 @@ describe('BudgetService', () => {
     repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
 
     const result = await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Oil change',
@@ -135,7 +136,7 @@ describe('BudgetService', () => {
     clientRepository.findById.mockResolvedValue(client);
 
     await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Oil change',
@@ -160,7 +161,7 @@ describe('BudgetService', () => {
     repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
 
     const result = await service.create({
-      serviceOrderId: ' service-123 ',
+      serviceOrderId: ' 4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b ',
       items: [
         {
           description: 'Oil change',
@@ -172,9 +173,11 @@ describe('BudgetService', () => {
     });
 
     expect(repository.findLastVersionByServiceOrderId).toHaveBeenCalledWith(
-      'service-123',
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
-    expect(result.getServiceOrderId()).toBe('service-123');
+    expect(result.getServiceOrderId()).toBe(
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+    );
     expect(result.getVersion()).toBe(2);
   });
 
@@ -187,7 +190,7 @@ describe('BudgetService', () => {
     });
 
     const result = await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Brake pad',
@@ -240,7 +243,7 @@ describe('BudgetService', () => {
       .mockImplementation((budget: Budget) => budget);
 
     const result = await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Brake pad',
@@ -264,7 +267,7 @@ describe('BudgetService', () => {
 
     await expect(
       service.create({
-        serviceOrderId: 'service-123',
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
             description: 'Brake pad',
@@ -293,7 +296,7 @@ describe('BudgetService', () => {
       .mockImplementation((budget: Budget) => budget);
 
     const result = await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Brake pad',
@@ -320,7 +323,7 @@ describe('BudgetService', () => {
       .mockImplementation((budget: Budget) => budget);
 
     const result = await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Brake pad',
@@ -348,7 +351,7 @@ describe('BudgetService', () => {
 
     await expect(
       service.create({
-        serviceOrderId: 'service-123',
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
             description: 'Brake pad',
@@ -375,7 +378,7 @@ describe('BudgetService', () => {
     });
 
     expect(result.getItems()).toHaveLength(2);
-    expect(result.getTotalAmount()).toBe(160);
+    expect(result.getTotal().value).toBe(160);
     expect(repository.updateGenerated).toHaveBeenCalledWith(
       result,
       expectedUpdatedAt,
@@ -388,7 +391,7 @@ describe('BudgetService', () => {
       description: 'Oil filter',
       type: BudgetItemType.PART,
       quantity: 1,
-      unitPrice: 40,
+      unitPrice: Money.fromDecimal(40),
     });
     repository.findById.mockResolvedValue(budget);
 
@@ -396,7 +399,7 @@ describe('BudgetService', () => {
     const result = await service.removeItem(budget.getId(), itemId);
 
     expect(result.getItems()).toHaveLength(1);
-    expect(result.getTotalAmount()).toBe(120);
+    expect(result.getTotal().value).toBe(120);
     expect(repository.updateGenerated).toHaveBeenCalledWith(
       result,
       expect.any(Date),
@@ -409,7 +412,7 @@ describe('BudgetService', () => {
       description: 'Oil change',
       type: BudgetItemType.SERVICE,
       quantity: 1,
-      unitPrice: 120,
+      unitPrice: Money.fromDecimal(120),
     });
     repository.findById.mockResolvedValue(budget);
 
@@ -432,7 +435,7 @@ describe('BudgetService', () => {
 
   it('accepts a budget waiting for approval and persists terminal status', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     const expectedUpdatedAt = budget.getUpdatedAt();
     repository.findById.mockResolvedValue(budget);
 
@@ -449,24 +452,24 @@ describe('BudgetService', () => {
 
   it('queues accepted parts to the stock mailbox after the service order awaits parts', async () => {
     const budget = Budget.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       version: 1,
       items: [
         {
           description: 'Brake pad',
           type: BudgetItemType.PART,
           quantity: 2,
-          unitPrice: 80,
+          unitPrice: Money.fromDecimal(80),
         },
         {
           description: 'Brake replacement',
           type: BudgetItemType.SERVICE,
           quantity: 1,
-          unitPrice: 120,
+          unitPrice: Money.fromDecimal(120),
         },
       ],
     });
-    budget.sendToCustomer();
+    budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
     serviceOrderController.awaitParts.mockResolvedValue(undefined);
     config.get.mockReturnValue('estoque@example.com');
@@ -477,7 +480,9 @@ describe('BudgetService', () => {
       expect.objectContaining({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         to: 'estoque@example.com',
-        subject: expect.stringContaining('service-123'),
+        subject: expect.stringContaining(
+          '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+        ),
         text: expect.stringContaining('Brake pad'),
         html: expect.stringContaining('Brake pad'),
       }),
@@ -492,20 +497,20 @@ describe('BudgetService', () => {
 
   it('does not block an accepted budget when the stock mailbox is not a valid email', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
     config.get.mockReturnValue('not-an-email');
 
     await expect(service.accept(budget.getId())).resolves.toBe(budget);
     expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
-      'service-123',
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
     expect(notifications.enqueue).not.toHaveBeenCalled();
   });
 
   it('queues a stock request with no items when an accepted budget has no parts', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
     config.get.mockReturnValue('estoque@example.com');
 
@@ -521,20 +526,20 @@ describe('BudgetService', () => {
 
   it('does not block an accepted budget when queueing the stock request fails', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
     config.get.mockReturnValue('estoque@example.com');
     notifications.enqueue.mockRejectedValue(new Error('queue unavailable'));
 
     await expect(service.accept(budget.getId())).resolves.toBe(budget);
     expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
-      'service-123',
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
   });
 
   it('refuses a budget waiting for approval with a required reason', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
 
     const result = await service.refuse(budget.getId(), {
@@ -567,7 +572,7 @@ describe('BudgetService', () => {
 
   it('rejects a waiting-approval decision when its conditional persistence is stale', async () => {
     const budget = makeBudget();
-    budget.sendToCustomer();
+    budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
     repository.updateWaitingApproval.mockResolvedValue(null);
 
@@ -580,7 +585,7 @@ describe('BudgetService', () => {
     repository.findById.mockResolvedValue(null);
 
     await expect(service.findById('missing')).rejects.toThrow(
-      new NotFoundException('Budget not found'),
+      new NotFoundException('Orçamento não encontrado'),
     );
   });
 
@@ -588,15 +593,17 @@ describe('BudgetService', () => {
     const budgets = [makeBudget()];
     repository.findByServiceOrderId.mockResolvedValue(budgets);
 
-    await expect(service.findByServiceOrderId(' service-123 ')).resolves.toBe(
-      budgets,
+    await expect(
+      service.findByServiceOrderId(' 4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b '),
+    ).resolves.toBe(budgets);
+    expect(repository.findByServiceOrderId).toHaveBeenCalledWith(
+      '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
-    expect(repository.findByServiceOrderId).toHaveBeenCalledWith('service-123');
   });
   describe('políticas do Event Storming', () => {
     const makeBudgetWithPart = () =>
       Budget.create({
-        serviceOrderId: 'service-123',
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         version: 1,
         items: [
           {
@@ -604,7 +611,7 @@ describe('BudgetService', () => {
             description: 'Oil filter',
             type: BudgetItemType.PART,
             quantity: 1,
-            unitPrice: 40,
+            unitPrice: Money.fromDecimal(40),
           },
         ],
       });
@@ -613,7 +620,7 @@ describe('BudgetService', () => {
       repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
 
       await service.create({
-        serviceOrderId: 'service-123',
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
             description: 'Oil change',
@@ -625,7 +632,7 @@ describe('BudgetService', () => {
       });
 
       expect(serviceOrderController.awaitApproval).toHaveBeenCalledWith(
-        'service-123',
+        '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       );
     });
 
@@ -634,7 +641,7 @@ describe('BudgetService', () => {
       repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
 
       await service.create({
-        serviceOrderId: 'service-123',
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
             description: 'Reparo extra',
@@ -651,32 +658,32 @@ describe('BudgetService', () => {
 
     it('orçamento aceito com peças coloca a OS aguardando peças', async () => {
       const budget = makeBudgetWithPart();
-      budget.sendToCustomer();
+      budget.sendToClient();
       repository.findById.mockResolvedValue(budget);
 
       await service.accept(budget.getId());
 
       expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
-        'service-123',
+        '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       );
     });
 
     it('orçamento só de serviços também passa pela solicitação de peças', async () => {
       const budget = makeBudget();
-      budget.sendToCustomer();
+      budget.sendToClient();
       repository.findById.mockResolvedValue(budget);
 
       await service.accept(budget.getId());
 
       // O board não bifurca no aceite: quem libera a OS é o despacho.
       expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
-        'service-123',
+        '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       );
     });
 
     it('orçamento recusado cancela a ordem de serviço no MVP', async () => {
       const budget = makeBudget();
-      budget.sendToCustomer();
+      budget.sendToClient();
       repository.findById.mockResolvedValue(budget);
 
       const result = await service.refuse(budget.getId(), {
@@ -685,8 +692,8 @@ describe('BudgetService', () => {
 
       expect(result.getStatus()).toBe(BudgetStatus.BUDGET_REFUSED);
       expect(serviceOrderController.cancel).toHaveBeenCalledWith(
-        'service-123',
-        { reason: 'Orcamento recusado: Achou caro' },
+        '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+        { reason: 'Orçamento recusado: Achou caro' },
       );
     });
   });
@@ -697,7 +704,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
     const { service, serviceCatalogController } = await makeSubject();
 
     await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           serviceId: 'catalog-1',
@@ -716,7 +723,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
     const { service, serviceCatalogController } = await makeSubject();
 
     await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           serviceId: 'catalog-1',
@@ -742,7 +749,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
     const { service, serviceCatalogController } = await makeSubject();
 
     await service.create({
-      serviceOrderId: 'service-123',
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
       items: [
         {
           description: 'Oil change',
@@ -765,7 +772,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
 
     await expect(
       service.create({
-        serviceOrderId: 'service-123',
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
         items: [
           {
             serviceId: 'missing',
