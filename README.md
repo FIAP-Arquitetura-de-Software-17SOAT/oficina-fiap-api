@@ -1,408 +1,107 @@
 # Oficina FIAP API
 
-Back-end do Sistema Integrado de Atendimento e Execução de Serviços de uma
-oficina mecânica — Tech Challenge da Fase 1 (15SOAT).
+API REST para o Sistema Integrado de Atendimento e Execucao de Servicos de uma oficina mecanica. Projeto academico do Tech Challenge da FIAP (Fase 1, 15SOAT).
 
-MVP monolítico em **arquitetura em camadas**, aplicando DDD nos agregados do
-domínio.
+O sistema permite gerenciar clientes, veiculos, ordens de servico, orcamentos, estoque, pagamentos e notificacoes.
 
-## Stack
+## Tecnologias
 
-| Camada       | Escolha                                        |
-| ------------ | ---------------------------------------------- |
-| Runtime      | Node.js LTS + TypeScript                       |
-| Framework    | NestJS 11                                      |
-| Banco        | PostgreSQL 16                                  |
-| ORM          | Prisma 7 (driver adapter `@prisma/adapter-pg`) |
-| Documentação | Swagger / OpenAPI                              |
-| Logs         | Pino (`nestjs-pino`)                           |
-| Testes       | Jest + Supertest                               |
+- Node.js e TypeScript
+- NestJS 11
+- PostgreSQL 16
+- Prisma 7
+- Docker e Docker Compose
+- Swagger / OpenAPI
+- Jest
 
-### Por que PostgreSQL
+## Execucao local com Docker
 
-O domínio da oficina é fortemente relacional: uma Ordem de Serviço referencia
-cliente, veículo, itens de serviço e itens de peça, e o orçamento é derivado
-desses vínculos. Isso pede integridade referencial e transações ACID — baixar o
-estoque e mudar o status da OS precisam acontecer atomicamente. Além disso, as
-regras de unicidade do negócio (um CPF/CNPJ por cliente, uma placa por veículo)
-são expressas diretamente como constraints, e não como validação em código
-sujeita a corrida. Um banco documental exigiria replicar esses dados e resolver
-consistência na aplicação, sem ganho de escala relevante para um MVP.
+### Pre-requisitos
 
-## Subindo o projeto
+- Docker e Docker Compose
 
-Pré-requisitos: Docker e Docker Compose.
+### Passos
 
-```bash
-cp .env.sample .env
-# preencha os valores vazios do .env
-docker compose up --build
+1. Crie o arquivo de configuracao:
+
+   ```bash
+   cp .env.sample .env
+   ```
+
+2. Preencha no `.env` as variaveis obrigatorias:
+
+   ```env
+   POSTGRES_PASSWORD=uma-senha-segura
+   JWT_ACCESS_SECRET=um-segredo-aleatorio
+   JWT_REFRESH_SECRET=outro-segredo-aleatorio
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_PASSWORD=uma-senha-com-8-ou-mais-caracteres
+   STRIPE_SECRET_KEY=sk_test_xxx
+   STRIPE_WEBHOOK_SECRET=whsec_xxx
+   PAYMENT_SUCCESS_URL=http://localhost:3000/payment/success
+   PAYMENT_CANCEL_URL=http://localhost:3000/payment/cancel
+   MAIL_FROM=admin@example.com
+   ```
+
+   Para gerar os segredos JWT, execute duas vezes:
+
+   ```bash
+   openssl rand -base64 48
+   ```
+
+   Para testes de e-mail, use uma conta do [Ethereal](https://ethereal.email/create) e preencha `SMTP_USER`, `SMTP_PASSWORD` e `MAIL_FROM`.
+
+3. Inicie a aplicacao:
+
+   ```bash
+   docker compose up --build
+   ```
+
+O Docker cria o banco, aplica as migrations, cria o administrador inicial e inicia a API automaticamente.
+
+## Como usar
+
+| Recurso      | Endereco                            |
+| ------------ | ----------------------------------- |
+| API          | http://localhost:3000/api/v1        |
+| Swagger      | http://localhost:3000/api/v1/docs   |
+| Health check | http://localhost:3000/api/v1/health |
+
+Use o Swagger para consultar e testar todos os endpoints.
+
+Para acessar rotas administrativas, autentique-se em `POST /api/v1/auth/login` com o e-mail e a senha definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD`. Envie o `accessToken` retornado no cabecalho:
+
+```http
+Authorization: Bearer <accessToken>
 ```
 
-Antes do `up`, defina `POSTGRES_PASSWORD`, `JWT_ACCESS_SECRET`,
-`JWT_REFRESH_SECRET`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`. O Compose interrompe a
-configuração se qualquer um deles estiver vazio. Gere valores aleatórios
-independentes para os dois secrets JWT; por exemplo, execute duas vezes:
-
-```bash
-openssl rand -base64 48
-```
-
-Para a senha do Postgres, `openssl rand -hex 24` produz um valor forte que pode
-ser usado diretamente na URL. O compose então orquestra quatro serviços em
-ordem:
-
-1. **`db`** — Postgres sobe e espera ficar `healthy`
-2. **`migrate`** — roda `prisma migrate deploy` e encerra
-3. **`seed`** — cria o administrador inicial, se ele ainda não existir
-4. **`app`** — só inicia depois que migration e seed terminam com sucesso
-
-O serviço `migrate` roda a **cada `docker compose up`**. Se não houver migration
-pendente ele sai imediatamente, então é seguro e ninguém precisa rodar Prisma na
-mão.
-
-| Recurso      | URL                                    |
-| ------------ | -------------------------------------- |
-| API          | http://localhost:3000/api/v1           |
-| Swagger UI   | http://localhost:3000/api/v1/docs      |
-| OpenAPI JSON | http://localhost:3000/api/v1/docs-json |
-| Health check | http://localhost:3000/api/v1/health    |
-
-> A porta do host vem de `PORT` no `.env`. Se você mudar para `8080`, a API
-> responde em `http://localhost:8080`.
-
-## Autenticação administrativa
-
-Configure as credenciais e os JWTs no `.env` antes de subir a aplicação. Os
-campos de segredo e senha ficam deliberadamente vazios no `.env.sample`:
-
-| Variável             | Finalidade                      | Regra                          |
-| -------------------- | ------------------------------- | ------------------------------ |
-| `JWT_ACCESS_SECRET`  | Assina access tokens            | aleatório, distinto do refresh |
-| `JWT_ACCESS_TTL`     | Validade do access token        | duração JWT; padrão `15m`      |
-| `JWT_REFRESH_SECRET` | Assina refresh tokens           | aleatório, distinto do access  |
-| `JWT_REFRESH_TTL`    | Validade do refresh token       | duração JWT; padrão `7d`       |
-| `ADMIN_EMAIL`        | E-mail do administrador inicial | e-mail válido                  |
-| `ADMIN_PASSWORD`     | Senha do administrador inicial  | 8–72 caracteres, até 72 bytes  |
-
-Em `NODE_ENV=production`, cada secret JWT deve ter pelo menos 32 bytes UTF-8;
-os placeholders conhecidos de versões anteriores são rejeitados. Tamanho
-mínimo não substitui aleatoriedade: gere os valores com uma fonte
-criptograficamente segura. Os TTLs aceitam durações JWT inteiras como `15m`,
-`1h` ou `7d`. O limite de 72 bytes da senha evita o truncamento silencioso do
-bcrypt para caracteres UTF-8 multibyte.
-
-O Docker Compose executa o seed automaticamente. No desenvolvimento local, após
-aplicar as migrations, rode:
-
-```bash
-npx prisma db seed
-```
-
-O seed é idempotente e usa `ADMIN_EMAIL`/`ADMIN_PASSWORD`: ele normaliza e valida
-o e-mail e aplica à senha as mesmas regras do login, mas não altera um
-administrador que já exista. Senhas nunca são persistidas em texto puro; apenas
-o hash bcrypt é armazenado. Essas duas variáveis são entregues somente ao
-container temporário `seed`, não ao processo de longa duração da API.
-
-> Esta alteração não rotaciona credenciais de uma instalação existente. Antes
-> do próximo deploy, o operador deve gerar dois novos secrets JWT, gravá-los no
-> gerenciador de secrets ou `.env` e recriar o container da aplicação; tokens já
-> emitidos deixarão de ser válidos. Se a senha conhecida do Postgres já foi
-> usada, altere a senha do usuário dentro do banco e `POSTGRES_PASSWORD` de forma
-> coordenada — editar apenas o `.env` não muda o volume existente. O seed também
-> não redefine o e-mail ou a senha de um administrador existente; faça essa
-> redefinição por um procedimento operacional controlado. Em um ambiente local
-> descartável, remover o volume e executar o seed novamente é uma alternativa.
-
-### Endpoints
-
-`POST /api/v1/auth/login` recebe credenciais e retorna o par de tokens:
-
-```json
-{
-  "email": "admin@example.com",
-  "password": "senha-configurada-no-seed"
-}
-```
-
-```json
-{
-  "accessToken": "eyJ...",
-  "refreshToken": "eyJ..."
-}
-```
-
-Use o access token nas rotas protegidas com o header
-`Authorization: Bearer <accessToken>`. Access e refresh tokens usam secrets e
-tempos de expiração distintos; um refresh token não é aceito como access token.
-
-`POST /api/v1/auth/refresh` recebe:
-
-```json
-{ "refreshToken": "eyJ..." }
-```
-
-Cada refresh bem-sucedido devolve um novo par e revoga o refresh token consumido
-atomicamente. Reutilizar o token antigo é replay e retorna `401`. O banco guarda
-somente um hash bcrypt irreversível do digest do refresh token, nunca o token em
-texto puro.
-
-`POST /api/v1/auth/logout` recebe o mesmo payload de refresh e responde `204`
-após revogar a sessão. Login inválido, refresh inválido/expirado/revogado e
-replay retornam `401`.
-
-### Protegendo futuros controllers administrativos
-
-As rotas de cliente existentes continuam públicas. Em futuros controllers
-administrativos, aplique autenticação, autorização e documentação Swagger em
-conjunto:
-
-```typescript
-import { Controller, UseGuards } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiForbiddenResponse,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
-import { Role } from '../generated/prisma/enums';
-import { JwtAuthGuard } from './shared/http/auth/jwt-auth.guard';
-import { Roles } from './shared/http/auth/roles.decorator';
-import { RolesGuard } from './shared/http/auth/roles.guard';
-
-@Controller('admin/example')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
-@ApiBearerAuth()
-@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
-@ApiForbiddenResponse({ description: 'Authenticated role is not allowed' })
-export class AdminController {}
-```
-
-Use `@CurrentUser()` quando o handler precisar do usuário autenticado; o valor
-exposto contém apenas `{ id, role }`. Não aplique `@ApiBearerAuth()` em endpoints
-públicos.
-
-### Problemas comuns
-
-**`service "migrate" didn't complete successfully: exit 1`** com
-`P1010: User was denied access` ou `database "oficina_fiap" does not exist`:
-
-```bash
-docker compose down -v && docker compose up -d
-```
-
-O `-v` é o que importa — ele apaga o volume do Postgres.
-
-Motivo: `POSTGRES_DB` e `POSTGRES_PASSWORD` só têm efeito na **primeira** criação
-do volume. Se o volume já existe, a imagem do Postgres imprime
-`Skipping initialization` e ignora as duas variáveis para sempre. Então basta
-que uma inicialização tenha sido interrompida no meio (um `Ctrl+C`, um
-`docker compose down` durante o primeiro `up`), ou que alguém mude
-`POSTGRES_PASSWORD`/`POSTGRES_DB` no `.env` depois do volume já existir, para o
-banco ficar num estado que nenhum `up` posterior conserta.
-
-> `docker compose down -v` apaga os dados locais. Como as migrations são
-> reaplicadas automaticamente no próximo `up`, isso é seguro em desenvolvimento.
-
-## Desenvolvimento local (fora do container)
+## Desenvolvimento sem container
 
 ```bash
 npm install
-docker compose up -d db      # só o banco
-npx prisma migrate dev       # aplica migrations e gera o Prisma Client
+docker compose up -d db
+npx prisma migrate dev
+npx prisma db seed
 npm run start:dev
 ```
 
-Para executar Prisma ou a aplicação no host, preencha também `DATABASE_URL` com
-o endereço local e a mesma senha configurada em `POSTGRES_PASSWORD`, por
-exemplo `postgres://postgres:SENHA@localhost:5432/oficina_fiap`. Dentro do
-Compose, a URL é montada e injetada automaticamente com o host `db`.
+Nesse modo, defina `DATABASE_URL` no `.env` com a mesma senha de `POSTGRES_PASSWORD`, por exemplo:
 
-## Entrega de notificações por e-mail
-
-Os avisos de orçamento disponível, link de pagamento e solicitação de peças
-são registrados antes de serem enviados. Configure o SMTP no `.env` do processo
-da API:
-
-| Variável | Finalidade | Regra |
-| --- | --- | --- |
-| `SMTP_HOST` | Host do servidor SMTP | obrigatório |
-| `SMTP_PORT` | Porta do servidor SMTP | inteiro entre 1 e 65535 |
-| `SMTP_SECURE` | Ativa TLS implícito | use somente `true` ou `false` |
-| `SMTP_USER` | Usuário SMTP | opcional, mas exige `SMTP_PASSWORD` |
-| `SMTP_PASSWORD` | Senha SMTP | opcional, mas exige `SMTP_USER` |
-| `MAIL_FROM` | Remetente das mensagens | e-mail válido, ou `Nome <email@dominio>` |
-| `STOCK_NOTIFICATION_EMAIL` | Destinatário das solicitações de peças | e-mail válido; sem valor, o aviso de estoque não é enviado |
-
-Use `SMTP_SECURE=true` para provedores que exigem TLS implícito (comumente a
-porta 465); nas portas STARTTLS, use `false` conforme a configuração do
-provedor. Guarde credenciais SMTP em um gerenciador de segredos nos ambientes
-compartilhados.
-
-Para o MVP acadêmico com Ethereal, preencha `SMTP_USER` e `SMTP_PASSWORD` com
-as credenciais da conta de teste, mantenha `SMTP_HOST=smtp.ethereal.email`,
-`SMTP_PORT=587` e `SMTP_SECURE=false`. As mensagens ficam disponíveis apenas
-no preview do Ethereal e não são entregues a destinatários reais.
-
-### Configurando uma conta Ethereal
-
-1. Acesse [Ethereal](https://ethereal.email/create) e crie uma conta de teste.
-2. Na página da conta, copie o **Username** e o **Password** exibidos nas
-   credenciais SMTP.
-3. No arquivo `.env`, use o e-mail da conta como remetente e preencha as
-   credenciais copiadas:
-
-```dotenv
-SMTP_HOST=smtp.ethereal.email
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=usuario-gerado-pelo-ethereal
-SMTP_PASSWORD=senha-gerada-pelo-ethereal
-MAIL_FROM=usuario-gerado-pelo-ethereal@ethereal.email
+```env
+DATABASE_URL=postgres://postgres:SENHA@localhost:5432/oficina_fiap
 ```
-
-Após disparar uma notificação, abra o preview disponível na conta Ethereal para
-consultar a mensagem. Não versione o `.env` nem compartilhe as credenciais.
-
-### Reprocessar falhas de entrega
-
-Falhas de e-mail não desfazem a operação de negócio: a API mantém a notificação
-com status `FAILED`, contador de tentativas e o último erro. Um operador
-autenticado como `ADMIN` deve:
-
-1. Consultar `GET /api/v1/notifications?status=FAILED` com o access token.
-2. Conferir destinatário, conteúdo e `lastError`, corrigindo a configuração
-   SMTP quando necessário.
-3. Executar `POST /api/v1/notifications/{id}/retry` com o mesmo token.
-4. Confirmar que a resposta passou para `SENT`; chamadas para itens que não
-   estejam em `FAILED` retornam `409`.
-
-As duas rotas aparecem no Swagger e exigem `Authorization: Bearer <accessToken>`.
-
-### Criando uma migration
-
-```bash
-npx prisma migrate dev --name descricao_da_mudanca
-```
-
-O arquivo gerado em `prisma/migrations/` **deve ser commitado** — é ele que o
-serviço `migrate` aplica no ambiente de todo mundo.
 
 ## Testes
 
 ```bash
-npm test          # unitários
-npm run test:cov  # unitários + cobertura (falha abaixo de 80%)
-npm run test:e2e  # integração (HTTP completo, sem precisar de banco)
+npm test
+npm run test:cov
+npm run test:e2e
 ```
 
-Os testes de integração substituem o repositório por uma implementação em
-memória e sobem a aplicação com **a mesma configuração do `main.ts`** (prefixo,
-`ValidationPipe`, filtro de exceção de domínio), via `configureApp()`. Rodam em
-CI sem infraestrutura.
+## Documentacao complementar
 
-`test/swagger.e2e-spec.ts` valida o contrato OpenAPI: quebra se alguém adicionar
-uma rota sem documentar ou mudar o response sem atualizar o DTO.
+Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto.
 
-O `coverageThreshold` está em 80% (branches, funções, linhas e statements),
-conforme exigido pelo Tech Challenge.
-
-## Stripe test mode
-
-This project uses Stripe Checkout Sessions through the Billing payment gateway.
-Use only Stripe test mode keys in local development:
-
-```env
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-PAYMENT_SUCCESS_URL=http://localhost:3000/payment/success
-PAYMENT_CANCEL_URL=http://localhost:3000/payment/cancel
-```
-
-`PAYMENT_SUCCESS_URL` and `PAYMENT_CANCEL_URL` are configurable client/frontend
-routes shown after Stripe Checkout. They are not routes exposed by this API.
-
-For an interactive successful card payment in Stripe Checkout, use card number
-`4242 4242 4242 4242`, any future expiration date, any CVC, and any postal code.
-Stripe test-mode transactions do not move real money.
-
-## Estrutura
-
-```
-src/
-├── modules/                  # um módulo por agregado do domínio
-│   └── client/
-│       ├── controllers/      # borda HTTP, fala em DTO
-│       ├── services/         # orquestra o caso de uso
-│       ├── repositories/     # acesso a dados, traduz entidade <-> Prisma
-│       ├── entities/         # entidade rica, dona das invariantes
-│       ├── value-objects/    # CpfCnpj, Email
-│       ├── mappers/          # entidade -> DTO de resposta
-│       └── dto/              # contrato de entrada/saída + Swagger
-└── shared/
-    ├── database/             # PrismaModule global (uma conexão para todos)
-    ├── domain/               # DomainException
-    └── http/                 # guards JWT/RBAC e filtros de erro
-```
-
-### Convenções para novos módulos
-
-Ao criar `vehicle`, `service-order`, `stock` etc., siga o módulo `client`:
-
-- **Não crie um `PrismaService` por módulo.** O `PrismaModule` é `@Global`;
-  basta injetar `PrismaService` no repositório. Um por módulo significaria um
-  pool de conexões por módulo.
-- **A entidade protege as próprias invariantes** e lança `DomainException` —
-  nunca `Error` genérico, que viraria 500.
-- **Value Object onde há regra própria** (CPF/CNPJ, placa, dinheiro). Nome e
-  telefone continuam `string`; VO em tudo é overengineering.
-- **Sempre mapeie entidade → DTO no controller.** Devolver a entidade direto
-  serializa o VO como `{ "value": "..." }` e quebra o contrato do Swagger.
-- **Documente toda rota** com `@ApiOperation` e as respostas de erro.
-
-## Domínio
-
-Modelagem via Event Storming, com os agregados: **Cliente**, **Veículo**,
-**Ordem de Serviço**, **Orçamento** e **Estoque**.
-
-Status da Ordem de Serviço: `Recebida` → `Em diagnóstico` →
-`Aguardando aprovação` → `Em execução` → `Finalizada` → `Entregue`.
-
-### Cliente (implementado)
-
-| Verbo  | Rota                 | Descrição    |
-| ------ | -------------------- | ------------ |
-| POST   | `/api/v1/client`     | Cadastra     |
-| GET    | `/api/v1/client`     | Lista        |
-| GET    | `/api/v1/client/:id` | Busca por id |
-| PATCH  | `/api/v1/client/:id` | Atualiza     |
-| DELETE | `/api/v1/client/:id` | Remove       |
-
-Regras aplicadas:
-
-- CPF **e** CNPJ com validação de dígito verificador; aceita com ou sem
-  máscara e persiste apenas dígitos
-- E-mail normalizado para minúsculas (a coluna é única)
-- Telefone exige DDD, aceita 8 ou 9 dígitos, persiste apenas dígitos
-- Documento é **imutável** após o cadastro — não existe no `UpdateClientDto`
-- Documento e e-mail duplicados retornam `409`; dado inválido retorna `400`
-- Cliente que ainda tem veículo não pode ser removido (`409`)
-
-### Veículo (implementado)
-
-| Verbo | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/vehicle` | Cadastra |
-| GET | `/api/v1/vehicle` | Lista, com filtro opcional `?clientId=` |
-| GET | `/api/v1/vehicle/:id` | Busca por id |
-| PATCH | `/api/v1/vehicle/:id` | Atualiza marca, modelo ou ano |
-| DELETE | `/api/v1/vehicle/:id` | Remove |
-
-Regras aplicadas:
-
-- Placa validada nos dois formatos, antigo (`ABC1234`) e Mercosul (`ABC1D23`); aceita com
-  hífen ou minúsculas e persiste normalizada
-- Ano entre 1900 e o ano seguinte ao atual — a montadora antecipa o modelo
-- Placa e dono são **imutáveis** após o cadastro; não existem no `UpdateVehicleDto`
-- Cadastro com cliente inexistente retorna `404`; placa duplicada retorna `409`
+- [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
+- [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.

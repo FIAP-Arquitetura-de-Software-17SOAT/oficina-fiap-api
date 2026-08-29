@@ -173,7 +173,12 @@ Responsabilidades:
 
 ## Quantity
 
-Representa a quantidade de um item do pedido.
+Representa a quantidade de um item do pedido. O VO é compartilhado
+(`src/shared/domain/value-objects/quantity.vo.ts`), porque o estoque usa o mesmo
+conceito — antes havia uma cópia em cada módulo, com invariantes diferentes.
+
+O item do pedido usa `Quantity.positive`, que é o construtor de **movimento**;
+`Quantity.create` é o de **saldo** e aceita zero.
 
 Regras:
 
