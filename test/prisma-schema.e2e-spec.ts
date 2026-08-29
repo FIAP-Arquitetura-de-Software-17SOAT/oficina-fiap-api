@@ -168,4 +168,27 @@ describe('Prisma schema contracts', () => {
     expect(migration).toContain('CREATE TABLE "billing_checkout_session"');
     expect(migration).toContain('"billing_budgetId_fkey"');
   });
+
+  it('prevents persisted stock part codes that the domain cannot restore', () => {
+    const migrationFile = readdirSync(
+      join(__dirname, '../prisma/migrations'),
+    ).find((directory) => directory.endsWith('_enforce_part_code_format'));
+
+    expect(migrationFile).toBeDefined();
+
+    const migration = readFileSync(
+      join(
+        __dirname,
+        '../prisma/migrations',
+        migrationFile as string,
+        'migration.sql',
+      ),
+      { encoding: 'utf8' },
+    );
+
+    expect(migration).toContain('Cannot enforce part code format');
+    expect(migration).toContain('btrim("code") !~');
+    expect(migration).toContain('CONSTRAINT "part_code_format_check"');
+    expect(migration).toContain(`btrim("code") ~ '^[A-Za-z0-9._-]+$'`);
+  });
 });
