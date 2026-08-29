@@ -46,9 +46,9 @@ describe('Client (integração)', () => {
   });
 
   const create = (body: Record<string, unknown> = payload) =>
-    request(http).post('/api/v1/client').send(body);
+    request(http).post('/api/v1/clients').send(body);
 
-  describe('POST /api/v1/client', () => {
+  describe('POST /api/v1/clients', () => {
     it('cadastra o cliente normalizando documento, e-mail e telefone', async () => {
       const response = await create().expect(201);
 
@@ -115,9 +115,9 @@ describe('Client (integração)', () => {
     });
   });
 
-  describe('GET /api/v1/client', () => {
+  describe('GET /api/v1/clients', () => {
     it('lista vazia quando não há clientes', async () => {
-      const response = await request(http).get('/api/v1/client').expect(200);
+      const response = await request(http).get('/api/v1/clients').expect(200);
 
       expect(response.body).toEqual([]);
     });
@@ -125,19 +125,19 @@ describe('Client (integração)', () => {
     it('lista os clientes cadastrados', async () => {
       await create().expect(201);
 
-      const response = await request(http).get('/api/v1/client').expect(200);
+      const response = await request(http).get('/api/v1/clients').expect(200);
 
       expect(response.body).toHaveLength(1);
       expect(response.body[0].document).toBe(VALID_CPF);
     });
   });
 
-  describe('GET /api/v1/client/:id', () => {
+  describe('GET /api/v1/clients/:id', () => {
     it('busca por id', async () => {
       const { body: created } = await create().expect(201);
 
       const response = await request(http)
-        .get(`/api/v1/client/${created.id}`)
+        .get(`/api/v1/clients/${created.id}`)
         .expect(200);
 
       expect(response.body.id).toBe(created.id);
@@ -145,21 +145,21 @@ describe('Client (integração)', () => {
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .get('/api/v1/client/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
+        .get('/api/v1/clients/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
         .expect(404);
     });
 
     it('devolve 400 para id que não é uuid', async () => {
-      await request(http).get('/api/v1/client/nao-e-uuid').expect(400);
+      await request(http).get('/api/v1/clients/nao-e-uuid').expect(400);
     });
   });
 
-  describe('PATCH /api/v1/client/:id', () => {
+  describe('PATCH /api/v1/clients/:id', () => {
     it('atualiza apenas os campos enviados', async () => {
       const { body: created } = await create().expect(201);
 
       const response = await request(http)
-        .patch(`/api/v1/client/${created.id}`)
+        .patch(`/api/v1/clients/${created.id}`)
         .send({ name: 'Maria Souza' })
         .expect(200);
 
@@ -172,7 +172,7 @@ describe('Client (integração)', () => {
       const { body: created } = await create().expect(201);
 
       await request(http)
-        .patch(`/api/v1/client/${created.id}`)
+        .patch(`/api/v1/clients/${created.id}`)
         .send({ document: VALID_CNPJ })
         .expect(400);
     });
@@ -186,31 +186,31 @@ describe('Client (integração)', () => {
       }).expect(201);
 
       await request(http)
-        .patch(`/api/v1/client/${primeiro.id}`)
+        .patch(`/api/v1/clients/${primeiro.id}`)
         .send({ email: 'joao@example.com' })
         .expect(409);
     });
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .patch('/api/v1/client/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
+        .patch('/api/v1/clients/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
         .send({ name: 'X' })
         .expect(404);
     });
   });
 
-  describe('DELETE /api/v1/client/:id', () => {
+  describe('DELETE /api/v1/clients/:id', () => {
     it('remove o cliente e devolve 204', async () => {
       const { body: created } = await create().expect(201);
 
-      await request(http).delete(`/api/v1/client/${created.id}`).expect(204);
+      await request(http).delete(`/api/v1/clients/${created.id}`).expect(204);
 
-      await request(http).get(`/api/v1/client/${created.id}`).expect(404);
+      await request(http).get(`/api/v1/clients/${created.id}`).expect(404);
     });
 
     it('devolve 404 para id inexistente', async () => {
       await request(http)
-        .delete('/api/v1/client/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
+        .delete('/api/v1/clients/f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c')
         .expect(404);
     });
   });

@@ -78,7 +78,7 @@ describe('Billing (integracao)', () => {
 
   async function createCompletedServiceOrderWithAcceptedBudget() {
     const client = await request(http)
-      .post('/api/v1/client')
+      .post('/api/v1/clients')
       .send({
         name: 'Maria Silva',
         document: '529.982.247-25',
@@ -88,7 +88,7 @@ describe('Billing (integracao)', () => {
       .expect(201);
 
     const vehicle = await request(http)
-      .post('/api/v1/vehicle')
+      .post('/api/v1/vehicles')
       .send({
         clientId: client.body.id,
         plate: 'ABC1D23',
@@ -99,7 +99,7 @@ describe('Billing (integracao)', () => {
       .expect(201);
 
     const serviceOrder = await request(http)
-      .post('/api/v1/service-order')
+      .post('/api/v1/service-orders')
       .send({
         clientId: client.body.id,
         vehicleId: vehicle.body.id,
@@ -108,7 +108,7 @@ describe('Billing (integracao)', () => {
       .expect(201);
 
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrder.body.id}/assign`)
+      .patch(`/api/v1/service-orders/${serviceOrder.body.id}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
 
@@ -141,11 +141,11 @@ describe('Billing (integracao)', () => {
 
     const latestBudget = await createAndAcceptBudget('Servico atualizado', 150);
     await request(http)
-      .post(`/api/v1/stock/service-orders/${serviceOrder.body.id}/dispatch`)
+      .post(`/api/v1/parts/service-orders/${serviceOrder.body.id}/dispatch`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrder.body.id}/complete`)
+      .patch(`/api/v1/service-orders/${serviceOrder.body.id}/complete`)
       .send()
       .expect(200);
 
@@ -331,7 +331,7 @@ describe('Billing (integracao)', () => {
       .expect(409);
 
     await request(http)
-      .patch(`/api/v1/service-order/${serviceOrderId}/deliver`)
+      .patch(`/api/v1/service-orders/${serviceOrderId}/deliver`)
       .expect(404);
 
     const gateway = app.get(PaymentGateway) as FakePaymentGateway;
@@ -353,7 +353,7 @@ describe('Billing (integracao)', () => {
       .expect(204);
 
     const serviceOrder = await request(http)
-      .get(`/api/v1/service-order/${serviceOrderId}`)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
       .expect(200);
 
     expect(serviceOrder.body.status).toBe('DELIVERED');
