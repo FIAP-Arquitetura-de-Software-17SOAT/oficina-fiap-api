@@ -1,12 +1,13 @@
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Service } from './service.entity';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 describe('Service (entidade)', () => {
   it('cria o serviço normalizando nome e descrição e guardando o preço em centavos', () => {
     const service = Service.create({
       name: '  Troca de óleo  ',
       description: '  Óleo sintético  ',
-      price: 149.9,
+      price: Money.fromDecimal(149.9),
     });
 
     expect(service.getId()).toHaveLength(36);
@@ -22,7 +23,7 @@ describe('Service (entidade)', () => {
       const service = Service.create({
         name: 'Alinhamento',
         description,
-        price: 80,
+        price: Money.fromDecimal(80),
       });
 
       expect(service.getDescription()).toBeUndefined();
@@ -30,24 +31,26 @@ describe('Service (entidade)', () => {
   );
 
   it.each([[''], ['   ']])('recusa nome vazio (%p)', (name) => {
-    expect(() => Service.create({ name, price: 10 })).toThrow(DomainException);
+    expect(() =>
+      Service.create({ name, price: Money.fromDecimal(10) }),
+    ).toThrow(DomainException);
   });
 
   it('recusa preço zero', () => {
-    expect(() => Service.create({ name: 'Revisão', price: 0 })).toThrow(
-      'Preço do serviço deve ser maior que zero',
-    );
+    expect(() =>
+      Service.create({ name: 'Revisão', price: Money.fromDecimal(0) }),
+    ).toThrow('Preço do serviço deve ser maior que zero');
   });
 
   it('recusa preço negativo', () => {
-    expect(() => Service.create({ name: 'Revisão', price: -1 })).toThrow(
-      DomainException,
-    );
+    expect(() =>
+      Service.create({ name: 'Revisão', price: Money.fromDecimal(-1) }),
+    ).toThrow(DomainException);
   });
 
   it('recusa preço não numérico', () => {
     expect(() =>
-      Service.create({ name: 'Revisão', price: Number.NaN }),
+      Service.create({ name: 'Revisão', price: Money.fromDecimal(Number.NaN) }),
     ).toThrow(DomainException);
   });
 
@@ -58,7 +61,7 @@ describe('Service (entidade)', () => {
     const service = Service.restore('service-1', {
       name: 'Balanceamento',
       description: null,
-      price: 60,
+      price: Money.fromDecimal(60),
       createdAt,
       updatedAt,
     });
@@ -73,7 +76,7 @@ describe('Service (entidade)', () => {
     const service = Service.restore('service-1', {
       name: 'Balanceamento',
       description: 'Antigo',
-      price: 60,
+      price: Money.fromDecimal(60),
       createdAt: new Date('2026-01-01T10:00:00.000Z'),
       updatedAt: new Date('2026-01-01T10:00:00.000Z'),
     });
@@ -81,7 +84,7 @@ describe('Service (entidade)', () => {
 
     service.changeName('  Balanceamento das quatro rodas ');
     service.changeDescription('  Inclui pesos  ');
-    service.changePrice(99.99);
+    service.changePrice(Money.fromDecimal(99.99));
 
     expect(service.getName()).toBe('Balanceamento das quatro rodas');
     expect(service.getDescription()).toBe('Inclui pesos');
@@ -93,7 +96,7 @@ describe('Service (entidade)', () => {
     const service = Service.create({
       name: 'Revisão',
       description: 'Alguma coisa',
-      price: 10,
+      price: Money.fromDecimal(10),
     });
 
     service.changeDescription(null);
@@ -102,7 +105,10 @@ describe('Service (entidade)', () => {
   });
 
   it('recusa alteração para nome vazio', () => {
-    const service = Service.create({ name: 'Revisão', price: 10 });
+    const service = Service.create({
+      name: 'Revisão',
+      price: Money.fromDecimal(10),
+    });
 
     expect(() => service.changeName(' ')).toThrow(DomainException);
     expect(service.getName()).toBe('Revisão');

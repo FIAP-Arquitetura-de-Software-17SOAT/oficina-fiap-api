@@ -7,7 +7,6 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { BudgetMapper } from '../mappers/budget.mapper';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 type BudgetRecord = Prisma.BudgetGetPayload<{ include: { items: true } }>;
 
@@ -140,7 +139,7 @@ export class BudgetRepository {
   private toUpdateData(budget: Budget) {
     return {
       status: budget.getStatus(),
-      totalCents: Money.fromDecimal(budget.getTotalAmount()).valueInCents,
+      totalCents: budget.getTotal().valueInCents,
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),

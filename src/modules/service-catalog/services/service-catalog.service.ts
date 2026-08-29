@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateServiceDto, UpdateServiceDto } from '../dto/service.dto';
 import { Service } from '../entities/service.entity';
+import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { ServiceRepository } from '../repositories/service.repository';
 
 @Injectable()
@@ -17,7 +18,7 @@ export class ServiceCatalogService {
     const service = Service.create({
       name: dto.name,
       description: dto.description,
-      price: dto.price,
+      price: Money.fromDecimal(dto.price),
     });
 
     return this.serviceRepository.create(service);
@@ -31,7 +32,7 @@ export class ServiceCatalogService {
     const service = await this.serviceRepository.findById(id);
 
     if (!service) {
-      throw new NotFoundException('Service not found');
+      throw new NotFoundException('Serviço não encontrado');
     }
 
     return service;
@@ -50,7 +51,7 @@ export class ServiceCatalogService {
     }
 
     if (dto.price !== undefined) {
-      service.changePrice(dto.price);
+      service.changePrice(Money.fromDecimal(dto.price));
     }
 
     return this.serviceRepository.update(service);
@@ -69,7 +70,7 @@ export class ServiceCatalogService {
     const existing = await this.serviceRepository.findByName(name.trim());
 
     if (existing && existing.getId() !== allowedServiceId) {
-      throw new ConflictException('Service already exists');
+      throw new ConflictException('Já existe um serviço com esse nome');
     }
   }
 }

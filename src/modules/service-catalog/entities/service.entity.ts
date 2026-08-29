@@ -5,8 +5,9 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 export interface ServiceProps {
   name: string;
   description?: string | null;
-  /** Decimal na fronteira (149.90); centavos inteiros dentro do domínio. */
-  price: number;
+  /** O domínio só fala Money. A conversão do decimal (149.90) que chega no
+   *  DTO acontece na camada de aplicação, nunca aqui dentro. */
+  price: Money;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -79,7 +80,7 @@ export class Service {
     this.touch();
   }
 
-  changePrice(price: number): void {
+  changePrice(price: Money): void {
     this.setPrice(price);
     this.touch();
   }
@@ -100,16 +101,14 @@ export class Service {
     this.description = trimmed || undefined;
   }
 
-  private setPrice(price: number): void {
-    const money = Money.fromDecimal(price);
-
+  private setPrice(price: Money): void {
     // Money já barra negativo. Zero passaria, e um serviço de catálogo sem
     // preço vira orçamento com item de graça sem ninguém perceber.
-    if (money.valueInCents === 0) {
+    if (price.valueInCents === 0) {
       throw new DomainException('Preço do serviço deve ser maior que zero');
     }
 
-    this.price = money;
+    this.price = price;
   }
 
   private touch(): void {

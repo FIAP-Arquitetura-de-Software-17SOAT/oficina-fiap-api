@@ -82,19 +82,20 @@ model Client {
 }
 
 model Part {
-  id              String          @id @db.Uuid
-  code            String          @unique
-  name            String
-  description     String?
-  type            PartType
-  unit            MeasurementUnit
-  unitPriceCents  Int
-  quantity        Int
-  minimumQuantity Int
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  stockMovements  StockMovement[]
-  budgetItems     BudgetItem[]
+  id                 String              @id @db.Uuid
+  code               String              @unique
+  name               String
+  description        String?
+  type               PartType
+  unit               MeasurementUnit
+  unitPriceCents     Int
+  quantity           Int
+  minimumQuantity    Int
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  stockMovements     StockMovement[]
+  budgetItems        BudgetItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@map("part")
 }
@@ -138,7 +139,12 @@ model PurchaseOrderItem {
   unitPriceCents Int
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  // Restrict: apagar uma peça que ainda aparece em pedido de compra deve
+  // falhar, e não deixar o item apontando para o vazio.
+  part          Part          @relation(fields: [partId], references: [id], onDelete: Restrict)
 
+  @@index([purchaseOrderId])
+  @@index([partId])
   @@map("purchase_order_item")
 }
 
@@ -198,7 +204,7 @@ enum NotificationStatus {
 
 model Budget {
   id             String       @id @db.Uuid
-  serviceOrderId String
+  serviceOrderId String       @db.Uuid
   version        Int
   status         BudgetStatus
   totalCents     Int
@@ -208,8 +214,9 @@ model Budget {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  items    BudgetItem[]
-  billings Billing[]
+  items        BudgetItem[]
+  billings     Billing[]
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
 
   @@unique([serviceOrderId, version])
   @@index([serviceOrderId])
@@ -314,6 +321,7 @@ model ServiceOrder {
   client  Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   billing Billing?
+  budgets Budget[]
 
   @@index([clientId])
   @@index([vehicleId])
@@ -322,12 +330,12 @@ model ServiceOrder {
 }
 
 model Service {
-  id          String   @id @db.Uuid
-  name        String   @unique
+  id          String       @id @db.Uuid
+  name        String       @unique
   description String?
   priceCents  Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   budgetItems BudgetItem[]
 
   @@map("service")

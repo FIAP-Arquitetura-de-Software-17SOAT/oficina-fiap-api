@@ -6,7 +6,7 @@ import {
 import { CreatePartDto, UpdatePartDto } from '../dto/part.dto';
 import { Part } from '../entities/part.entity';
 import { PartRepository } from '../repositories/part.repository';
-import { PartCode } from '../value-objects/part-code';
+import { PartCode } from '../value-objects/part-code.vo';
 
 function hasPrismaErrorCode(error: unknown, code: string): boolean {
   return (
