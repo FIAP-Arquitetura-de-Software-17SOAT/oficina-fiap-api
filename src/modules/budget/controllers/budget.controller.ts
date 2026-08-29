@@ -37,30 +37,32 @@ import { Role } from '../../../../generated/prisma/enums';
 import { Roles } from '../../../shared/http/auth/roles.decorator';
 
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@ApiUnauthorizedResponse({ description: 'Token de acesso ausente ou inválido' })
 @Roles(Role.ADMIN, Role.EMPLOYEE)
-@ApiTags('budget')
+@ApiTags('budgets')
 @Controller('budgets')
 export class BudgetController {
   constructor(private readonly budgetService: BudgetService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cria um orcamento' })
+  @ApiOperation({ summary: 'Gera um orçamento' })
   @ApiCreatedResponse({ type: BudgetResponseDto })
-  @ApiBadRequestResponse({ description: 'Dados do orcamento invalidos' })
-  @ApiConflictResponse({ description: 'Budget version already exists' })
+  @ApiBadRequestResponse({ description: 'Dados do orçamento inválidos' })
+  @ApiConflictResponse({ description: 'Versão do orçamento já existe' })
   async create(@Body() dto: CreateBudgetDto): Promise<BudgetResponseDto> {
     return BudgetMapper.toResponse(await this.budgetService.create(dto));
   }
 
   @Post(':id/items')
-  @ApiOperation({ summary: 'Adiciona um item ao orcamento' })
+  @ApiOperation({ summary: 'Adiciona um item ao orçamento' })
   @ApiCreatedResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({
-    description: 'Item ou status do orcamento invalido',
+    description: 'Item ou status do orçamento inválido',
   })
-  @ApiConflictResponse({ description: 'Budget was changed by another request' })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiConflictResponse({
+    description: 'O orçamento foi alterado por outra requisição',
+  })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async addItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateBudgetItemDto,
@@ -69,13 +71,15 @@ export class BudgetController {
   }
 
   @Delete(':id/items/:itemId')
-  @ApiOperation({ summary: 'Remove um item do orcamento' })
+  @ApiOperation({ summary: 'Remove um item do orçamento' })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({
-    description: 'Item ou status do orcamento invalido',
+    description: 'Item ou status do orçamento inválido',
   })
-  @ApiConflictResponse({ description: 'Budget was changed by another request' })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiConflictResponse({
+    description: 'O orçamento foi alterado por outra requisição',
+  })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async removeItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('itemId', ParseUUIDPipe) itemId: string,
@@ -86,9 +90,9 @@ export class BudgetController {
   }
 
   @Get(':id/total')
-  @ApiOperation({ summary: 'Calcula o total do orcamento' })
+  @ApiOperation({ summary: 'Calcula o total do orçamento' })
   @ApiOkResponse({ type: BudgetTotalResponseDto })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async calculateTotal(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BudgetTotalResponseDto> {
@@ -100,11 +104,13 @@ export class BudgetController {
 
   @Post(':id/send')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Envia o orcamento ao cliente' })
+  @ApiOperation({ summary: 'Envia o orçamento ao cliente' })
   @ApiOkResponse({ type: BudgetResponseDto })
-  @ApiBadRequestResponse({ description: 'Budget status is invalid' })
-  @ApiConflictResponse({ description: 'Budget was changed by another request' })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiBadRequestResponse({ description: 'Status do orçamento inválido' })
+  @ApiConflictResponse({
+    description: 'O orçamento foi alterado por outra requisição',
+  })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async send(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BudgetResponseDto> {
@@ -113,11 +119,13 @@ export class BudgetController {
 
   @Post(':id/accept')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Aceita o orcamento' })
+  @ApiOperation({ summary: 'Aceita o orçamento' })
   @ApiOkResponse({ type: BudgetResponseDto })
-  @ApiBadRequestResponse({ description: 'Budget status is invalid' })
-  @ApiConflictResponse({ description: 'Budget was changed by another request' })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiBadRequestResponse({ description: 'Status do orçamento inválido' })
+  @ApiConflictResponse({
+    description: 'O orçamento foi alterado por outra requisição',
+  })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async accept(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BudgetResponseDto> {
@@ -126,13 +134,15 @@ export class BudgetController {
 
   @Post(':id/refuse')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Recusa o orcamento' })
+  @ApiOperation({ summary: 'Recusa o orçamento' })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({
-    description: 'Motivo ou status do orcamento invalido',
+    description: 'Motivo ou status do orçamento inválido',
   })
-  @ApiConflictResponse({ description: 'Budget was changed by another request' })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiConflictResponse({
+    description: 'O orçamento foi alterado por outra requisição',
+  })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async refuse(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RefuseBudgetDto,
@@ -141,18 +151,22 @@ export class BudgetController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Busca um orcamento por id' })
+  @ApiOperation({ summary: 'Busca um orçamento por id' })
   @ApiOkResponse({ type: BudgetResponseDto })
-  @ApiNotFoundResponse({ description: 'Budget not found' })
+  @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<BudgetResponseDto> {
     return BudgetMapper.toResponse(await this.budgetService.findById(id));
   }
 
-  @Get('service-order/:serviceOrderId')
-  @ApiOperation({ summary: 'Lista orcamentos por ordem de servico' })
-  @ApiParam({ name: 'serviceOrderId', example: 'service-123' })
+  @Get('service-orders/:serviceOrderId')
+  @ApiOperation({ summary: 'Lista orçamentos por ordem de serviço' })
+  @ApiParam({
+    name: 'serviceOrderId',
+    format: 'uuid',
+    example: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+  })
   @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
   async findByServiceOrderId(
     @Param() params: FindBudgetsByServiceOrderParamsDto,

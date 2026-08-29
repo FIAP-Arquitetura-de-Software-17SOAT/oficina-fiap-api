@@ -35,7 +35,7 @@ import { ServiceCatalogService } from '../services/service-catalog.service';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Roles(Role.ADMIN, Role.EMPLOYEE)
-@ApiTags('service')
+@ApiTags('services')
 @Controller('services')
 export class ServiceController {
   constructor(private readonly serviceCatalog: ServiceCatalogService) {}
