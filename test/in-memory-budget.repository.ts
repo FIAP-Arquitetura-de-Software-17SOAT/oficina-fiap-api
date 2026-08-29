@@ -89,6 +89,7 @@ export class InMemoryBudgetRepository {
       items: budget.getItems().map((item) => ({
         id: item.getId(),
         partId: item.getPartId(),
+        serviceId: item.getServiceId(),
         description: item.getDescription(),
         type: item.getType(),
         quantity: item.getQuantity(),

@@ -65,6 +65,35 @@ describe('Swagger', () => {
     },
   );
 
+  it('documenta o CRUD do catálogo de serviços', () => {
+    const collection = document.paths['/api/v1/services'];
+    const item = document.paths['/api/v1/services/{id}'];
+
+    expect(Object.keys(document.paths)).toEqual(
+      expect.arrayContaining(['/api/v1/services', '/api/v1/services/{id}']),
+    );
+    expect(Object.keys(collection)).toEqual(
+      expect.arrayContaining(['post', 'get']),
+    );
+    expect(Object.keys(item)).toEqual(
+      expect.arrayContaining(['get', 'patch', 'delete']),
+    );
+    expect(
+      (
+        document.components?.schemas?.ServiceResponseDto as {
+          properties?: Record<string, unknown>;
+        }
+      )?.properties,
+    ).toEqual(
+      expect.objectContaining({
+        id: expect.anything(),
+        name: expect.anything(),
+        description: expect.anything(),
+        price: expect.anything(),
+      }),
+    );
+  });
+
   it('documents protected stock CRUD routes and their schemas', () => {
     const collection = document.paths['/api/v1/stock'];
     const item = document.paths['/api/v1/stock/{id}'];
@@ -198,8 +227,7 @@ describe('Swagger', () => {
       { bearer: [] },
     ]);
     expect(
-      document.paths['/api/v1/billings/{id}/renew-payment-link'].post!
-        .security,
+      document.paths['/api/v1/billings/{id}/renew-payment-link'].post!.security,
     ).toEqual([{ bearer: [] }]);
     expect(
       document.paths['/api/v1/billings/stripe/webhook'].post!.security,

@@ -220,16 +220,19 @@ model BudgetItem {
   id             String         @id @db.Uuid
   budgetId       String         @db.Uuid
   partId         String?        @db.Uuid
+  serviceId      String?        @db.Uuid
   description    String
   type           BudgetItemType
   quantity       Decimal        @db.Decimal(10, 2)
   unitPriceCents Int
   subtotalCents  Int
 
-  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  part   Part?  @relation(fields: [partId], references: [id], onDelete: Restrict)
+  budget  Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  part    Part?    @relation(fields: [partId], references: [id], onDelete: Restrict)
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
 
   @@index([partId])
+  @@index([serviceId])
   @@map("budget_item")
 }
 
@@ -316,6 +319,18 @@ model ServiceOrder {
   @@index([vehicleId])
   @@index([mechanicId])
   @@map("service_order")
+}
+
+model Service {
+  id          String   @id @db.Uuid
+  name        String   @unique
+  description String?
+  priceCents  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  budgetItems BudgetItem[]
+
+  @@map("service")
 }
 
 model Vehicle {

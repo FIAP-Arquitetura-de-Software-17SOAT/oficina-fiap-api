@@ -7,6 +7,7 @@ import { ClientModule } from './modules/client/client.module';
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module';
 import { BudgetModule } from './modules/budget/budget.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -47,6 +48,7 @@ import { RolesGuard } from './shared/http/auth/roles.guard';
     PurchaseOrderModule,
     BudgetModule,
     BillingModule,
+    ServiceCatalogModule,
     ServiceOrderModule,
     VehicleModule,
   ],

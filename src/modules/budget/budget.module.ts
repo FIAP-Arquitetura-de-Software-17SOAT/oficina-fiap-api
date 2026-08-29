@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../shared/database/prisma.module';
 import { ClientModule } from '../client/client.module';
 import { NotificationModule } from '../notification/notification.module';
+import { ServiceCatalogModule } from '../service-catalog/service-catalog.module';
 import { ServiceOrderModule } from '../service-order/service-order.module';
 import { BudgetController } from './controllers/budget.controller';
 import { BudgetRepository } from './repositories/budget.repository';
@@ -13,6 +14,7 @@ import { BudgetService } from './services/budget.service';
   imports: [
     PrismaModule,
     ServiceOrderModule,
+    ServiceCatalogModule,
     ClientModule,
     NotificationModule,
   ],
