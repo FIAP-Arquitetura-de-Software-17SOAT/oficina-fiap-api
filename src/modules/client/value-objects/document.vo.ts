@@ -40,31 +40,37 @@ function isValidCnpj(digits: string): boolean {
 }
 
 /**
- * Documento de identificação do cliente (linguagem ubíqua: CPF/CNPJ).
+ * Documento de identificação do cliente.
+ *
+ * O termo canônico do domínio é **Documento**, e é esse o nome do tipo — não
+ * `CpfCnpj`. CPF e CNPJ são os dois formatos que o documento aceita: detalhe de
+ * validação, não conceito. Nomear a classe pelo formato faria o mesmo conceito
+ * ter dois nomes na mesma assinatura, como em `getDocument(): CpfCnpj`.
+ *
  * Imutável, sem identidade própria e impossível de existir em estado inválido.
  */
-export class CpfCnpj {
+export class Document {
   private constructor(private readonly value: string) {}
 
-  static create(input: string): CpfCnpj {
+  static create(input: string): Document {
     const digits = (input ?? '').replace(/\D/g, '');
 
     if (!isValidCpf(digits) && !isValidCnpj(digits)) {
       throw new DomainException('CPF/CNPJ inválido');
     }
 
-    return new CpfCnpj(digits);
+    return new Document(digits);
   }
 
   getValue(): string {
     return this.value;
   }
 
-  isPessoaJuridica(): boolean {
+  isLegalEntity(): boolean {
     return this.value.length === CNPJ_LENGTH;
   }
 
-  equals(other: CpfCnpj): boolean {
+  equals(other: Document): boolean {
     return this.value === other.value;
   }
 

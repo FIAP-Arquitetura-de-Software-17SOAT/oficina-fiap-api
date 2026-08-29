@@ -23,6 +23,7 @@ import {
   RegisterShortageDto,
 } from '../dto/purchase-order.dto';
 
+import { PurchaseOrder } from '../entities/purchase-order.entity';
 import { PurchaseOrderMapper } from '../mappers/purchase-order.mapper';
 
 import { PurchaseOrderService } from '../services/purchase-order.service';
@@ -39,7 +40,7 @@ export class PurchaseOrderController {
 
   @Post()
   @ApiOperation({
-    summary: 'Criar pedido de compra',
+    summary: 'Cria um pedido de compra',
   })
   @ApiResponse({
     status: 201,
@@ -51,12 +52,12 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.create(dto);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
   }
 
   @Post('shortages')
   @ApiOperation({
-    summary: 'Registrar necessidade de compra a partir da falta de estoque',
+    summary: 'Registra necessidade de compra a partir da falta de estoque',
   })
   @ApiResponse({
     status: 201,
@@ -68,24 +69,25 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.registerShortage(dto);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Listar pedidos de compra',
+    summary: 'Lista os pedidos de compra',
   })
   async findAll() {
     const purchaseOrders = await this.service.findAll();
 
-    return purchaseOrders.map((purchaseOrder) =>
-      PurchaseOrderMapper.toResponse(purchaseOrder),
+    return PurchaseOrderMapper.toResponseList(
+      purchaseOrders,
+      await this.service.resolvePartNames(purchaseOrders),
     );
   }
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Consultar pedido de compra por ID',
+    summary: 'Busca um pedido de compra por id',
   })
   async findById(
     @Param('id', ParseUUIDPipe)
@@ -93,12 +95,12 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.findById(id);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
   }
 
   @Post(':id/items')
   @ApiOperation({
-    summary: 'Adicionar item ao pedido de compra',
+    summary: 'Adiciona um item ao pedido de compra',
   })
   async addItem(
     @Param('id', ParseUUIDPipe)
@@ -109,12 +111,12 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.addItem(id, dto);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
   }
 
   @Delete(':id/items/:itemId')
   @ApiOperation({
-    summary: 'Remover item do pedido de compra',
+    summary: 'Remove um item do pedido de compra',
   })
   async removeItem(
     @Param('id', ParseUUIDPipe)
@@ -125,12 +127,12 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.removeItem(id, itemId);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
   }
 
   @Patch(':id/register-purchase')
   @ApiOperation({
-    summary: 'Registrar compra junto ao fornecedor',
+    summary: 'Registra a compra junto ao fornecedor',
   })
   async registerPurchase(
     @Param('id', ParseUUIDPipe)
@@ -138,12 +140,12 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.registerPurchase(id);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
   }
 
   @Patch(':id/deliver')
   @ApiOperation({
-    summary: 'Registrar entrega do pedido de compra',
+    summary: 'Registra a entrega do pedido de compra',
   })
   async markAsDelivered(
     @Param('id', ParseUUIDPipe)
@@ -151,6 +153,17 @@ export class PurchaseOrderController {
   ) {
     const purchaseOrder = await this.service.markAsDelivered(id);
 
-    return PurchaseOrderMapper.toResponse(purchaseOrder);
+    return this.toResponse(purchaseOrder);
+  }
+
+  /**
+   * O nome da peça vem do módulo de estoque, então o mapeamento precisa passar
+   * pelo service, que é quem fala com o controller de lá.
+   */
+  private async toResponse(purchaseOrder: PurchaseOrder) {
+    return PurchaseOrderMapper.toResponse(
+      purchaseOrder,
+      await this.service.resolvePartNames([purchaseOrder]),
+    );
   }
 }

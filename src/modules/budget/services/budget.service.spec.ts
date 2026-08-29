@@ -643,17 +643,49 @@ describe('BudgetService', () => {
       );
     });
 
-    it('orçamento recusado encerra a ordem de serviço com o motivo', async () => {
+    it('orçamento recusado NÃO encerra a ordem de serviço', async () => {
       const budget = makeBudget();
       budget.sendToClient();
       repository.findById.mockResolvedValue(budget);
 
-      await service.refuse(budget.getId(), { reason: 'Achou caro' });
+      const refused = await service.refuse(budget.getId(), {
+        reason: 'Achou caro',
+      });
 
-      expect(serviceOrderController.cancel).toHaveBeenCalledWith(
-        '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
-        { reason: 'Orçamento recusado: Achou caro' },
-      );
+      // A OS fica em Aguardando aprovação para o mecânico refazer a proposta.
+      // Cancelar é decisão manual de quem atende, via
+      // PATCH /service-orders/:id/cancel.
+      expect(serviceOrderController.cancel).not.toHaveBeenCalled();
+      expect(refused.getStatus()).toBe(BudgetStatus.REFUSED);
+      expect(refused.getRefusalReason()).toBe('Achou caro');
+    });
+
+    it('permite gerar uma nova versão depois da recusa, sem tocar na OS', async () => {
+      const refusedBudget = makeBudget();
+      refusedBudget.sendToClient();
+      repository.findById.mockResolvedValue(refusedBudget);
+      await service.refuse(refusedBudget.getId(), { reason: 'Achou caro' });
+
+      // Já existe a versão 1 recusada: a próxima proposta nasce como versão 2 e
+      // a OS não recebe transição nenhuma, porque já está aguardando aprovação.
+      repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+      serviceOrderController.awaitApproval.mockClear();
+
+      const nextBudget = await service.create({
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+        items: [
+          {
+            description: 'Proposta revisada',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 90,
+          },
+        ],
+      });
+
+      expect(nextBudget.getVersion()).toBe(2);
+      expect(serviceOrderController.awaitApproval).not.toHaveBeenCalled();
+      expect(serviceOrderController.cancel).not.toHaveBeenCalled();
     });
   });
 });

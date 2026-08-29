@@ -36,7 +36,7 @@ export class PartService {
     const part = await this.partRepository.findById(id);
 
     if (!part) {
-      throw new NotFoundException('Part not found');
+      throw new NotFoundException('Peça não encontrada');
     }
 
     return part;
@@ -81,17 +81,27 @@ export class PartService {
     const existing = await this.partRepository.findByCode(code.getValue());
 
     if (existing && existing.getId() !== allowedPartId) {
-      throw new ConflictException('Part code already in use');
+      throw new ConflictException('Código da peça já cadastrado');
     }
   }
 
   private rethrowWriteError(error: unknown): never {
     if (hasPrismaErrorCode(error, 'P2002')) {
-      throw new ConflictException('Part code already in use');
+      throw new ConflictException('Código da peça já cadastrado');
     }
 
     if (hasPrismaErrorCode(error, 'P2025')) {
-      throw new NotFoundException('Part not found');
+      throw new NotFoundException('Peça não encontrada');
+    }
+
+    // P2003: a peça ainda é referenciada por movimentação de estoque, item de
+    // orçamento ou item de pedido de compra — todas as relações são Restrict de
+    // propósito, para não levar o histórico junto. Sem esta tradução o Prisma
+    // sobe cru e vira 500, quando o caso é conflito de dados.
+    if (hasPrismaErrorCode(error, 'P2003')) {
+      throw new ConflictException(
+        'Peça possui movimentações, orçamentos ou pedidos de compra vinculados e não pode ser removida',
+      );
     }
 
     throw error;

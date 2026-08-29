@@ -108,22 +108,26 @@ export class BudgetService {
     return accepted;
   }
 
+  /**
+   * Recusar orçamento **não** encerra a ordem de serviço.
+   *
+   * O board original dizia "quando o status do orçamento for alterado para
+   * recusado, encerra a ordem de serviço", e era assim que estava
+   * implementado. Na prática isso matava a negociação: o cliente achar caro a
+   * primeira proposta é o caso comum, e a oficina precisa poder refazer o
+   * orçamento sem abrir outra OS.
+   *
+   * A OS fica em `Aguardando aprovação` e o mecânico gera quantas versões
+   * quiser. Desistir é decisão de quem atende, não consequência automática de
+   * uma recusa: para isso existe `PATCH /service-orders/:id/cancel`, que exige
+   * motivo.
+   */
   async refuse(id: string, dto: RefuseBudgetDto): Promise<Budget> {
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.refuse(dto.reason);
-    const refused = await this.persistWaitingApprovalDecision(
-      budget,
-      expectedUpdatedAt,
-    );
 
-    // Politica do Event Storming: "Quando Status do orcamento for alterado para
-    // recusado, encerra a ordem de servico".
-    await this.serviceOrderController.cancel(refused.getServiceOrderId(), {
-      reason: `Orçamento recusado: ${refused.getRefusalReason()}`,
-    });
-
-    return refused;
+    return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
   }
 
   /**

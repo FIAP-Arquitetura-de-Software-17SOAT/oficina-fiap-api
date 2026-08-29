@@ -105,3 +105,4 @@ Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto
 
 - [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
 - [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.
+- [docs/c4-diagrams/](docs/c4-diagrams/) — modelo C4 niveis 1 (contexto) e 2 (containers), em `.drawio`.
