@@ -1,7 +1,7 @@
 vars {
   baseUrl: http://localhost:3000/api/v1
-  email: {{process.env.ADMIN_EMAIL}}
-  password: {{process.env.ADMIN_PASSWORD}}
+  email: {{ADMIN_EMAIL}}
+  password: {{ADMIN_PASSWORD}}
   useRandomData: true
   clientName: Bruno QA Manual
   document: 11222333000181
@@ -21,4 +21,10 @@ vars {
   budgetPartDescription: Peca manual
   stockIdempotencyKey: entrada-manual-001
   mechanicId: 00000000-0000-4000-8000-000000000001
+  ADMIN_EMAIL: teste@email.com
+  ADMIN_PASSWORD: 12345678
 }
+vars:secret [
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD
+]
