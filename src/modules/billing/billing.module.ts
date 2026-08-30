@@ -5,6 +5,7 @@ import { ClientModule } from '../client/client.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ServiceOrderModule } from '../service-order/service-order.module';
 import { BillingController } from './controllers/billing.controller';
+import { PaymentController } from './controllers/payment.controller';
 import { PaymentGateway } from './gateways/payment-gateway';
 import { StripePaymentGateway } from './gateways/stripe-payment.gateway';
 import { BillingRepository } from './repositories/billing.repository';
@@ -18,7 +19,7 @@ import { BillingService } from './services/billing.service';
     NotificationModule,
     ServiceOrderModule,
   ],
-  controllers: [BillingController],
+  controllers: [BillingController, PaymentController],
   providers: [
     BillingService,
     BillingRepository,

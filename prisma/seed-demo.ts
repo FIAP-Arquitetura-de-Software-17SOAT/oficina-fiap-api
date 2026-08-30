@@ -1,3 +1,5 @@
+import { Document } from '../src/modules/client/value-objects/document.vo';
+
 type SeedEnvironment = Record<string, string | undefined>;
 
 type SeedRecord = { id: string } & Record<string, unknown>;
@@ -43,6 +45,27 @@ const ids = {
     oil: '30000000-0000-4000-8000-000000000003',
   },
 };
+
+/**
+ * O seed grava direto pelo Prisma, sem passar pela entidade — então nada aqui
+ * confere CPF. Um dígito verificador errado entra calado na escrita e só
+ * explode na LEITURA: `Client.restore` revalida o documento, e uma única linha
+ * ruim derruba `GET /clients` inteiro com 400, sem forma de corrigir pela
+ * própria API. Foi o que aconteceu com o CPF do sétimo cliente.
+ *
+ * Passar pelo Value Object aqui reusa a regra do domínio (sem duplicar o
+ * cálculo dos dígitos) e transforma o problema num erro barulhento no seed,
+ * onde custa dez segundos para consertar.
+ */
+function validDocument(document: string): string {
+  try {
+    return Document.create(document).getValue();
+  } catch {
+    throw new Error(
+      `Seed: CPF/CNPJ inválido (${document}). Confira os dígitos verificadores.`,
+    );
+  }
+}
 
 async function createIfMissing(
   delegate: SeedDelegate,
@@ -96,7 +119,7 @@ export async function runDemoSeed(
       ],
       [
         'Gabi Freitas',
-        '07098765432',
+        '07098765481',
         'gabi.freitas@example.test',
         '(11) 98888-1007',
       ],
@@ -106,8 +129,10 @@ export async function runDemoSeed(
         'henrique.melo@example.test',
         '(11) 98888-1008',
       ],
-    ].map(([name, document, email, phone], index) =>
-      createIfMissing(
+    ].map(([name, rawDocument, email, phone], index) => {
+      const document = validDocument(rawDocument);
+
+      return createIfMissing(
         prisma.client,
         { document },
         {
@@ -117,8 +142,8 @@ export async function runDemoSeed(
           email,
           phone,
         },
-      ),
-    ),
+      );
+    }),
   );
 
   const vehicles = await Promise.all(

@@ -12,16 +12,39 @@ import { BudgetService } from '../../budget/services/budget.service';
 import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
+import { ServiceOrder } from '../../service-order/entities/service-order.entity';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceOrderService } from '../../service-order/services/service-order.service';
 import { GenerateBillingDto } from '../dto/billing.dto';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
+import { PaymentMethod } from '../enums/payment-method.enum';
 import {
   InvalidPaymentWebhookSignatureError,
   PaymentGateway,
 } from '../gateways/payment-gateway';
 import { BillingRepository } from '../repositories/billing.repository';
+
+/**
+ * Estado da cobrança e da OS depois de processar um retorno do gateway.
+ */
+export interface PaymentReturn {
+  billing: Billing;
+  serviceOrder: ServiceOrder;
+}
+
+interface RegisteredPayment {
+  gatewayTransactionId: string;
+  method: PaymentMethod;
+  paidAt: Date;
+}
+
+// Depois de quitada a cobrança, só estes estados de OS ainda podem virar
+// entrega. Qualquer outro (já entregue, cancelada) fica como está.
+const DELIVERABLE_STATUSES = [
+  ServiceOrderStatus.COMPLETED,
+  ServiceOrderStatus.AWAITING_PAYMENT,
+];
 
 @Injectable()
 export class BillingService {
@@ -209,37 +232,86 @@ export class BillingService {
     );
     if (!billing) throw new NotFoundException('Cobrança não encontrada');
 
-    await this.billingRepository.recordCheckoutSessionPayment(
-      event.gatewayTransactionId,
-      event.method,
-      event.paidAt,
-    );
+    await this.settlePayment(billing, {
+      gatewayTransactionId: event.gatewayTransactionId,
+      method: event.method,
+      paidAt: event.paidAt,
+    });
+  }
 
-    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
-    const changed = billing.registerPayment(
-      {
-        gatewayTransactionId: event.gatewayTransactionId,
-        method: event.method,
-        paidAt: event.paidAt,
-      },
-      true,
-    );
-    if (!changed) return;
+  /**
+   * Retorno de sucesso do Stripe (`PAYMENT_SUCCESS_URL`). A URL chega pelo
+   * navegador do cliente, então ela não prova nada: quem diz se a sessão foi
+   * paga é o gateway. Só com a confirmação dele a cobrança é quitada e a OS vai
+   * para entregue — caso contrário nada muda de status.
+   *
+   * É idempotente de propósito: o webhook e este retorno disputam a mesma
+   * cobrança, e quem chegar depois só encontra o trabalho já feito.
+   */
+  async confirmPaymentReturn(
+    gatewayTransactionId: string,
+  ): Promise<PaymentReturn> {
+    const sessionId = gatewayTransactionId.trim();
 
-    const updated = await this.billingRepository.update(
-      billing,
-      expectedUpdatedAt,
-    );
-    if (updated) return;
-
-    const stored = await this.billingRepository.findByGatewayTransactionId(
-      event.gatewayTransactionId,
-    );
-    if (stored?.getStatus() === BillingStatus.PAID) {
-      return;
+    if (!sessionId) {
+      throw new BadRequestException('O id da sessão de checkout é obrigatório');
     }
 
-    throw new ConflictException('A cobrança foi alterada por outra requisição');
+    const billing =
+      await this.billingRepository.findByGatewayTransactionId(sessionId);
+
+    if (!billing) {
+      throw new NotFoundException('Cobrança não encontrada');
+    }
+
+    const payment = await this.confirmPaymentWithGateway(sessionId);
+
+    if (!payment) {
+      return this.buildPaymentReturn(billing);
+    }
+
+    return this.settleAndDeliver(billing, payment);
+  }
+
+  /**
+   * Retorno de cancelamento do Stripe (`PAYMENT_CANCEL_URL`): o cliente
+   * abandonou o checkout. O serviço está pronto e a cobrança continua de pé, e
+   * é isso que a OS passa a dizer — cobrança em aberto.
+   */
+  async registerPaymentCancellation(billingId: string): Promise<PaymentReturn> {
+    const billing = await this.findById(billingId.trim());
+    const gatewayTransactionId = billing.getGatewayTransactionId();
+
+    if (billing.getStatus() !== BillingStatus.PAID && gatewayTransactionId) {
+      // O retorno de cancelamento também é palpite de quem chamar a URL. Se o
+      // gateway já registrou o pagamento, vale o gateway: quitar e entregar, em
+      // vez de rebaixar uma OS paga para cobrança em aberto.
+      const payment =
+        await this.confirmPaymentWithGateway(gatewayTransactionId);
+
+      if (payment) {
+        return this.settleAndDeliver(billing, payment);
+      }
+    }
+
+    if (billing.getStatus() === BillingStatus.PAID) {
+      return this.buildPaymentReturn(billing);
+    }
+
+    const serviceOrder = await this.serviceOrderService.findById(
+      billing.getServiceOrderId(),
+    );
+
+    if (serviceOrder.getStatus() !== ServiceOrderStatus.COMPLETED) {
+      return { billing, serviceOrder };
+    }
+
+    return {
+      billing,
+      serviceOrder: await this.serviceOrderService.awaitPayment(
+        serviceOrder.getId(),
+      ),
+    };
   }
 
   async deliverServiceOrder(id: string): Promise<void> {
@@ -252,6 +324,88 @@ export class BillingService {
     }
 
     await this.serviceOrderService.deliver(billing.getServiceOrderId());
+  }
+
+  private async confirmPaymentWithGateway(
+    gatewayTransactionId: string,
+  ): Promise<RegisteredPayment | null> {
+    const status =
+      await this.paymentGateway.getPaymentStatus(gatewayTransactionId);
+
+    if (status.status !== 'paid') {
+      return null;
+    }
+
+    return {
+      gatewayTransactionId: status.gatewayTransactionId,
+      method: status.method,
+      paidAt: status.paidAt,
+    };
+  }
+
+  private async settleAndDeliver(
+    billing: Billing,
+    payment: RegisteredPayment,
+  ): Promise<PaymentReturn> {
+    const paid = await this.settlePayment(billing, payment);
+
+    return { billing: paid, serviceOrder: await this.deliverPaidOrder(paid) };
+  }
+
+  /**
+   * Quita a cobrança a partir de um pagamento já confirmado pelo gateway.
+   * Caminho único do webhook e do retorno de sucesso, e por isso tolerante a
+   * repetição: cobrança já paga devolve o que está gravado em vez de estourar.
+   */
+  private async settlePayment(
+    billing: Billing,
+    payment: RegisteredPayment,
+  ): Promise<Billing> {
+    await this.billingRepository.recordCheckoutSessionPayment(
+      payment.gatewayTransactionId,
+      payment.method,
+      payment.paidAt,
+    );
+
+    const expectedUpdatedAt = new Date(billing.getUpdatedAt());
+    const changed = billing.registerPayment(payment, true);
+    if (!changed) return billing;
+
+    const updated = await this.billingRepository.update(
+      billing,
+      expectedUpdatedAt,
+    );
+    if (updated) return updated;
+
+    const stored = await this.billingRepository.findByGatewayTransactionId(
+      payment.gatewayTransactionId,
+    );
+    if (stored?.getStatus() === BillingStatus.PAID) {
+      return stored;
+    }
+
+    throw new ConflictException('A cobrança foi alterada por outra requisição');
+  }
+
+  private async deliverPaidOrder(billing: Billing): Promise<ServiceOrder> {
+    const serviceOrder = await this.serviceOrderService.findById(
+      billing.getServiceOrderId(),
+    );
+
+    if (!DELIVERABLE_STATUSES.includes(serviceOrder.getStatus())) {
+      return serviceOrder;
+    }
+
+    return this.serviceOrderService.deliver(serviceOrder.getId());
+  }
+
+  private async buildPaymentReturn(billing: Billing): Promise<PaymentReturn> {
+    return {
+      billing,
+      serviceOrder: await this.serviceOrderService.findById(
+        billing.getServiceOrderId(),
+      ),
+    };
   }
 
   private async persistUpdatedBilling(

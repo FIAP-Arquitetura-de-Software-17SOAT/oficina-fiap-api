@@ -358,4 +358,111 @@ describe('Billing (integracao)', () => {
 
     expect(serviceOrder.body.status).toBe('DELIVERED');
   });
+
+  it('entrega a OS quando o retorno de sucesso do Stripe confirma o pagamento', async () => {
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
+    const billing = await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId })
+      .expect(201);
+
+    const gateway: FakePaymentGateway = app.get(PaymentGateway);
+    gateway.markSessionPaid({
+      status: 'paid',
+      gatewayTransactionId: billing.body.gatewayTransactionId as string,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-29T12:00:00.000Z'),
+    });
+
+    const returned = await request(http)
+      .get('/api/v1/payment/success')
+      .query({ session_id: billing.body.gatewayTransactionId as string })
+      .expect(200);
+
+    expect(returned.body).toMatchObject({
+      billingId: billing.body.id,
+      serviceOrderId,
+      billingStatus: 'PAID',
+      serviceOrderStatus: 'DELIVERED',
+    });
+
+    const serviceOrder = await request(http)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
+      .expect(200);
+
+    expect(serviceOrder.body.status).toBe('DELIVERED');
+  });
+
+  it('não mexe na OS quando o retorno de sucesso não tem pagamento no gateway', async () => {
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
+    const billing = await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId })
+      .expect(201);
+
+    const returned = await request(http)
+      .get('/api/v1/payment/success')
+      .query({ session_id: billing.body.gatewayTransactionId as string })
+      .expect(200);
+
+    expect(returned.body).toMatchObject({
+      billingStatus: 'WAITING_PAYMENT',
+      serviceOrderStatus: 'COMPLETED',
+    });
+  });
+
+  it('deixa a OS com cobrança em aberto quando o cliente cancela o checkout', async () => {
+    const { serviceOrderId } =
+      await createCompletedServiceOrderWithAcceptedBudget();
+    const billing = await request(http)
+      .post('/api/v1/billings')
+      .send({ serviceOrderId })
+      .expect(201);
+
+    const returned = await request(http)
+      .get('/api/v1/payment/cancel')
+      .query({ billing_id: billing.body.id as string })
+      .expect(200);
+
+    expect(returned.body).toMatchObject({
+      billingId: billing.body.id,
+      serviceOrderId,
+      billingStatus: 'WAITING_PAYMENT',
+      serviceOrderStatus: 'AWAITING_PAYMENT',
+    });
+
+    // O cliente volta pelo link e paga: a OS sai da cobrança em aberto.
+    const gateway: FakePaymentGateway = app.get(PaymentGateway);
+    gateway.markSessionPaid({
+      status: 'paid',
+      gatewayTransactionId: billing.body.gatewayTransactionId as string,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-29T13:00:00.000Z'),
+    });
+
+    await request(http)
+      .get('/api/v1/payment/success')
+      .query({ session_id: billing.body.gatewayTransactionId as string })
+      .expect(200);
+
+    const serviceOrder = await request(http)
+      .get(`/api/v1/service-orders/${serviceOrderId}`)
+      .expect(200);
+
+    expect(serviceOrder.body.status).toBe('DELIVERED');
+  });
+
+  it('recusa retorno de pagamento com identificador ausente ou desconhecido', async () => {
+    await request(http).get('/api/v1/payment/success').expect(400);
+    await request(http)
+      .get('/api/v1/payment/cancel')
+      .query({ billing_id: 'not-a-uuid' })
+      .expect(400);
+    await request(http)
+      .get('/api/v1/payment/success')
+      .query({ session_id: 'cs_test_unknown' })
+      .expect(404);
+  });
 });

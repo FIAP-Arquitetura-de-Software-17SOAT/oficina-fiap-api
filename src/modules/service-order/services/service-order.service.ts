@@ -139,6 +139,18 @@ export class ServiceOrderService {
     return this.serviceOrderRepository.update(serviceOrder);
   }
 
+  /**
+   * Chamado pelo retorno de cancelamento do gateway de pagamento. Não é
+   * endpoint: a OS só cai em cobrança em aberto por decisão da cobrança.
+   */
+  async awaitPayment(id: string): Promise<ServiceOrder> {
+    const serviceOrder = await this.findById(id);
+
+    serviceOrder.awaitPayment();
+
+    return this.serviceOrderRepository.update(serviceOrder);
+  }
+
   async deliver(id: string): Promise<ServiceOrder> {
     const serviceOrder = await this.findById(id);
 

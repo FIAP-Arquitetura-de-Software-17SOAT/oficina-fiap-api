@@ -249,6 +249,14 @@ describe('Swagger', () => {
     expect(
       document.paths['/api/v1/billings/stripe/webhook'].post!.security,
     ).toBeUndefined();
+    // O retorno do checkout chega pelo navegador do cliente, sem token: elas
+    // não confiam na URL, releem o pagamento no gateway.
+    expect(
+      document.paths['/api/v1/payment/success'].get!.security,
+    ).toBeUndefined();
+    expect(
+      document.paths['/api/v1/payment/cancel'].get!.security,
+    ).toBeUndefined();
     expect(document.paths['/api/v1/auth/login'].post!.security).toBeUndefined();
     expect(document.paths['/api/v1/health'].get!.security).toBeUndefined();
   });

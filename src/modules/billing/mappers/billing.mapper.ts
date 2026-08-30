@@ -1,7 +1,9 @@
 import {
   BillingPenaltyResponseDto,
   BillingResponseDto,
+  PaymentReturnResponseDto,
 } from '../dto/billing.dto';
+import { PaymentReturn } from '../services/billing.service';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
@@ -24,6 +26,18 @@ type BillingRecord = {
 };
 
 export class BillingMapper {
+  static toPaymentReturnResponse(
+    result: PaymentReturn,
+  ): PaymentReturnResponseDto {
+    return {
+      billingId: result.billing.getId(),
+      serviceOrderId: result.serviceOrder.getId(),
+      billingStatus: result.billing.getStatus(),
+      serviceOrderStatus: result.serviceOrder.getStatus(),
+      paymentLink: result.billing.getPaymentLink(),
+    };
+  }
+
   static toPersistence(billing: Billing) {
     return {
       id: billing.getId(),

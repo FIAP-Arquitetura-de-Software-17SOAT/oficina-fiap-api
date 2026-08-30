@@ -60,6 +60,7 @@ describe('BudgetService', () => {
       findById: jest.fn(),
       findAll: jest.fn(),
       findByServiceOrderId: jest.fn(),
+      findWaitingApprovalByServiceOrderId: jest.fn().mockResolvedValue(null),
       findLastVersionByServiceOrderId: jest.fn(),
     };
 
@@ -738,6 +739,49 @@ describe('BudgetService', () => {
       expect(serviceOrderController.cancel).not.toHaveBeenCalled();
     });
   });
+  it('recusa nova versão enquanto uma aguarda aprovação do cliente', async () => {
+    const waiting = makeBudget();
+    waiting.sendToClient();
+    repository.findWaitingApprovalByServiceOrderId.mockResolvedValue(waiting);
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+
+    await expect(
+      service.create({
+        serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+        items: [
+          {
+            serviceId: 'catalog-1',
+            description: 'Oil change',
+            type: BudgetItemType.SERVICE,
+            quantity: 1,
+            unitPrice: 100,
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('libera nova versão depois que a anterior é respondida', async () => {
+    repository.findWaitingApprovalByServiceOrderId.mockResolvedValue(null);
+    repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
+
+    const budget = await service.create({
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+      items: [
+        {
+          serviceId: 'catalog-1',
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 100,
+        },
+      ],
+    });
+
+    expect(budget.getVersion()).toBe(2);
+  });
 });
 
 describe('BudgetService — referência ao catálogo de serviços', () => {
@@ -851,6 +895,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       create: jest.fn((budget: Budget) => Promise.resolve(budget)),
       findById: jest.fn(),
       findByServiceOrderId: jest.fn().mockResolvedValue([]),
+      findWaitingApprovalByServiceOrderId: jest.fn().mockResolvedValue(null),
       findAll: jest.fn(),
       update: jest.fn((budget: Budget) => Promise.resolve(budget)),
       updateGenerated: jest.fn((budget: Budget) => Promise.resolve(budget)),

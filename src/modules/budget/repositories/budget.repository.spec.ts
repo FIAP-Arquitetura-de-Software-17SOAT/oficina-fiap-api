@@ -246,7 +246,7 @@ describe('BudgetRepository', () => {
     expect(prisma.budget.findMany).toHaveBeenCalledWith({
       where: { serviceOrderId: row.serviceOrderId },
       include: { items: true },
-      orderBy: { version: 'asc' },
+      orderBy: { version: 'desc' },
     });
     expect(budgets).toHaveLength(1);
   });
