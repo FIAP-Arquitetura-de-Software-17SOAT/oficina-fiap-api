@@ -14,6 +14,7 @@ export function configureApp(app: INestApplication): INestApplication {
 
   app.use((_request: Request, response: Response, next: NextFunction) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     next();
   });
 

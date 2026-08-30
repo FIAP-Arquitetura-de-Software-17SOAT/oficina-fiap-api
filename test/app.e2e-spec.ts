@@ -41,6 +41,9 @@ describe('AppController (e2e)', () => {
 
     expect(response.headers['x-powered-by']).toBeUndefined();
     expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['cross-origin-resource-policy']).toBe(
+      'same-origin',
+    );
   });
 
   it('rota fora do prefixo devolve 404', () => {
