@@ -282,6 +282,8 @@ stateDiagram-v2
     AguardandoPecas --> EmExecucao: estoque atende ou não há peças
     EmExecucao --> Finalizada: finalizar OS
     Finalizada --> Entregue: pagamento confirmado
+    Finalizada --> CobrancaEmAberto: cliente cancela o checkout
+    CobrancaEmAberto --> Entregue: pagamento confirmado
     Recebida --> Cancelada: cancelar
     EmDiagnostico --> Cancelada: cancelar
     AguardandoAprovacao --> AguardandoAprovacao: orçamento recusado, nova versão
@@ -300,8 +302,11 @@ Estados técnicos:
 | Aguardando peças | `AWAITING_PARTS` |
 | Em execução | `IN_PROGRESS` |
 | Finalizada | `COMPLETED` |
+| Cobrança em aberto | `AWAITING_PAYMENT` |
 | Entregue | `DELIVERED` |
 | Cancelada | `CANCELLED` |
+
+`AWAITING_PAYMENT` é o retorno de cancelamento do checkout: o serviço está pronto, a cobrança continua de pé e a OS fica retida até o pagamento entrar. A única saída dele é a entrega.
 
 O tempo médio de execução é medido da atribuição ao mecânico (`assignedAt`) até a finalização (`completedAt`), e não da abertura da OS.
 

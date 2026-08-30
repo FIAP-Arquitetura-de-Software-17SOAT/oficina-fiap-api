@@ -404,3 +404,40 @@ describe('ServiceOrder', () => {
     });
   });
 });
+
+describe('ServiceOrder cobrança em aberto', () => {
+  const completed = () =>
+    ServiceOrder.restore('11111111-1c2e-4f5a-8b9c-0d1e2f3a4b5c', {
+      clientId: '22222222-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      vehicleId: '33333333-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      description: 'Troca de óleo',
+      status: ServiceOrderStatus.COMPLETED,
+      mechanicId: '44444444-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      completedAt: new Date('2026-08-20T10:00:00.000Z'),
+    });
+
+  it('leva a OS finalizada para cobrança em aberto', () => {
+    const serviceOrder = completed();
+
+    serviceOrder.awaitPayment();
+
+    expect(serviceOrder.getStatus()).toBe(ServiceOrderStatus.AWAITING_PAYMENT);
+  });
+
+  it('entrega a OS que estava com cobrança em aberto', () => {
+    const serviceOrder = completed();
+
+    serviceOrder.awaitPayment();
+    serviceOrder.deliver();
+
+    expect(serviceOrder.getStatus()).toBe(ServiceOrderStatus.DELIVERED);
+  });
+
+  it('recusa cobrança em aberto depois da entrega', () => {
+    const serviceOrder = completed();
+
+    serviceOrder.deliver();
+
+    expect(() => serviceOrder.awaitPayment()).toThrow(DomainException);
+  });
+});

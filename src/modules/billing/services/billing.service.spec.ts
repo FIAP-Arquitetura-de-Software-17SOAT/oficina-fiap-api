@@ -87,10 +87,12 @@ describe('BillingService', () => {
     serviceOrderService = {
       findById: jest.fn(),
       deliver: jest.fn(),
+      awaitPayment: jest.fn(),
     } as unknown as jest.Mocked<ServiceOrderService>;
     paymentGateway = {
       createPaymentLink: jest.fn(),
       parsePaymentWebhook: jest.fn(),
+      getPaymentStatus: jest.fn(),
     };
     service = new BillingService(
       repository,
@@ -614,5 +616,207 @@ describe('BillingService', () => {
     await expect(
       service.generateForServiceOrder({ serviceOrderId }),
     ).rejects.toThrow(ConflictException);
+  });
+});
+
+describe('BillingService payment returns', () => {
+  const billingId = 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+  const sessionId = 'cs_test_return';
+
+  let repository: jest.Mocked<BillingRepository>;
+  let serviceOrderService: jest.Mocked<ServiceOrderService>;
+  let paymentGateway: jest.Mocked<PaymentGateway>;
+  let service: BillingService;
+
+  const waitingBilling = () =>
+    Billing.restore(billingId, {
+      serviceOrderId,
+      budgetId,
+      amount: Money.fromCents(15000),
+      status: BillingStatus.WAITING_PAYMENT,
+      paymentLink: 'https://checkout.stripe.com/c/pay/cs_test_return',
+      gatewayTransactionId: sessionId,
+      expiresAt: new Date('2026-08-30T10:00:00.000Z'),
+    });
+
+  const serviceOrderWith = (status: ServiceOrderStatus) =>
+    ServiceOrder.restore(serviceOrderId, {
+      clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      description: 'Oil change',
+      status,
+      completedAt: new Date('2026-08-20T10:00:00.000Z'),
+    });
+
+  beforeEach(() => {
+    repository = {
+      findById: jest.fn(),
+      findByGatewayTransactionId: jest.fn(),
+      recordCheckoutSessionPayment: jest.fn(),
+      update: jest.fn(),
+    } as unknown as jest.Mocked<BillingRepository>;
+    serviceOrderService = {
+      findById: jest.fn(),
+      deliver: jest.fn(),
+      awaitPayment: jest.fn(),
+    } as unknown as jest.Mocked<ServiceOrderService>;
+    paymentGateway = {
+      createPaymentLink: jest.fn(),
+      parsePaymentWebhook: jest.fn(),
+      getPaymentStatus: jest.fn(),
+    };
+    service = new BillingService(
+      repository,
+      {} as unknown as jest.Mocked<BudgetService>,
+      serviceOrderService,
+      paymentGateway,
+      {} as unknown as jest.Mocked<ClientRepository>,
+      {} as unknown as jest.Mocked<NotificationService>,
+    );
+  });
+
+  it('quita a cobrança e entrega a OS quando o gateway confirma o pagamento', async () => {
+    const paidAt = new Date('2026-08-29T12:00:00.000Z');
+    repository.findByGatewayTransactionId.mockResolvedValue(waitingBilling());
+    repository.update.mockImplementation((billing) => Promise.resolve(billing));
+    paymentGateway.getPaymentStatus.mockResolvedValue({
+      status: 'paid',
+      gatewayTransactionId: sessionId,
+      method: PaymentMethod.CARD,
+      paidAt,
+    });
+    serviceOrderService.findById.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.COMPLETED),
+    );
+    serviceOrderService.deliver.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.DELIVERED),
+    );
+
+    const result = await service.confirmPaymentReturn(sessionId);
+
+    expect(result.billing.getStatus()).toBe(BillingStatus.PAID);
+    expect(result.billing.getPaidAt()).toEqual(paidAt);
+    expect(result.serviceOrder.getStatus()).toBe(ServiceOrderStatus.DELIVERED);
+    expect(serviceOrderService.deliver).toHaveBeenCalledWith(serviceOrderId);
+  });
+
+  it('não move nada quando o gateway não confirma o pagamento no retorno de sucesso', async () => {
+    repository.findByGatewayTransactionId.mockResolvedValue(waitingBilling());
+    paymentGateway.getPaymentStatus.mockResolvedValue({
+      status: 'unpaid',
+      gatewayTransactionId: sessionId,
+    });
+    serviceOrderService.findById.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.COMPLETED),
+    );
+
+    const result = await service.confirmPaymentReturn(sessionId);
+
+    expect(result.billing.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(result.serviceOrder.getStatus()).toBe(ServiceOrderStatus.COMPLETED);
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(serviceOrderService.deliver).not.toHaveBeenCalled();
+  });
+
+  it('não reentrega a OS quando o webhook já entregou antes do retorno', async () => {
+    repository.findByGatewayTransactionId.mockResolvedValue(
+      Billing.restore(billingId, {
+        serviceOrderId,
+        budgetId,
+        amount: Money.fromCents(15000),
+        status: BillingStatus.PAID,
+        gatewayTransactionId: sessionId,
+        paidAt: new Date('2026-08-29T11:00:00.000Z'),
+      }),
+    );
+    paymentGateway.getPaymentStatus.mockResolvedValue({
+      status: 'paid',
+      gatewayTransactionId: sessionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-29T12:00:00.000Z'),
+    });
+    serviceOrderService.findById.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.DELIVERED),
+    );
+
+    const result = await service.confirmPaymentReturn(sessionId);
+
+    expect(result.serviceOrder.getStatus()).toBe(ServiceOrderStatus.DELIVERED);
+    expect(serviceOrderService.deliver).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('rejeita retorno de sucesso sem sessão conhecida', async () => {
+    repository.findByGatewayTransactionId.mockResolvedValue(null);
+
+    await expect(
+      service.confirmPaymentReturn(sessionId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(paymentGateway.getPaymentStatus).not.toHaveBeenCalled();
+  });
+
+  it('deixa a OS em cobrança em aberto quando o cliente cancela o checkout', async () => {
+    repository.findById.mockResolvedValue(waitingBilling());
+    paymentGateway.getPaymentStatus.mockResolvedValue({
+      status: 'unpaid',
+      gatewayTransactionId: sessionId,
+    });
+    serviceOrderService.findById.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.COMPLETED),
+    );
+    serviceOrderService.awaitPayment.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.AWAITING_PAYMENT),
+    );
+
+    const result = await service.registerPaymentCancellation(billingId);
+
+    expect(result.serviceOrder.getStatus()).toBe(
+      ServiceOrderStatus.AWAITING_PAYMENT,
+    );
+    expect(result.billing.getStatus()).toBe(BillingStatus.WAITING_PAYMENT);
+    expect(serviceOrderService.awaitPayment).toHaveBeenCalledWith(
+      serviceOrderId,
+    );
+  });
+
+  it('não rebaixa a OS quando o cancelamento chega com o pagamento já no gateway', async () => {
+    repository.findById.mockResolvedValue(waitingBilling());
+    repository.update.mockImplementation((billing) => Promise.resolve(billing));
+    paymentGateway.getPaymentStatus.mockResolvedValue({
+      status: 'paid',
+      gatewayTransactionId: sessionId,
+      method: PaymentMethod.CARD,
+      paidAt: new Date('2026-08-29T12:00:00.000Z'),
+    });
+    serviceOrderService.findById.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.COMPLETED),
+    );
+    serviceOrderService.deliver.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.DELIVERED),
+    );
+
+    const result = await service.registerPaymentCancellation(billingId);
+
+    expect(result.billing.getStatus()).toBe(BillingStatus.PAID);
+    expect(result.serviceOrder.getStatus()).toBe(ServiceOrderStatus.DELIVERED);
+    expect(serviceOrderService.awaitPayment).not.toHaveBeenCalled();
+  });
+
+  it('é idempotente: o segundo cancelamento não tenta transicionar de novo', async () => {
+    repository.findById.mockResolvedValue(waitingBilling());
+    paymentGateway.getPaymentStatus.mockResolvedValue({
+      status: 'unpaid',
+      gatewayTransactionId: sessionId,
+    });
+    serviceOrderService.findById.mockResolvedValue(
+      serviceOrderWith(ServiceOrderStatus.AWAITING_PAYMENT),
+    );
+
+    const result = await service.registerPaymentCancellation(billingId);
+
+    expect(result.serviceOrder.getStatus()).toBe(
+      ServiceOrderStatus.AWAITING_PAYMENT,
+    );
+    expect(serviceOrderService.awaitPayment).not.toHaveBeenCalled();
   });
 });

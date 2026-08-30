@@ -3,11 +3,13 @@ import {
   CreatePaymentLinkResult,
   ParsePaymentWebhookInput,
   PaymentGateway,
+  PaymentStatusResult,
   PaymentWebhookResult,
 } from './payment-gateway';
 
 export class FakePaymentGateway extends PaymentGateway {
   private webhookResults: PaymentWebhookResult[] = [];
+  private paidSessions = new Map<string, PaymentStatusResult>();
 
   createPaymentLink(
     input: CreatePaymentLinkInput,
@@ -32,7 +34,22 @@ export class FakePaymentGateway extends PaymentGateway {
     );
   }
 
+  getPaymentStatus(gatewayTransactionId: string): Promise<PaymentStatusResult> {
+    return Promise.resolve(
+      this.paidSessions.get(gatewayTransactionId) ?? {
+        status: 'unpaid',
+        gatewayTransactionId,
+      },
+    );
+  }
+
   queueWebhookResult(result: PaymentWebhookResult): void {
     this.webhookResults.push(result);
+  }
+
+  markSessionPaid(
+    result: Extract<PaymentStatusResult, { status: 'paid' }>,
+  ): void {
+    this.paidSessions.set(result.gatewayTransactionId, result);
   }
 }

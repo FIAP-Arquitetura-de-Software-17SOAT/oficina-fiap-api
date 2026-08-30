@@ -69,9 +69,24 @@ export class InMemoryBudgetRepository {
     return Promise.resolve(
       Array.from(this.budgets.values())
         .filter((budget) => budget.getServiceOrderId() === serviceOrderId)
-        .sort((left, right) => left.getVersion() - right.getVersion())
+        // Versão mais recente primeiro, como o repositório Prisma.
+        .sort((left, right) => right.getVersion() - left.getVersion())
         .map((budget) => this.clone(budget)),
     );
+  }
+
+  findWaitingApprovalByServiceOrderId(
+    serviceOrderId: string,
+  ): Promise<Budget | null> {
+    const waiting = Array.from(this.budgets.values())
+      .filter(
+        (budget) =>
+          budget.getServiceOrderId() === serviceOrderId &&
+          budget.getStatus() === BudgetStatus.WAITING_APPROVAL,
+      )
+      .sort((left, right) => right.getVersion() - left.getVersion())[0];
+
+    return Promise.resolve(waiting ? this.clone(waiting) : null);
   }
 
   findLastVersionByServiceOrderId(serviceOrderId: string): Promise<number> {

@@ -6,6 +6,7 @@ import {
   InvalidPaymentWebhookSignatureError,
   ParsePaymentWebhookInput,
   PaymentGateway,
+  PaymentStatusResult,
   PaymentWebhookResult,
 } from './payment-gateway';
 
@@ -35,8 +36,19 @@ export class StripePaymentGateway extends PaymentGateway {
       {
         mode: 'payment',
         payment_method_types: ['card'],
-        success_url: this.successUrl,
-        cancel_url: this.cancelUrl,
+        // O Stripe troca {CHECKOUT_SESSION_ID} pelo id da sessão só na
+        // success_url. A cancel_url não tem esse template, então ela leva o id
+        // da cobrança, que já conhecemos aqui.
+        success_url: appendQueryParam(
+          this.successUrl,
+          'session_id',
+          '{CHECKOUT_SESSION_ID}',
+        ),
+        cancel_url: appendQueryParam(
+          this.cancelUrl,
+          'billing_id',
+          encodeURIComponent(input.billingId),
+        ),
         client_reference_id: input.billingId,
         metadata: {
           billingId: input.billingId,
@@ -68,6 +80,27 @@ export class StripePaymentGateway extends PaymentGateway {
       expiresAt: session.expires_at
         ? new Date(session.expires_at * 1000)
         : null,
+    };
+  }
+
+  async getPaymentStatus(
+    gatewayTransactionId: string,
+  ): Promise<PaymentStatusResult> {
+    const session =
+      await this.stripe.checkout.sessions.retrieve(gatewayTransactionId);
+
+    if (session.payment_status !== 'paid') {
+      return { status: 'unpaid', gatewayTransactionId: session.id };
+    }
+
+    return {
+      status: 'paid',
+      gatewayTransactionId: session.id,
+      method: PaymentMethod.CARD,
+      // A Checkout Session não guarda o instante da quitação. O retorno chega
+      // logo depois do pagamento, e quando o webhook chegar primeiro é o
+      // paidAt dele que fica — este aqui é só o caminho de contingência.
+      paidAt: new Date(),
     };
   }
 
@@ -112,6 +145,10 @@ export class StripePaymentGateway extends PaymentGateway {
       paidAt: new Date(event.created * 1000),
     });
   }
+}
+
+function appendQueryParam(url: string, key: string, value: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}${key}=${value}`;
 }
 
 function isStripeSignatureVerificationError(error: unknown): boolean {
