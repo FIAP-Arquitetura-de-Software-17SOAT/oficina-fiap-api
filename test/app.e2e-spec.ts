@@ -41,6 +41,30 @@ describe('AppController (e2e)', () => {
 
     expect(response.headers['x-powered-by']).toBeUndefined();
     expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['cross-origin-resource-policy']).toBe(
+      'cross-origin',
+    );
+  });
+
+  it('permite CORS para o frontend local', async () => {
+    const response = await request(app.getHttpServer())
+      .options('/api/v1/health')
+      .set('Origin', 'http://localhost:5173')
+      .set('Access-Control-Request-Method', 'GET')
+      .expect(204);
+
+    expect(response.headers['access-control-allow-origin']).toBe(
+      'http://localhost:5173',
+    );
+  });
+
+  it('nao libera CORS para outras origens locais', async () => {
+    const response = await request(app.getHttpServer())
+      .options('/api/v1/health')
+      .set('Origin', 'http://localhost:9999')
+      .set('Access-Control-Request-Method', 'GET');
+
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
   it('rota fora do prefixo devolve 404', () => {
