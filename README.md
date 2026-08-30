@@ -38,8 +38,8 @@ O sistema permite gerenciar clientes, veiculos, ordens de servico, orcamentos, e
    ADMIN_PASSWORD=uma-senha-com-8-ou-mais-caracteres
    STRIPE_SECRET_KEY=sk_test_xxx
    STRIPE_WEBHOOK_SECRET=whsec_xxx
-   PAYMENT_SUCCESS_URL=http://localhost:3000/payment/success
-   PAYMENT_CANCEL_URL=http://localhost:3000/payment/cancel
+   PAYMENT_SUCCESS_URL=http://localhost:3000/api/v1/payment/success
+   PAYMENT_CANCEL_URL=http://localhost:3000/api/v1/payment/cancel
    MAIL_FROM=admin@example.com
    ```
 
@@ -81,7 +81,7 @@ Authorization: Bearer <accessToken>
 npm install
 docker compose up -d db
 npx prisma migrate dev
-npx prisma db seed
+npx prisma db seed -- admin
 npm run seed:demo
 npm run start:dev
 ```

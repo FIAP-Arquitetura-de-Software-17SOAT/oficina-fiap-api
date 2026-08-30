@@ -15,7 +15,8 @@ describe('FakePaymentGateway', () => {
     expect(result).toMatchObject({
       paymentLink:
         'https://fake.stripe.test/checkout/billing-payment-link:billing-1:attempt-1',
-      gatewayTransactionId: 'fake_session_billing-payment-link:billing-1:attempt-1',
+      gatewayTransactionId:
+        'fake_session_billing-payment-link:billing-1:attempt-1',
     });
     expect(result.expiresAt).toBeInstanceOf(Date);
   });

@@ -107,10 +107,27 @@ export class BudgetRepository {
     const records = await this.prisma.budget.findMany({
       where: { serviceOrderId },
       include: { items: true },
-      orderBy: { version: 'asc' },
+      orderBy: { version: 'desc' },
     });
 
     return records.map((record) => this.toDomain(record));
+  }
+
+  /**
+   * A versão que ainda está na mão do cliente, se houver. Enquanto ela existe a
+   * OS não recebe outra proposta: seriam dois orçamentos abertos disputando a
+   * mesma resposta.
+   */
+  async findWaitingApprovalByServiceOrderId(
+    serviceOrderId: string,
+  ): Promise<Budget | null> {
+    const record = await this.prisma.budget.findFirst({
+      where: { serviceOrderId, status: BudgetStatus.WAITING_APPROVAL },
+      include: { items: true },
+      orderBy: { version: 'desc' },
+    });
+
+    return record ? this.toDomain(record) : null;
   }
 
   async findLastVersionByServiceOrderId(

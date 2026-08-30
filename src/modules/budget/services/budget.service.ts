@@ -61,6 +61,7 @@ export class BudgetService {
 
     await this.assertReferencedCatalogsExist(dto.items);
     await this.assertServiceOrderAcceptsNewBudget(serviceOrderId);
+    await this.assertNoBudgetWaitingApproval(serviceOrderId);
 
     const budget = await this.createWithNextAvailableVersion(
       serviceOrderId,
@@ -242,6 +243,32 @@ export class BudgetService {
     ) {
       throw new ConflictException(
         `Ordem de serviço ${serviceOrder.status} não aceita novo orçamento`,
+      );
+    }
+  }
+
+  /**
+   * Só um orçamento por vez fica na mão do cliente.
+   *
+   * A negociação é sequencial: recusou, a oficina refaz. Deixar gerar a próxima
+   * versão com a anterior ainda aguardando aprovação criava duas propostas
+   * abertas para a mesma OS — o cliente respondia uma e a outra ficava pendurada
+   * para sempre, e o aceite das duas levava a OS a caminhos diferentes.
+   *
+   * Para destravar, resolva a versão em aberto: `POST /budgets/:id/accept` ou
+   * `POST /budgets/:id/refuse`.
+   */
+  private async assertNoBudgetWaitingApproval(
+    serviceOrderId: string,
+  ): Promise<void> {
+    const waiting =
+      await this.budgetRepository.findWaitingApprovalByServiceOrderId(
+        serviceOrderId,
+      );
+
+    if (waiting) {
+      throw new ConflictException(
+        `A versão ${waiting.getVersion()} do orçamento aguarda aprovação do cliente; aceite ou recuse antes de gerar outra`,
       );
     }
   }

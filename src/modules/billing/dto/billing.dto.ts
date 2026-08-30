@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
 
@@ -96,4 +97,27 @@ export class BillingResponseDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
+}
+
+export class PaymentReturnResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  billingId: string;
+
+  @ApiProperty({ format: 'uuid' })
+  serviceOrderId: string;
+
+  @ApiProperty({ enum: BillingStatus, example: BillingStatus.PAID })
+  billingStatus: BillingStatus;
+
+  @ApiProperty({
+    enum: ServiceOrderStatus,
+    example: ServiceOrderStatus.DELIVERED,
+  })
+  serviceOrderStatus: ServiceOrderStatus;
+
+  @ApiPropertyOptional({
+    description: 'Link de pagamento vigente, para o cliente retomar o checkout',
+    example: 'https://checkout.stripe.com/c/pay/cs_test_123',
+  })
+  paymentLink: string | null;
 }

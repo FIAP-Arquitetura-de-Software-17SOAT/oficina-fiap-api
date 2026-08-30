@@ -52,7 +52,7 @@ describe('InMemoryBudgetRepository', () => {
     expect(persisted?.getStatus()).toBe('GENERATED');
   });
 
-  it('lists budgets in ascending version order regardless of insertion order', async () => {
+  it('lists budgets newest version first regardless of insertion order', async () => {
     const repository = new InMemoryBudgetRepository();
     const versionThree = Budget.create({
       serviceOrderId: 'service-123',
@@ -85,7 +85,7 @@ describe('InMemoryBudgetRepository', () => {
 
     const budgets = await repository.findByServiceOrderId('service-123');
 
-    expect(budgets.map((budget) => budget.getVersion())).toEqual([1, 3]);
+    expect(budgets.map((budget) => budget.getVersion())).toEqual([3, 1]);
   });
 });
 

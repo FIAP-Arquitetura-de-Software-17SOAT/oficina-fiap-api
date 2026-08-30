@@ -26,6 +26,7 @@ describe('ServiceOrderController', () => {
       awaitParts: jest.fn(),
       registerPartsDispatched: jest.fn(),
       complete: jest.fn(),
+      awaitPayment: jest.fn(),
       deliver: jest.fn(),
       cancel: jest.fn(),
     };

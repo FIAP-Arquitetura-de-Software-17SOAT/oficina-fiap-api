@@ -38,7 +38,13 @@ const ALLOWED_TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
     ServiceOrderStatus.COMPLETED,
     ServiceOrderStatus.CANCELLED,
   ],
-  [ServiceOrderStatus.COMPLETED]: [ServiceOrderStatus.DELIVERED],
+  [ServiceOrderStatus.COMPLETED]: [
+    ServiceOrderStatus.AWAITING_PAYMENT,
+    ServiceOrderStatus.DELIVERED,
+  ],
+  // Cobrança em aberto: o cliente desistiu do checkout e a OS fica retida até
+  // o pagamento. A única saída é a entrega, depois que a cobrança for quitada.
+  [ServiceOrderStatus.AWAITING_PAYMENT]: [ServiceOrderStatus.DELIVERED],
   [ServiceOrderStatus.DELIVERED]: [],
   [ServiceOrderStatus.CANCELLED]: [],
 };
@@ -193,6 +199,15 @@ export class ServiceOrder {
   complete(): void {
     this.transitionTo(ServiceOrderStatus.COMPLETED);
     this.completedAt = new Date();
+  }
+
+  /**
+   * Cobrança em aberto. Chamado quando o cliente abandona o checkout do
+   * gateway: o serviço está pronto, mas a OS não é entregue enquanto o
+   * pagamento não entrar.
+   */
+  awaitPayment(): void {
+    this.transitionTo(ServiceOrderStatus.AWAITING_PAYMENT);
   }
 
   deliver(): void {
