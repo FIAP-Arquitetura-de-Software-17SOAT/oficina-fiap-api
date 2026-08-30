@@ -1,0 +1,35 @@
+meta {
+  name: Cadastra veiculo
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/vehicles
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "clientId": "{{clientId}}",
+    "plate": "{{plate}}",
+    "brand": "{{vehicleBrand}}",
+    "model": "{{vehicleModel}}",
+    "year": "{{vehicleYear}}"
+  }
+}
+
+tests {
+  test("veiculo criado", function () { expect(res.getStatus()).to.equal(201); });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("vehicleId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

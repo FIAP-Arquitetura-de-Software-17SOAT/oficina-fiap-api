@@ -1,0 +1,29 @@
+meta {
+  name: Atribui mecanico
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{baseUrl}}/service-orders/{{serviceOrderId}}/assign
+  method: PATCH
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "mechanicId": "{{mechanicId}}"
+  }
+}
+
+tests {
+  test("mecanico atribuido", function () { expect(res.getStatus()).to.equal(200); });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}

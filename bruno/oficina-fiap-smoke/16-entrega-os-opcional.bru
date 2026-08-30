@@ -1,0 +1,26 @@
+meta {
+  name: Entrega OS opcional
+  type: http
+  seq: 16
+  tags: [
+      optional
+  ]
+}
+
+post {
+  url: {{baseUrl}}/billings/{{billingId}}/deliver-service-order
+  method: POST
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("entrega depende de pagamento", function () {
+    expect(res.getStatus()).to.be.oneOf([204, 409]);
+  });
+  if (res.getStatus() === 409) {
+    console.log("Pagamento ainda nao confirmado. Confirme webhook Stripe e rode npm run bruno:smoke:optional-delivery.");
+  }
+}

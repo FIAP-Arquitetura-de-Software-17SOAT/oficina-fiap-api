@@ -1,0 +1,24 @@
+meta {
+  name: Despacha pecas do estoque
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/parts/service-orders/{{serviceOrderId}}/dispatch
+  method: POST
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("pecas despachadas no smoke", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().dispatched).to.equal(true);
+  });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Finaliza OS
+  type: http
+  seq: 14
+}
+
+patch {
+  url: {{baseUrl}}/service-orders/{{serviceOrderId}}/complete
+  method: PATCH
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("OS finalizada", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("COMPLETED");
+  });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}

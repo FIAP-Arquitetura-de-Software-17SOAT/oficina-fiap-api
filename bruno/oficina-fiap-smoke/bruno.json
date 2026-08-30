@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Oficina FIAP - Smoke QA",
+  "type": "collection",
+  "defaultEnvironment": "local"
+}

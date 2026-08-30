@@ -1,0 +1,19 @@
+meta {
+  name: Health check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  method: GET
+}
+
+tests {
+  test("API responde health check", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}

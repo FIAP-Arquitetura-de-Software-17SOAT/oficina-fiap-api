@@ -1,0 +1,34 @@
+meta {
+  name: Gera cobranca
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/billings
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "serviceOrderId": "{{serviceOrderId}}"
+  }
+}
+
+tests {
+  test("cobranca gerada", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().amount).to.equal(199.8);
+  });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("billingId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

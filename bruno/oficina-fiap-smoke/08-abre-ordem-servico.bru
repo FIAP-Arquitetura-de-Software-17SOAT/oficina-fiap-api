@@ -1,0 +1,33 @@
+meta {
+  name: Abre ordem de servico
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/service-orders
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "clientId": "{{clientId}}",
+    "vehicleId": "{{vehicleId}}",
+    "description": "{{serviceOrderDescription}}"
+  }
+}
+
+tests {
+  test("OS aberta", function () { expect(res.getStatus()).to.equal(201); });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("serviceOrderId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

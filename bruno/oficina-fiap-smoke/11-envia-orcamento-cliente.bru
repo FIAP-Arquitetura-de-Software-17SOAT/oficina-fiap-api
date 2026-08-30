@@ -1,0 +1,21 @@
+meta {
+  name: Envia orcamento ao cliente
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/budgets/{{budgetId}}/send
+  method: POST
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("orcamento enviado", function () { expect(res.getStatus()).to.equal(200); });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}

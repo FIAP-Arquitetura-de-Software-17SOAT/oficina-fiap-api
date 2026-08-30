@@ -1,0 +1,762 @@
+{
+  "info": {
+    "_postman_id": "c0cca1c9-9a19-4827-aa8b-6bce2628ef94",
+    "name": "Oficina FIAP — Fluxo E2E",
+    "description": "Ciclo completo de uma ordem de serviço, do login à entrega. Rode de cima para baixo no Collection Runner.\n\nCada execução gera CPF, placa, e-mail, código de peça e mechanicId novos (esses campos são @unique no banco), então dá para rodar quantas vezes quiser sem limpar nada.\n\nA sequência 07→13 é uma máquina de estados: RECEIVED → IN_DIAGNOSIS → AWAITING_APPROVAL → AWAITING_PARTS → IN_PROGRESS → COMPLETED → DELIVERED. Chamar fora de ordem devolve 400. Não existe endpoint para AWAITING_APPROVAL, AWAITING_PARTS nem IN_PROGRESS: quem move a OS é criar o orçamento, aceitar o orçamento e despachar as peças, respectivamente.\n\nO passo 15 só passa com o Stripe CLI escutando — ver a descrição dele.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "28971557"
+  },
+  "item": [
+    {
+      "name": "00 · Health check",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// document, email, plate, code e name sao @unique no banco. Sem gerar valores",
+              "// novos a cada execucao, a segunda rodada morre com 409 no passo 02.",
+              "const runId = Date.now();",
+              "pm.collectionVariables.set('runId', runId);",
+              "",
+              "const rnd = (n) => Math.floor(Math.random() * n);",
+              "const letra = () => String.fromCharCode(65 + rnd(26));",
+              "",
+              "// CPF com digitos verificadores validos: o Value Object Document recusa",
+              "// checksum errado, entao numero aleatorio puro nao serve.",
+              "const base = Array.from({ length: 9 }, () => rnd(10));",
+              "const dv = (digitos, peso) => {",
+              "  const soma = digitos.reduce((acc, d, i) => acc + d * (peso - i), 0);",
+              "  const resto = soma % 11;",
+              "  return resto < 2 ? 0 : 11 - resto;",
+              "};",
+              "const d1 = dv(base, 10);",
+              "const d2 = dv([...base, d1], 11);",
+              "pm.collectionVariables.set('cpf', [...base, d1, d2].join(''));",
+              "",
+              "// Placa no formato Mercosul: 3 letras, digito, letra, 2 digitos.",
+              "pm.collectionVariables.set('plate', `${letra()}${letra()}${letra()}${rnd(10)}${letra()}${rnd(10)}${rnd(10)}`);",
+              "",
+              "pm.collectionVariables.set('clientEmail', `maria.${runId}@example.com`);",
+              "pm.collectionVariables.set('partCode', `OIL-FILTER-${runId}`);",
+              "pm.collectionVariables.set('serviceName', `Troca de oleo e filtro ${runId}`);",
+              "pm.collectionVariables.set('idemKey', `entrada-${runId}`);",
+              "",
+              "// A API nao valida se o mecanico existe, so que ele nao tenha OS aberta.",
+              "// UUID novo a cada rodada evita o 409 'Mechanic already has an open service order'.",
+              "pm.collectionVariables.set('mechanicId', ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('uuid').v4()));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('API no ar (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "01 · Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('accessToken', b.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', b.refreshToken);",
+              "} else {",
+              "  postman.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "disabled": false,
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{email}}\",\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 · Cria cliente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('cliente criado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('clientId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Maria Silva\",\n  \"document\": \"{{cpf}}\",\n  \"email\": \"{{clientEmail}}\",\n  \"phone\": \"(11) 99999-8888\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/clients",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "clients"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 · Cadastra veículo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('veiculo criado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('vehicleId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"plate\": \"{{plate}}\",\n  \"brand\": \"Fiat\",\n  \"model\": \"Argo\",\n  \"year\": 2022\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/vehicles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "vehicles"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 · Cadastra serviço no catálogo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('servico criado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('serviceId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{serviceName}}\",\n  \"description\": \"Inclui oleo 5W30 e filtro\",\n  \"price\": 149.9\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "services"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 · Cadastra peça",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('peca criada (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('partId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{partCode}}\",\n  \"name\": \"Filtro de oleo\",\n  \"description\": \"Filtro para oleo do motor\",\n  \"type\": \"PART\",\n  \"unit\": \"UNIT\",\n  \"unitPrice\": 49.9,\n  \"minimumQuantity\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/parts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 · Entrada no estoque",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('entrada registrada (201)', () => pm.response.to.have.status(201));",
+              "pm.test('saldo suficiente para o despacho', () => pm.expect(pm.response.json().part.quantity).to.be.at.least(1));",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 10,\n  \"idempotencyKey\": \"{{idemKey}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/parts/{{partId}}/movements/in",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts",
+            "{{partId}}",
+            "movements",
+            "in"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07 · Abre ordem de serviço",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('OS aberta (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('serviceOrderId', b.id);",
+              "  pm.test('status RECEIVED', () => pm.expect(b.status).to.eql('RECEIVED'));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"description\": \"Barulho no motor ao acelerar\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/service-orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 · Atribui mecânico",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('mecanico atribuido (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { pm.test('status IN_DIAGNOSIS', () => pm.expect(pm.response.json().status).to.eql('IN_DIAGNOSIS')); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mechanicId\": \"{{mechanicId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/assign",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders",
+            "{{serviceOrderId}}",
+            "assign"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "09 · Gera orçamento",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('orcamento gerado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('budgetId', b.id);",
+              "  pm.test('total = 199.80', () => pm.expect(b.totalAmount).to.eql(199.8));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceOrderId\": \"{{serviceOrderId}}\",\n  \"items\": [\n    {\n      \"serviceId\": \"{{serviceId}}\",\n      \"description\": \"Troca de oleo\",\n      \"type\": \"SERVICE\",\n      \"quantity\": 1,\n      \"unitPrice\": 149.9\n    },\n    {\n      \"partId\": \"{{partId}}\",\n      \"description\": \"Filtro de oleo\",\n      \"type\": \"PART\",\n      \"quantity\": 1,\n      \"unitPrice\": 49.9\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/budgets",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10 · Envia orçamento ao cliente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('orcamento enviado (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/budgets/{{budgetId}}/send",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets",
+            "{{budgetId}}",
+            "send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "11 · Aceita orçamento",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('orcamento aceito (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { pm.test('status ACCEPTED', () => pm.expect(pm.response.json().status).to.eql('ACCEPTED')); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/budgets/{{budgetId}}/accept",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets",
+            "{{budgetId}}",
+            "accept"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "12 · Despacha peças do estoque",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('despacho respondido (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const b = pm.response.json();",
+              "  pm.test('pecas baixadas (dispatched: true)', () => {",
+              "    pm.expect(b.dispatched, `faltou peca em estoque; pedido de compra ${b.purchaseOrderId} foi aberto`).to.be.true;",
+              "  });",
+              "  if (!b.dispatched) {",
+              "    pm.collectionVariables.set('purchaseOrderId', b.purchaseOrderId);",
+              "    postman.setNextRequest(null);",
+              "  }",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/parts/service-orders/{{serviceOrderId}}/dispatch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts",
+            "service-orders",
+            "{{serviceOrderId}}",
+            "dispatch"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "13 · Finaliza OS",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('OS finalizada (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const b = pm.response.json();",
+              "  pm.test('status COMPLETED', () => pm.expect(b.status).to.eql('COMPLETED'));",
+              "  pm.test('tempo de execucao registrado', () => pm.expect(b.executionTimeMs).to.be.a('number'));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/complete",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders",
+            "{{serviceOrderId}}",
+            "complete"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "14 · Gera cobrança",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('cobranca gerada (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('billingId', b.id);",
+              "  pm.test('valor = 199.80', () => pm.expect(b.amount).to.eql(199.8));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceOrderId\": \"{{serviceOrderId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/billings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "billings"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "15 · Entrega a OS",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 409) {",
+              "  pm.test('OS entregue — BLOQUEADO: cobranca ainda nao esta PAID', () => {",
+              "    throw new Error('409. Rode o Stripe CLI antes deste passo: stripe listen --forward-to localhost:3000/api/v1/billings/stripe/webhook e depois stripe trigger checkout.session.completed');",
+              "  });",
+              "} else {",
+              "  pm.test('OS entregue (204)', () => pm.response.to.have.status(204));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/billings/{{billingId}}/deliver-service-order",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "billings",
+            "{{billingId}}",
+            "deliver-service-order"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "description": "Prefixo global da API. A porta vem do PORT do .env."
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    },
+    {
+      "key": "serviceId",
+      "value": ""
+    },
+    {
+      "key": "partId",
+      "value": ""
+    },
+    {
+      "key": "serviceOrderId",
+      "value": ""
+    },
+    {
+      "key": "budgetId",
+      "value": ""
+    },
+    {
+      "key": "billingId",
+      "value": ""
+    },
+    {
+      "key": "mechanicId",
+      "value": ""
+    },
+    {
+      "key": "cpf",
+      "value": ""
+    },
+    {
+      "key": "plate",
+      "value": ""
+    },
+    {
+      "key": "clientEmail",
+      "value": ""
+    },
+    {
+      "key": "partCode",
+      "value": ""
+    },
+    {
+      "key": "serviceName",
+      "value": ""
+    },
+    {
+      "key": "idemKey",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    }
+  ]
+}

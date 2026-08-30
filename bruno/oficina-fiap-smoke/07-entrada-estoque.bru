@@ -1,0 +1,30 @@
+meta {
+  name: Entrada no estoque
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/parts/{{partId}}/movements/in
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "quantity": 10,
+    "idempotencyKey": "{{stockIdempotencyKey}}"
+  }
+}
+
+tests {
+  test("entrada registrada", function () { expect(res.getStatus()).to.equal(201); });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}

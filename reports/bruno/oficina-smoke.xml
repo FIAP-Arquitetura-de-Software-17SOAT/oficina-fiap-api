@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<testsuites>
+  <testsuite name="Gerar dados do smoke" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.923" hostname="DESKTOP-6DMNO6F" time="0.105">
+    <testcase name="dados do smoke preparados" status="pass" classname="http://localhost:3000/api/v1/health" time="0.105"/>
+  </testsuite>
+  <testsuite name="Health check" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.923" hostname="DESKTOP-6DMNO6F" time="0.006">
+    <testcase name="API responde health check" status="pass" classname="http://localhost:3000/api/v1/health" time="0.006"/>
+  </testsuite>
+  <testsuite name="Login" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.923" hostname="DESKTOP-6DMNO6F" time="0.406">
+    <testcase name="login retorna tokens" status="pass" classname="http://localhost:3000/api/v1/auth/login" time="0.406"/>
+  </testsuite>
+  <testsuite name="Cria cliente" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.923" hostname="DESKTOP-6DMNO6F" time="0.014">
+    <testcase name="cliente criado" status="pass" classname="http://localhost:3000/api/v1/clients" time="0.014"/>
+  </testsuite>
+  <testsuite name="Cadastra veiculo" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.015">
+    <testcase name="veiculo criado" status="pass" classname="http://localhost:3000/api/v1/vehicles" time="0.015"/>
+  </testsuite>
+  <testsuite name="Cadastra servico no catalogo" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.016">
+    <testcase name="servico criado" status="pass" classname="http://localhost:3000/api/v1/services" time="0.016"/>
+  </testsuite>
+  <testsuite name="Cadastra peca" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.020">
+    <testcase name="peca criada" status="pass" classname="http://localhost:3000/api/v1/parts" time="0.020"/>
+  </testsuite>
+  <testsuite name="Entrada no estoque" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.018">
+    <testcase name="entrada registrada" status="pass" classname="http://localhost:3000/api/v1/parts/f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d/movements/in" time="0.018"/>
+  </testsuite>
+  <testsuite name="Abre ordem de servico" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.015">
+    <testcase name="OS aberta" status="pass" classname="http://localhost:3000/api/v1/service-orders" time="0.015"/>
+  </testsuite>
+  <testsuite name="Atribui mecanico" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.015">
+    <testcase name="mecanico atribuido" status="pass" classname="http://localhost:3000/api/v1/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/assign" time="0.015"/>
+  </testsuite>
+  <testsuite name="Gera orcamento" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.031">
+    <testcase name="orcamento criado com total esperado" status="pass" classname="http://localhost:3000/api/v1/budgets" time="0.031"/>
+  </testsuite>
+  <testsuite name="Envia orcamento ao cliente" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.035">
+    <testcase name="orcamento enviado" status="pass" classname="http://localhost:3000/api/v1/budgets/82ece739-8243-41c8-9ba5-3569a32c6cce/send" time="0.035"/>
+  </testsuite>
+  <testsuite name="Aceita orcamento" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.026">
+    <testcase name="orcamento aceito" status="pass" classname="http://localhost:3000/api/v1/budgets/82ece739-8243-41c8-9ba5-3569a32c6cce/accept" time="0.026"/>
+  </testsuite>
+  <testsuite name="Despacha pecas do estoque" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.015">
+    <testcase name="pecas despachadas no smoke" status="pass" classname="http://localhost:3000/api/v1/parts/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/dispatch" time="0.015"/>
+  </testsuite>
+  <testsuite name="Finaliza OS" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.009">
+    <testcase name="OS finalizada" status="pass" classname="http://localhost:3000/api/v1/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/complete" time="0.009"/>
+  </testsuite>
+  <testsuite name="Gera cobranca" errors="0" failures="0" skipped="0" tests="1" timestamp="2026-08-29T23:52:34.924" hostname="DESKTOP-6DMNO6F" time="0.671">
+    <testcase name="cobranca gerada" status="pass" classname="http://localhost:3000/api/v1/billings" time="0.671"/>
+  </testsuite>
+</testsuites>

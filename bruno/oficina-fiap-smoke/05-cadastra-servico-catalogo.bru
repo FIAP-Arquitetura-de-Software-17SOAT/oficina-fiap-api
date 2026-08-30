@@ -1,0 +1,33 @@
+meta {
+  name: Cadastra servico no catalogo
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/services
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "{{serviceName}}",
+    "description": "{{serviceDescription}}",
+    "price": 149.9
+  }
+}
+
+tests {
+  test("servico criado", function () { expect(res.getStatus()).to.equal(201); });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("serviceId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

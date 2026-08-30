@@ -1,0 +1,37 @@
+meta {
+  name: Cadastra peca
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/parts
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "code": "{{partCode}}",
+    "name": "{{partName}}",
+    "description": "{{partDescription}}",
+    "type": "PART",
+    "unit": "UNIT",
+    "unitPrice": 49.9,
+    "minimumQuantity": 3
+  }
+}
+
+tests {
+  test("peca criada", function () { expect(res.getStatus()).to.equal(201); });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("partId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

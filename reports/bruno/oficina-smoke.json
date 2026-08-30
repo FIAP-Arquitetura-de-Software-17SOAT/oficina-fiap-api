@@ -1,0 +1,979 @@
+[
+  {
+    "iterationIndex": 0,
+    "results": [
+      {
+        "test": {
+          "filename": "00-gerar-dados.bru"
+        },
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/api/v1/health",
+          "headers": {}
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "15",
+            "etag": "W/\"f-VaSQ4oDUiZblZNAEkkN+sX+q3Sg\"",
+            "date": "Sat, 29 Aug 2026 23:52:33 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "status": "ok"
+          },
+          "url": "http://localhost/api/v1/health",
+          "responseTime": 19
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "dados do smoke preparados",
+            "status": "pass",
+            "uid": "vU1MYPufmhewcH0bGDaCR"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.1047442,
+        "name": "Gerar dados do smoke",
+        "path": "00-gerar-dados",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "01-health-check.bru"
+        },
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/api/v1/health",
+          "headers": {}
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "15",
+            "etag": "W/\"f-VaSQ4oDUiZblZNAEkkN+sX+q3Sg\"",
+            "date": "Sat, 29 Aug 2026 23:52:33 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "status": "ok"
+          },
+          "url": "http://localhost/api/v1/health",
+          "responseTime": 2
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "API responde health check",
+            "status": "pass",
+            "uid": "uhEirOqQKApR24YB2qa9X"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0063806,
+        "name": "Health check",
+        "path": "01-health-check",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "02-login.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/auth/login",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"email\": \"teste@email.com\",\n  \"password\": \"12345678\"\n}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "616",
+            "etag": "W/\"268-tXzyUU3M0+q+xkkBbBiO9b+lBI4\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZmZjZTIzNy1iOTZhLTQ0ZTEtOGNlZS1hZDlkYmMyMjEzNjUiLCJyb2xlIjoiQURNSU4iLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiNDYwZTViNjctOWI1Mi00ZWJmLWEwMDctNzkxYzEyNWI2NzgxIiwiaWF0IjoxNzg4MDQ3NTUzLCJleHAiOjE3ODg2NTIzNTN9.o_AKsGyfqglyHkxJAcdxryoRNK_ILsqkZJPP9nolJiM",
+            "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZmZjZTIzNy1iOTZhLTQ0ZTEtOGNlZS1hZDlkYmMyMjEzNjUiLCJyb2xlIjoiQURNSU4iLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6IjY0MDg0YWU4LTc2OTctNGQzNS1iNTE0LTJlNzk1NzNjNTdmZCIsImlhdCI6MTc4ODA0NzU1MywiZXhwIjoxNzg4NjUyMzUzfQ.ujrj25KlBl78gDrTxLP2qN0AGhqA4vPQfUh1e5VN2Lg"
+          },
+          "url": "http://localhost/api/v1/auth/login",
+          "responseTime": 401
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "login retorna tokens",
+            "status": "pass",
+            "uid": "FPVN_AqakxfdV88UNeMzd"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.4061136,
+        "name": "Login",
+        "path": "02-login",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "03-cria-cliente.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/clients",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"name\": \"Felipe Costa\",\n  \"document\": \"46118556000188\",\n  \"email\": \"felipe.costa.1788047553537@example.com\",\n  \"phone\": \"(11) 921110975\"\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "244",
+            "etag": "W/\"f4-kQgkPaQzQkIA1E6DUF5HQCV8mqQ\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "44189fe0-e5e1-4121-916e-414f81dee0f5",
+            "name": "Felipe Costa",
+            "document": "46118556000188",
+            "email": "felipe.costa.1788047553537@example.com",
+            "phone": "11921110975",
+            "createdAt": "2026-08-29T23:52:34.021Z",
+            "updatedAt": "2026-08-29T23:52:34.021Z"
+          },
+          "url": "http://localhost/api/v1/clients",
+          "responseTime": 10
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "cliente criado",
+            "status": "pass",
+            "uid": "bc68-8REYxcIWX7iLjxEi"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.014371,
+        "name": "Cria cliente",
+        "path": "03-cria-cliente",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "04-cadastra-veiculo.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/vehicles",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"clientId\": \"44189fe0-e5e1-4121-916e-414f81dee0f5\",\n  \"plate\": \"VVW0Q63\",\n  \"brand\": \"Renault\",\n  \"model\": \"Sandero\",\n  \"year\": \"2022\"\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "239",
+            "etag": "W/\"ef-H5SFFLCagh2VBIv825Xwlk+90JE\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "eead5a71-8328-4ddb-9902-aefb417bc143",
+            "clientId": "44189fe0-e5e1-4121-916e-414f81dee0f5",
+            "plate": "VVW0Q63",
+            "brand": "Renault",
+            "model": "Sandero",
+            "year": 2022,
+            "createdAt": "2026-08-29T23:52:34.036Z",
+            "updatedAt": "2026-08-29T23:52:34.036Z"
+          },
+          "url": "http://localhost/api/v1/vehicles",
+          "responseTime": 11
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "veiculo criado",
+            "status": "pass",
+            "uid": "QMY_a-cf430S0pEzecJ60"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0145531,
+        "name": "Cadastra veiculo",
+        "path": "04-cadastra-veiculo",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "05-cadastra-servico-catalogo.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/services",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"name\": \"Troca de oleo e filtro 1788047553537\",\n  \"description\": \"Substituicao de oleo, filtro e revisao visual\",\n  \"price\": 149.9\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "245",
+            "etag": "W/\"f5-8OpBGjXewNeHKHR300DugEy1SH0\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "7f253247-2eab-4350-88a7-a3c78e508fc1",
+            "name": "Troca de oleo e filtro 1788047553537",
+            "description": "Substituicao de oleo, filtro e revisao visual",
+            "price": 149.9,
+            "createdAt": "2026-08-29T23:52:34.053Z",
+            "updatedAt": "2026-08-29T23:52:34.053Z"
+          },
+          "url": "http://localhost/api/v1/services",
+          "responseTime": 12
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "servico criado",
+            "status": "pass",
+            "uid": "d906gGD6axj9fFYJGwB8W"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0159842,
+        "name": "Cadastra servico no catalogo",
+        "path": "05-cadastra-servico-catalogo",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "06-cadastra-peca.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/parts",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"code\": \"OIL-FILTER-1788047553537\",\n  \"name\": \"Filtro de oleo\",\n  \"description\": \"Filtro para oleo do motor\",\n  \"type\": \"PART\",\n  \"unit\": \"UNIT\",\n  \"unitPrice\": 49.9,\n  \"minimumQuantity\": 3\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "301",
+            "etag": "W/\"12d-Ufv2veUhqvfGSA2ZkN5vRYZe1GQ\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+            "code": "OIL-FILTER-1788047553537",
+            "name": "Filtro de oleo",
+            "description": "Filtro para oleo do motor",
+            "type": "PART",
+            "unit": "UNIT",
+            "unitPrice": 49.9,
+            "quantity": 0,
+            "minimumQuantity": 3,
+            "createdAt": "2026-08-29T23:52:34.064Z",
+            "updatedAt": "2026-08-29T23:52:34.064Z"
+          },
+          "url": "http://localhost/api/v1/parts",
+          "responseTime": 16
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "peca criada",
+            "status": "pass",
+            "uid": "22r1HJZv4Qz5MA8FrfRlX"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0196026,
+        "name": "Cadastra peca",
+        "path": "06-cadastra-peca",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "07-entrada-estoque.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/parts/f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d/movements/in",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"quantity\": 10,\n  \"idempotencyKey\": \"entrada-1788047553537\"\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "539",
+            "etag": "W/\"21b-/tWaMnFzJKMX2zHPKmAXEWINlFg\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "movement": {
+              "id": "3ef957d4-55ea-4426-bf95-6d3fd28fb5a1",
+              "idempotencyKey": "entrada-1788047553537",
+              "type": "IN",
+              "quantity": 10,
+              "partId": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+              "createdAt": "2026-08-29T23:52:34.086Z"
+            },
+            "part": {
+              "id": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+              "code": "OIL-FILTER-1788047553537",
+              "name": "Filtro de oleo",
+              "description": "Filtro para oleo do motor",
+              "type": "PART",
+              "unit": "UNIT",
+              "unitPrice": 49.9,
+              "quantity": 10,
+              "minimumQuantity": 3,
+              "createdAt": "2026-08-29T23:52:34.064Z",
+              "updatedAt": "2026-08-29T23:52:34.088Z"
+            },
+            "replayed": false
+          },
+          "url": "http://localhost/api/v1/parts/f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d/movements/in",
+          "responseTime": 14
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "entrada registrada",
+            "status": "pass",
+            "uid": "0_PWg5V1TXo_I-fcONUys"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0183757,
+        "name": "Entrada no estoque",
+        "path": "07-entrada-estoque",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "08-abre-ordem-servico.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/service-orders",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"clientId\": \"44189fe0-e5e1-4121-916e-414f81dee0f5\",\n  \"vehicleId\": \"eead5a71-8328-4ddb-9902-aefb417bc143\",\n  \"description\": \"Vibracao em Sandero\"\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "409",
+            "etag": "W/\"199-a6dIMD7o1Wt1c3xw4//1P39TigA\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "clientId": "44189fe0-e5e1-4121-916e-414f81dee0f5",
+            "vehicleId": "eead5a71-8328-4ddb-9902-aefb417bc143",
+            "description": "Vibracao em Sandero",
+            "status": "RECEIVED",
+            "cancellationReason": null,
+            "mechanicId": null,
+            "assignedAt": null,
+            "partsDispatchedAt": null,
+            "completedAt": null,
+            "executionTimeMs": null,
+            "createdAt": "2026-08-29T23:52:34.102Z",
+            "updatedAt": "2026-08-29T23:52:34.102Z"
+          },
+          "url": "http://localhost/api/v1/service-orders",
+          "responseTime": 11
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "OS aberta",
+            "status": "pass",
+            "uid": "lA3aZJxiRQpPLt2DqvTpU"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0152953,
+        "name": "Abre ordem de servico",
+        "path": "08-abre-ordem-servico",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "09-atribui-mecanico.bru"
+        },
+        "request": {
+          "method": "PATCH",
+          "url": "http://localhost:3000/api/v1/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/assign",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"mechanicId\": \"00000000-0000-4000-8000-01a04ff07401\"\n}"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "469",
+            "etag": "W/\"1d5-2TbXNcDEvqEZI6a1zC3BMkxPm7w\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "clientId": "44189fe0-e5e1-4121-916e-414f81dee0f5",
+            "vehicleId": "eead5a71-8328-4ddb-9902-aefb417bc143",
+            "description": "Vibracao em Sandero",
+            "status": "IN_DIAGNOSIS",
+            "cancellationReason": null,
+            "mechanicId": "00000000-0000-4000-8000-01a04ff07401",
+            "assignedAt": "2026-08-29T23:52:34.120Z",
+            "partsDispatchedAt": null,
+            "completedAt": null,
+            "executionTimeMs": null,
+            "createdAt": "2026-08-29T23:52:34.102Z",
+            "updatedAt": "2026-08-29T23:52:34.120Z"
+          },
+          "url": "http://localhost/api/v1/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/assign",
+          "responseTime": 11
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "mecanico atribuido",
+            "status": "pass",
+            "uid": "KeNI0YJN0F7tP8Xqrlh1T"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0146632,
+        "name": "Atribui mecanico",
+        "path": "09-atribui-mecanico",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "10-gera-orcamento.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/budgets",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"serviceOrderId\": \"45c3d865-4384-4d6e-bcb9-720cb41ea6c1\",\n  \"items\": [\n    {\n      \"serviceId\": \"7f253247-2eab-4350-88a7-a3c78e508fc1\",\n      \"description\": \"Troca de oleo e filtro\",\n      \"type\": \"SERVICE\",\n      \"quantity\": 1,\n      \"unitPrice\": 149.9\n    },\n    {\n      \"partId\": \"f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d\",\n      \"description\": \"Filtro de oleo\",\n      \"type\": \"PART\",\n      \"quantity\": 1,\n      \"unitPrice\": 49.9\n    }\n  ]\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "712",
+            "etag": "W/\"2c8-D8ArBkSP7LfJHCGogk6VV8H3Vcc\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "82ece739-8243-41c8-9ba5-3569a32c6cce",
+            "serviceOrderId": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "version": 1,
+            "status": "GENERATED",
+            "totalAmount": 199.8,
+            "refusalReason": null,
+            "sentAt": null,
+            "answeredAt": null,
+            "createdAt": "2026-08-29T23:52:34.144Z",
+            "updatedAt": "2026-08-29T23:52:34.144Z",
+            "items": [
+              {
+                "id": "b3ab8582-e314-40bc-8c8c-b1cd8187cf14",
+                "partId": null,
+                "serviceId": "7f253247-2eab-4350-88a7-a3c78e508fc1",
+                "description": "Troca de oleo e filtro",
+                "type": "SERVICE",
+                "quantity": 1,
+                "unitPrice": 149.9,
+                "subtotal": 149.9
+              },
+              {
+                "id": "ea6bb658-f8c3-4921-9399-e8fd447e6f20",
+                "partId": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+                "serviceId": null,
+                "description": "Filtro de oleo",
+                "type": "PART",
+                "quantity": 1,
+                "unitPrice": 49.9,
+                "subtotal": 49.9
+              }
+            ]
+          },
+          "url": "http://localhost/api/v1/budgets",
+          "responseTime": 27
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "orcamento criado com total esperado",
+            "status": "pass",
+            "uid": "ZW9W83zW_jCC0XGYoxgqG"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0306546,
+        "name": "Gera orcamento",
+        "path": "10-gera-orcamento",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "11-envia-orcamento-cliente.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/budgets/82ece739-8243-41c8-9ba5-3569a32c6cce/send",
+          "headers": {}
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "741",
+            "etag": "W/\"2e5-yqj85FhsYSJmMhCWHWiVZVdLv/w\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "82ece739-8243-41c8-9ba5-3569a32c6cce",
+            "serviceOrderId": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "version": 1,
+            "status": "WAITING_APPROVAL",
+            "totalAmount": 199.8,
+            "refusalReason": null,
+            "sentAt": "2026-08-29T23:52:34.169Z",
+            "answeredAt": null,
+            "createdAt": "2026-08-29T23:52:34.144Z",
+            "updatedAt": "2026-08-29T23:52:34.169Z",
+            "items": [
+              {
+                "id": "b3ab8582-e314-40bc-8c8c-b1cd8187cf14",
+                "partId": null,
+                "serviceId": "7f253247-2eab-4350-88a7-a3c78e508fc1",
+                "description": "Troca de oleo e filtro",
+                "type": "SERVICE",
+                "quantity": 1,
+                "unitPrice": 149.9,
+                "subtotal": 149.9
+              },
+              {
+                "id": "ea6bb658-f8c3-4921-9399-e8fd447e6f20",
+                "partId": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+                "serviceId": null,
+                "description": "Filtro de oleo",
+                "type": "PART",
+                "quantity": 1,
+                "unitPrice": 49.9,
+                "subtotal": 49.9
+              }
+            ]
+          },
+          "url": "http://localhost/api/v1/budgets/82ece739-8243-41c8-9ba5-3569a32c6cce/send",
+          "responseTime": 31
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "orcamento enviado",
+            "status": "pass",
+            "uid": "znSLpzQUX2Uvq82oF48US"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0349017,
+        "name": "Envia orcamento ao cliente",
+        "path": "11-envia-orcamento-cliente",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "12-aceita-orcamento.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/budgets/82ece739-8243-41c8-9ba5-3569a32c6cce/accept",
+          "headers": {}
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "755",
+            "etag": "W/\"2f3-Ob120E9LamxOAew0wAyg2jC8ClA\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "82ece739-8243-41c8-9ba5-3569a32c6cce",
+            "serviceOrderId": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "version": 1,
+            "status": "ACCEPTED",
+            "totalAmount": 199.8,
+            "refusalReason": null,
+            "sentAt": "2026-08-29T23:52:34.169Z",
+            "answeredAt": "2026-08-29T23:52:34.198Z",
+            "createdAt": "2026-08-29T23:52:34.144Z",
+            "updatedAt": "2026-08-29T23:52:34.198Z",
+            "items": [
+              {
+                "id": "b3ab8582-e314-40bc-8c8c-b1cd8187cf14",
+                "partId": null,
+                "serviceId": "7f253247-2eab-4350-88a7-a3c78e508fc1",
+                "description": "Troca de oleo e filtro",
+                "type": "SERVICE",
+                "quantity": 1,
+                "unitPrice": 149.9,
+                "subtotal": 149.9
+              },
+              {
+                "id": "ea6bb658-f8c3-4921-9399-e8fd447e6f20",
+                "partId": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+                "serviceId": null,
+                "description": "Filtro de oleo",
+                "type": "PART",
+                "quantity": 1,
+                "unitPrice": 49.9,
+                "subtotal": 49.9
+              }
+            ]
+          },
+          "url": "http://localhost/api/v1/budgets/82ece739-8243-41c8-9ba5-3569a32c6cce/accept",
+          "responseTime": 22
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "orcamento aceito",
+            "status": "pass",
+            "uid": "CRxwCvGhLeJZ8X5xzYJBd"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0260649,
+        "name": "Aceita orcamento",
+        "path": "12-aceita-orcamento",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "13-despacha-pecas-estoque.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/parts/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/dispatch",
+          "headers": {}
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "221",
+            "etag": "W/\"dd-Se1hnDKwxNtsqw3hnrpH2bgwKAU\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "serviceOrderId": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "dispatched": true,
+            "purchaseOrderId": null,
+            "requirements": [
+              {
+                "partId": "f3a8ca39-be8c-427e-b5f5-d3e3badb5e6d",
+                "partName": "Filtro de oleo",
+                "required": 1,
+                "available": 10
+              }
+            ]
+          },
+          "url": "http://localhost/api/v1/parts/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/dispatch",
+          "responseTime": 11
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "pecas despachadas no smoke",
+            "status": "pass",
+            "uid": "z6cDhw3Q7FwWj9zOmpL4B"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0146361,
+        "name": "Despacha pecas do estoque",
+        "path": "13-despacha-pecas-estoque",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "14-finaliza-os.bru"
+        },
+        "request": {
+          "method": "PATCH",
+          "url": "http://localhost:3000/api/v1/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/complete",
+          "headers": {}
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "509",
+            "etag": "W/\"1fd-GQQ3VBV8vZ8gg+BdWOz4VmFUfZQ\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "clientId": "44189fe0-e5e1-4121-916e-414f81dee0f5",
+            "vehicleId": "eead5a71-8328-4ddb-9902-aefb417bc143",
+            "description": "Vibracao em Sandero",
+            "status": "COMPLETED",
+            "cancellationReason": null,
+            "mechanicId": "00000000-0000-4000-8000-01a04ff07401",
+            "assignedAt": "2026-08-29T23:52:34.120Z",
+            "partsDispatchedAt": "2026-08-29T23:52:34.229Z",
+            "completedAt": "2026-08-29T23:52:34.237Z",
+            "executionTimeMs": 117,
+            "createdAt": "2026-08-29T23:52:34.102Z",
+            "updatedAt": "2026-08-29T23:52:34.237Z"
+          },
+          "url": "http://localhost/api/v1/service-orders/45c3d865-4384-4d6e-bcb9-720cb41ea6c1/complete",
+          "responseTime": 5
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "OS finalizada",
+            "status": "pass",
+            "uid": "G5fDQ47VOxmZ5UP3ENRhw"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.0085295,
+        "name": "Finaliza OS",
+        "path": "14-finaliza-os",
+        "iterationIndex": 0
+      },
+      {
+        "test": {
+          "filename": "15-gera-cobranca.bru"
+        },
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/billings",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "data": "{\n  \"serviceOrderId\": \"45c3d865-4384-4d6e-bcb9-720cb41ea6c1\"\n}"
+        },
+        "response": {
+          "status": 201,
+          "statusText": "Created",
+          "headers": {
+            "x-content-type-options": "nosniff",
+            "content-type": "application/json; charset=utf-8",
+            "content-length": "1001",
+            "etag": "W/\"3e9-PdLFODOSwb9cjhHUDOud8qVDefA\"",
+            "date": "Sat, 29 Aug 2026 23:52:34 GMT",
+            "connection": "keep-alive",
+            "keep-alive": "timeout=5"
+          },
+          "data": {
+            "id": "aac7c45c-3788-4fb6-83a3-4002fef6d548",
+            "serviceOrderId": "45c3d865-4384-4d6e-bcb9-720cb41ea6c1",
+            "budgetId": "82ece739-8243-41c8-9ba5-3569a32c6cce",
+            "status": "WAITING_PAYMENT",
+            "amount": 199.8,
+            "amountDue": 199.8,
+            "paymentLink": "https://checkout.stripe.com/c/pay/cs_test_a1lSuz74UexSAgPg0i74mpWm8XZGOV5vsd5np9pQlNFuhKARifRpgQhMnc#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRQM3NpNjdhf2h2PXxCanFgf1xqdksxa253SmxjaHVUZEgwXURLTUdvZH1HUTdNYlIzNEl8RmhnPU5qc0dcQFJ2VENOMG5kMGFOZk1EVHBDR09LMUl1VlI1NU4wUWpcQVNPJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl",
+            "gatewayTransactionId": "cs_test_a1lSuz74UexSAgPg0i74mpWm8XZGOV5vsd5np9pQlNFuhKARifRpgQhMnc",
+            "paymentMethod": null,
+            "generatedAt": "2026-08-29T23:52:34.254Z",
+            "paidAt": null,
+            "expiresAt": "2026-08-30T23:58:29.000Z",
+            "penalty": null,
+            "createdAt": "2026-08-29T23:52:34.254Z",
+            "updatedAt": "2026-08-29T23:52:34.905Z"
+          },
+          "url": "http://localhost/api/v1/billings",
+          "responseTime": 667
+        },
+        "error": null,
+        "status": "pass",
+        "assertionResults": [],
+        "testResults": [
+          {
+            "description": "cobranca gerada",
+            "status": "pass",
+            "uid": "S6_ZklAKkTqNWqgjXvYNf"
+          }
+        ],
+        "preRequestTestResults": [],
+        "postResponseTestResults": [],
+        "shouldStopRunnerExecution": false,
+        "runDuration": 0.6706938,
+        "name": "Gera cobranca",
+        "path": "15-gera-cobranca",
+        "iterationIndex": 0
+      }
+    ],
+    "summary": {
+      "totalRequests": 16,
+      "passedRequests": 16,
+      "failedRequests": 0,
+      "errorRequests": 0,
+      "skippedRequests": 0,
+      "totalAssertions": 0,
+      "passedAssertions": 0,
+      "failedAssertions": 0,
+      "totalTests": 16,
+      "passedTests": 16,
+      "failedTests": 0,
+      "totalPreRequestTests": 0,
+      "passedPreRequestTests": 0,
+      "failedPreRequestTests": 0,
+      "totalPostResponseTests": 0,
+      "passedPostResponseTests": 0,
+      "failedPostResponseTests": 0
+    }
+  }
+]

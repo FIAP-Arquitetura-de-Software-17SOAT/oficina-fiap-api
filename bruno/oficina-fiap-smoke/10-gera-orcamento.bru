@@ -1,0 +1,50 @@
+meta {
+  name: Gera orcamento
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/budgets
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "serviceOrderId": "{{serviceOrderId}}",
+    "items": [
+      {
+        "serviceId": "{{serviceId}}",
+        "description": "{{budgetServiceDescription}}",
+        "type": "SERVICE",
+        "quantity": 1,
+        "unitPrice": 149.9
+      },
+      {
+        "partId": "{{partId}}",
+        "description": "{{budgetPartDescription}}",
+        "type": "PART",
+        "quantity": 1,
+        "unitPrice": 49.9
+      }
+    ]
+  }
+}
+
+tests {
+  test("orcamento criado com total esperado", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().totalAmount).to.equal(199.8);
+  });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("budgetId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

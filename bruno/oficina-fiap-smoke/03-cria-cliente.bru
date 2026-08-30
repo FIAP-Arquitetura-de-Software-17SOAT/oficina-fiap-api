@@ -1,0 +1,34 @@
+meta {
+  name: Cria cliente
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/clients
+  method: POST
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "{{clientName}}",
+    "document": "{{document}}",
+    "email": "{{clientEmail}}",
+    "phone": "{{clientPhone}}"
+  }
+}
+
+tests {
+  test("cliente criado", function () { expect(res.getStatus()).to.equal(201); });
+  if (res.getStatus() === 200 || res.getStatus() === 201) {
+    bru.setVar("clientId", res.getBody().id);
+  } else {
+    bru.runner.setNextRequest(null);
+  }
+}

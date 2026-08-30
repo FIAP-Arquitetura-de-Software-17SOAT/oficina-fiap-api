@@ -21,7 +21,11 @@
     "test:e2e": "cross-env LOG_LEVEL=silent jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:db": "cross-env NODE_OPTIONS=--experimental-vm-modules RUN_DATABASE_TESTS=true LOG_LEVEL=silent jest --config ./test/jest-e2e.json --runInBand",
     "test:seed": "jest --rootDir . prisma/seed.spec.ts prisma/seed-demo.spec.ts --runInBand",
-    "seed:demo": "ts-node -r dotenv/config prisma/seed-demo.ts"
+    "seed:demo": "ts-node -r dotenv/config prisma/seed-demo.ts",
+    "bruno:generate": "ts-node tools/bruno-smoke/generate.ts",
+    "bruno:smoke": "npm run bruno:generate && cd bruno/oficina-fiap-smoke && cross-env DOTENV_CONFIG_PATH=../../.env node -r dotenv/config ../../node_modules/@usebruno/cli/bin/bru.js run . --env local --bail --exclude-tags optional",
+    "bruno:smoke:report": "npm run bruno:generate && cd bruno/oficina-fiap-smoke && cross-env DOTENV_CONFIG_PATH=../../.env node -r dotenv/config ../../node_modules/@usebruno/cli/bin/bru.js run . --env local --bail --exclude-tags optional --reporter-html ../../reports/bruno/oficina-smoke.html --reporter-json ../../reports/bruno/oficina-smoke.json --reporter-junit ../../reports/bruno/oficina-smoke.xml --reporter-skip-headers Authorization",
+    "bruno:smoke:optional-delivery": "cd bruno/oficina-fiap-smoke && cross-env DOTENV_CONFIG_PATH=../../.env node -r dotenv/config ../../node_modules/@usebruno/cli/bin/bru.js run 16-entrega-os-opcional.bru --env local --reporter-html ../../reports/bruno/oficina-delivery.html --reporter-skip-headers Authorization"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -61,6 +65,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.21.0",
     "@types/supertest": "^7.0.0",
+    "@usebruno/cli": "^2.15.1",
     "cross-env": "^10.1.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -84,7 +89,11 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
+    "rootDir": ".",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tools"
+    ],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
@@ -111,7 +120,7 @@
         "statements": 80
       }
     },
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "coverage",
     "testEnvironment": "node"
   }
 }

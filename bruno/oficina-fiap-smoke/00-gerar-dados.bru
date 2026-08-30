@@ -1,0 +1,89 @@
+meta {
+  name: Gerar dados do smoke
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/health
+  method: GET
+}
+
+script:pre-request {
+  const useRandomData = String(bru.getEnvVar("useRandomData")).toLowerCase() !== "false";
+  if (!useRandomData) {
+    const runId = Date.now();
+    bru.setVar("runId", runId);
+    bru.setVar("stockIdempotencyKey", `${bru.getEnvVar("stockIdempotencyKey")}-${runId}`);
+    return;
+  }
+  const rnd = (n) => Math.floor(Math.random() * n);
+  const pick = (items) => items[rnd(items.length)];
+  const letter = () => String.fromCharCode(65 + rnd(26));
+  const runId = Date.now();
+  const cnpjBase = Array.from({ length: 8 }, () => rnd(10)).concat([0, 0, 0, 1]);
+  const cnpjDigit = (digits, weights) => {
+    const sum = digits.reduce((acc, digit, index) => acc + digit * weights[index], 0);
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  const cnpjD1 = cnpjDigit(cnpjBase, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const cnpjD2 = cnpjDigit([...cnpjBase, cnpjD1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const suffix = (runId % 0xffffffffffff).toString(16).padStart(12, "0");
+  const firstNames = ["Ana", "Bruno", "Carla", "Diego", "Elisa", "Felipe"];
+  const lastNames = ["Silva", "Souza", "Pereira", "Oliveira", "Costa", "Lima"];
+  const brands = ["Fiat", "Volkswagen", "Chevrolet", "Toyota", "Honda", "Renault"];
+  const modelsByBrand = {
+    Fiat: ["Argo", "Pulse", "Cronos"],
+    Volkswagen: ["Polo", "Virtus", "T-Cross"],
+    Chevrolet: ["Onix", "Tracker", "Spin"],
+    Toyota: ["Corolla", "Yaris", "Hilux"],
+    Honda: ["City", "HR-V", "Civic"],
+    Renault: ["Kwid", "Duster", "Sandero"],
+  };
+  const services = [
+    ["Troca de oleo e filtro", "Substituicao de oleo, filtro e revisao visual"],
+    ["Revisao de freios", "Inspecao e ajuste do sistema de freio"],
+    ["Alinhamento e balanceamento", "Ajuste de geometria e balanceamento das rodas"],
+  ];
+  const parts = [
+    ["OIL-FILTER", "Filtro de oleo", "Filtro para oleo do motor"],
+    ["BRAKE-PAD", "Pastilha de freio", "Jogo de pastilhas dianteiras"],
+    ["AIR-FILTER", "Filtro de ar", "Filtro do sistema de admissao"],
+  ];
+  const clientName = `${pick(firstNames)} ${pick(lastNames)}`;
+  const brand = pick(brands);
+  const model = pick(modelsByBrand[brand]);
+  const service = pick(services);
+  const part = pick(parts);
+  bru.setVar("runId", runId);
+  bru.setVar("clientName", clientName);
+  bru.setVar("document", [...cnpjBase, cnpjD1, cnpjD2].join(""));
+  bru.setVar("plate", `${letter()}${letter()}${letter()}${rnd(10)}${letter()}${rnd(10)}${rnd(10)}`);
+  bru.setVar("clientEmail", `${clientName.toLowerCase().replace(" ", ".")}.${runId}@example.com`);
+  bru.setVar("clientPhone", `(11) 9${String(rnd(100000000)).padStart(8, "0")}`);
+  bru.setVar("vehicleBrand", brand);
+  bru.setVar("vehicleModel", model);
+  bru.setVar("vehicleYear", 2018 + rnd(8));
+  bru.setVar("serviceName", `${service[0]} ${runId}`);
+  bru.setVar("serviceDescription", service[1]);
+  bru.setVar("partCode", `${part[0]}-${runId}`);
+  bru.setVar("partName", part[1]);
+  bru.setVar("partDescription", part[2]);
+  bru.setVar("serviceOrderDescription", `${pick(["Barulho", "Vibracao", "Falha intermitente"])} em ${model}`);
+  bru.setVar("budgetServiceDescription", service[0]);
+  bru.setVar("budgetPartDescription", part[1]);
+  bru.setVar("stockIdempotencyKey", `entrada-${runId}`);
+  bru.setVar("mechanicId", `00000000-0000-4000-8000-${suffix}`);
+}
+
+tests {
+  test("dados do smoke preparados", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(bru.getVar("runId")).to.exist;
+    expect(bru.getVar("clientEmail")).to.contain("@");
+  });
+  if (res.getStatus() >= 400) {
+    bru.runner.setNextRequest(null);
+  }
+}
