@@ -12,8 +12,13 @@ export function configureApp(app: INestApplication): INestApplication {
     httpInstance.disable('x-powered-by');
   }
 
+  app.enableCors({
+    origin: ['http://localhost:5173'],
+  });
+
   app.use((_request: Request, response: Response, next: NextFunction) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
   });
 
