@@ -1,0 +1,2081 @@
+{
+  "info": {
+    "_postman_id": "c0cca1c9-9a19-4827-aa8b-6bce2628ef94",
+    "name": "Oficina FIAP — Fluxo E2E",
+    "description": "Ciclo completo de uma ordem de serviço, do login à entrega. Rode de cima para baixo no Collection Runner.\n\nCada execução gera CPF, placa, e-mail, código de peça e mechanicId novos (esses campos são @unique no banco), então dá para rodar quantas vezes quiser sem limpar nada.\n\nA sequência 07→13 é uma máquina de estados: RECEIVED → IN_DIAGNOSIS → AWAITING_APPROVAL → AWAITING_PARTS → IN_PROGRESS → COMPLETED → DELIVERED. Chamar fora de ordem devolve 400. Não existe endpoint para AWAITING_APPROVAL, AWAITING_PARTS nem IN_PROGRESS: quem move a OS é criar o orçamento, aceitar o orçamento e despachar as peças, respectivamente.\n\nExiste ainda o estado AWAITING_PAYMENT (cobrança em aberto), entre COMPLETED e DELIVERED: é onde a OS fica quando o cliente abandona o checkout do Stripe. A única saída dele é a entrega, depois que o pagamento entrar. Não há endpoint direto — quem leva a OS para lá é o retorno de cancelamento do checkout, na pasta 'Retorno do checkout (Stripe)'.\n\nO passo 15 só passa com o Stripe CLI escutando — ver a descrição dele.\n\nOrçamento: só uma versão por vez pode estar aguardando aprovação. Gerar outra versão com a anterior ainda em WAITING_APPROVAL devolve 409 — aceite ou recuse a versão em aberto antes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "28971557"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/refresh",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Pública. Rotaciona o par de tokens. O refresh antigo é revogado."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Pública. 204. Revoga o refresh token atual."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "GET /clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "description": "Lista todos os clientes. ADMIN ou EMPLOYEE."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /clients/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": "Busca por id. O id passa por ParseUUIDPipe: valor fora do formato UUID dá 400, não 404."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /clients/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Silva Souza\",\n  \"email\": \"maria.souza@example.com\",\n  \"phone\": \"(11) 98888-7777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": "Só name, email e phone. O document identifica o cliente e não é atualizável — mandá-lo dá 400 por causa do forbidNonWhitelisted."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /clients/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": "204 sem corpo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Veículos",
+      "item": [
+        {
+          "name": "GET /vehicles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vehicles?clientId={{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                }
+              ]
+            },
+            "description": "clientId é opcional — habilite o query param para filtrar os veículos de um cliente. Cliente inexistente dá 404."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /vehicles/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "{{vehicleId}}"
+              ]
+            },
+            "description": "A placa volta normalizada: maiúscula e sem hífen."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /vehicles/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Fiat\",\n  \"model\": \"Argo Drive\",\n  \"year\": 2023\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "{{vehicleId}}"
+              ]
+            },
+            "description": "Só brand, model e year. plate e clientId identificam o veículo e não mudam depois do cadastro — reemplacamento ou venda são cadastro novo, para não reescrever o histórico de OS. Mandá-los dá 400."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /vehicles/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "{{vehicleId}}"
+              ]
+            },
+            "description": "204 sem corpo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Serviços (catálogo)",
+      "item": [
+        {
+          "name": "GET /services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services"
+              ]
+            },
+            "description": "Lista o catálogo de serviços."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /services/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                "{{serviceId}}"
+              ]
+            },
+            "description": "Busca um serviço do catálogo por id."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /services/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Troca de oleo e filtro (revisada) {{runId}}\",\n  \"description\": \"Inclui oleo sintetico 5W30\",\n  \"price\": 169.9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                "{{serviceId}}"
+              ]
+            },
+            "description": "Todos os campos opcionais. O name é @unique: repetir o de outro serviço dá 409. O price precisa ser positivo, com no máximo 2 casas."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /services/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                "{{serviceId}}"
+              ]
+            },
+            "description": "204 sem corpo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Peças e estoque",
+      "item": [
+        {
+          "name": "GET /parts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/parts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts"
+              ]
+            },
+            "description": "Lista peças e insumos com o saldo atual em quantity."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /parts/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}"
+              ]
+            },
+            "description": "Consulta uma peça. Compare quantity com minimumQuantity para saber se está abaixo do mínimo."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /parts/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Filtro de oleo premium\",\n  \"unitPrice\": 59.9,\n  \"minimumQuantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}"
+              ]
+            },
+            "description": "Todos opcionais. O code é @unique: repetir o de outra peça dá 409. Saldo não se altera por aqui — use as rotas de movimento.\n\ntype: PART | SUPPLY\nunit: UNIT | LITER | KILOGRAM"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /parts/:id/movements/out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2,\n  \"idempotencyKey\": \"saida-{{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}/movements/out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}",
+                "movements",
+                "out"
+              ]
+            },
+            "description": "Saída manual do estoque. 409 se o saldo for insuficiente.\n\nidempotencyKey é @unique no banco: repetir a mesma chave devolve o mesmo movimento com replayed: true, em vez de baixar de novo. Troque o valor para uma baixa nova."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /parts/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}"
+              ]
+            },
+            "description": "204 sem corpo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ordens de serviço",
+      "item": [
+        {
+          "name": "GET /service-orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-orders"
+              ]
+            },
+            "description": "Lista todas as ordens de serviço.\n\nStatus possíveis: RECEIVED, IN_DIAGNOSIS, AWAITING_APPROVAL, AWAITING_PARTS, IN_PROGRESS, COMPLETED, DELIVERED, CANCELLED."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /service-orders/metrics/average-execution-time",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-orders/metrics/average-execution-time",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-orders",
+                "metrics",
+                "average-execution-time"
+              ]
+            },
+            "description": "Tempo médio de execução das OS finalizadas, em ms, com o sampleSize considerado. Volta null quando nenhuma OS foi concluída ainda.\n\nO timer começa na atribuição do mecânico e para na finalização."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /service-orders/clients/:clientId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-orders/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-orders",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": "Acompanhamento: todas as OS de um cliente. Lista vazia é resposta legítima — 404 aqui significa cliente inexistente, não ausência de OS."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /service-orders/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-orders",
+                "{{serviceOrderId}}"
+              ]
+            },
+            "description": "Estado atual da OS, com assignedAt, partsDispatchedAt, completedAt e executionTimeMs."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /service-orders/:id/cancel",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cliente desistiu do servico\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-orders",
+                "{{serviceOrderId}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancela a OS. O motivo é obrigatório.\n\nCancelar é possível de RECEIVED, IN_DIAGNOSIS, AWAITING_APPROVAL, AWAITING_PARTS e IN_PROGRESS. De COMPLETED só se sai para DELIVERED — cancelar depois de finalizada dá 400. CANCELLED e DELIVERED são terminais.\n\nRecusar o orçamento NÃO cancela a OS automaticamente: se for para cancelar, é aqui."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orçamentos",
+      "item": [
+        {
+          "name": "GET /budgets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/budgets?serviceOrderId={{serviceOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "budgets"
+              ],
+              "query": [
+                {
+                  "key": "serviceOrderId",
+                  "description": "Opcional. Filtra pela OS.",
+                  "value": "{{serviceOrderId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista orçamentos. Habilite o query param para trazer só os de uma OS — vêm todas as versões, já que cada revisão é um novo version da mesma OS."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /budgets/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/budgets/{{budgetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{budgetId}}"
+              ]
+            },
+            "description": "Orçamento com os itens. Status: GENERATED, WAITING_APPROVAL, ACCEPTED, REFUSED.\n\nUse esta rota para pegar o id de um item e alimentar {{budgetItemId}}."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /budgets/:id/total",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/budgets/{{budgetId}}/total",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{budgetId}}",
+                "total"
+              ]
+            },
+            "description": "Soma dos subtotais dos itens (quantity × unitPrice)."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /budgets/:id/items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partId\": \"{{partId}}\",\n  \"description\": \"Filtro de ar\",\n  \"type\": \"PART\",\n  \"quantity\": 1,\n  \"unitPrice\": 39.9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/budgets/{{budgetId}}/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{budgetId}}",
+                "items"
+              ]
+            },
+            "description": "Adiciona um item ao orçamento.\n\ntype: SERVICE (com serviceId) ou PART (com partId). Item de peça sem partId trava o despacho depois — o estoque não sabe o que baixar.\n\nquantity e unitPrice: mínimo 0.01, máximo 99.999.999,99, até 2 casas."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /budgets/:id/items/:itemId",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/budgets/{{budgetId}}/items/{{budgetItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{budgetId}}",
+                "items",
+                "{{budgetItemId}}"
+              ]
+            },
+            "description": "Remove um item. Pegue o {{budgetItemId}} em GET /budgets/:id."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /budgets/:id/refuse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cliente achou caro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/budgets/{{budgetId}}/refuse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{budgetId}}",
+                "refuse"
+              ]
+            },
+            "description": "200. Recusa o orçamento; o motivo é obrigatório.\n\nA OS NÃO vira CANCELLED por causa disso — recusar um orçamento abre espaço para uma nova versão, não encerra o atendimento. Para cancelar de fato, use PATCH /service-orders/:id/cancel."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cobranças",
+      "item": [
+        {
+          "name": "GET /billings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billings?serviceOrderId={{serviceOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billings"
+              ],
+              "query": [
+                {
+                  "description": "Opcional. Busca a cobrança da OS.",
+                  "key": "serviceOrderId",
+                  "value": "{{serviceOrderId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista cobranças. Com o query param habilitado busca a cobrança de uma OS — cada OS tem no máximo uma, e a resposta ainda vem como array de um item.\n\nStatus: PENDING, WAITING_PAYMENT, PAID, EXPIRED."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /billings/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billings/{{billingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billings",
+                "{{billingId}}"
+              ]
+            },
+            "description": "Cobrança com paymentLink, amountDue e o objeto penalty (multa fixa + juros + dias em atraso) quando houver."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /billings/stripe/webhook",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              },
+              {
+                "value": "<gerado pelo stripe cli>",
+                "key": "stripe-signature"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billings/stripe/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billings",
+                "stripe",
+                "webhook"
+              ]
+            },
+            "description": "Rota pública, 204. É o ÚNICO caminho para uma cobrança virar PAID.\n\nNão dá para disparar daqui: o handler valida a assinatura do Stripe sobre o raw body, então qualquer corpo montado no Postman devolve 400 \"Assinatura do webhook do Stripe inválida\". Está aqui para documentar o contrato.\n\nPara pagar de verdade em ambiente local:\n\n  stripe listen --forward-to localhost:3000/api/v1/billings/stripe/webhook\n  stripe trigger checkout.session.completed"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /billings/:id/expire",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billings/{{billingId}}/expire",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billings",
+                "{{billingId}}",
+                "expire"
+              ]
+            },
+            "description": "200. Expira uma cobrança que está aguardando pagamento, invalidando o link."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /billings/:id/renew-payment-link",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billings/{{billingId}}/renew-payment-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billings",
+                "{{billingId}}",
+                "renew-payment-link"
+              ]
+            },
+            "description": "200. Gera um link novo com multa fixa e juros por dia de atraso; o penalty da resposta detalha a conta.\n\n400 se o link ainda não venceu. 409 se a cobrança já estiver paga — PAID é terminal."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pedidos de compra",
+      "item": [
+        {
+          "name": "POST /purchase-orders",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// PurchaseOrderNumber exige ^PC-\\d{4}-\\d{4}$ — timestamp nao serve.",
+                  "const seq = String(Math.floor(Math.random() * 10000)).padStart(4, '0');",
+                  "pm.collectionVariables.set('poNumber', `PC-${new Date().getFullYear()}-${seq}`);"
+                ]
+              },
+              "listen": "prerequest"
+            },
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) { pm.collectionVariables.set('purchaseOrderId', pm.response.json().id); }"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"{{poNumber}}\",\n  \"supplier\": \"Auto Pecas Sao Paulo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders"
+              ]
+            },
+            "description": "Cria um pedido de compra manual.\n\nO number passa pelo VO PurchaseOrderNumber e precisa casar exatamente com PC-AAAA-NNNN (quatro dígitos de ano, quatro de sequência). Qualquer outro formato dá 400. O pre-request gera um {{poNumber}} válido a cada envio, porque number é @unique.\n\nSalva o id em {{purchaseOrderId}}."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /purchase-orders/shortages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code < 300) { pm.collectionVariables.set('purchaseOrderId', pm.response.json().id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier\": \"Auto Pecas Sao Paulo\",\n  \"items\": [\n    {\n      \"partId\": \"{{partId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/shortages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "shortages"
+              ]
+            },
+            "description": "Abre um pedido em NEEDS_PURCHASE a partir da falta de estoque. É o que o despacho de peças chama sozinho quando não há saldo.\n\nO número do pedido é sequencial e o preço unitário sai do cadastro da peça — por isso não vão no corpo. supplier é opcional: fica \"A definir\" quando o pedido nasce da falta."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /purchase-orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders"
+              ]
+            },
+            "description": "Lista os pedidos de compra. Status: NEEDS_PURCHASE, AWAITING_DELIVERY, DELIVERED."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /purchase-orders/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "{{purchaseOrderId}}"
+              ]
+            },
+            "description": "Pedido com os itens. O nome da peça vem do módulo de estoque, resolvido no mapper."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /purchase-orders/:id/items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partId\": \"{{partId}}\",\n  \"quantity\": 2,\n  \"unitPrice\": 150.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "{{purchaseOrderId}}",
+                "items"
+              ]
+            },
+            "description": "Adiciona um item. quantity mínimo 1, unitPrice mínimo 0 com até 2 casas."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /purchase-orders/:id/items/:itemId",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/items/{{purchaseOrderItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "{{purchaseOrderId}}",
+                "items",
+                "{{purchaseOrderItemId}}"
+              ]
+            },
+            "description": "Remove um item. Pegue o {{purchaseOrderItemId}} em GET /purchase-orders/:id."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /purchase-orders/:id/register-purchase",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/register-purchase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "{{purchaseOrderId}}",
+                "register-purchase"
+              ]
+            },
+            "description": "Registra a compra junto ao fornecedor: NEEDS_PURCHASE → AWAITING_DELIVERY."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /purchase-orders/:id/deliver",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/deliver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "{{purchaseOrderId}}",
+                "deliver"
+              ]
+            },
+            "description": "AWAITING_DELIVERY → DELIVERED, e devolve as peças ao estoque.\n\nÉ o passo que destrava uma OS presa em AWAITING_PARTS: depois dele, chame de novo POST /parts/service-orders/:id/dispatch."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notificações",
+      "item": [
+        {
+          "name": "GET /notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?status=FAILED&type=BUDGET_READY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "description": "PENDING | SENT | FAILED",
+                  "key": "status",
+                  "value": "FAILED",
+                  "disabled": true
+                },
+                {
+                  "description": "BUDGET_READY | PAYMENT_LINK_READY | STOCK_PARTS_REQUESTED",
+                  "key": "type",
+                  "value": "BUDGET_READY",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Somente ADMIN — EMPLOYEE recebe 403 aqui, diferente do resto da API.\n\nAmbos os filtros são opcionais.\nstatus: PENDING | SENT | FAILED\ntype: BUDGET_READY | PAYMENT_LINK_READY | STOCK_PARTS_REQUESTED"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /notifications/:id/retry",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "retry"
+              ]
+            },
+            "description": "200. Somente ADMIN. Só notificação em FAILED pode ser reenviada — nos outros status dá 409.\n\nPegue o id em GET /notifications com status=FAILED."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Retorno do checkout (Stripe)",
+      "item": [
+        {
+          "name": "GET /payment/cancel · cliente desistiu do checkout",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "pm.test('retorno de cancelamento (200)', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const r = pm.response.json();",
+                  "  if (r.billingStatus === 'PAID') {",
+                  "    // O gateway manda: cobranca paga nao vira cobranca em aberto.",
+                  "    pm.test('cobranca ja paga: OS segue entregue', () => pm.expect(r.serviceOrderStatus).to.eql('DELIVERED'));",
+                  "  } else {",
+                  "    pm.test('OS com cobranca em aberto', () => pm.expect(r.serviceOrderStatus).to.eql('AWAITING_PAYMENT'));",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payment/cancel?billing_id={{billingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment",
+                "cancel"
+              ],
+              "query": [
+                {
+                  "key": "billing_id",
+                  "value": "{{billingId}}",
+                  "description": "Id da cobrança, embutido na cancel_url quando a sessão é criada."
+                }
+              ]
+            },
+            "description": "URL para onde o Stripe manda o cliente que desiste do checkout (`PAYMENT_CANCEL_URL`).\n\nO `billing_id` vai embutido na `cancel_url` no momento em que a sessão é criada: o Stripe só substitui `{CHECKOUT_SESSION_ID}` na URL de sucesso, então aqui o identificador é o da cobrança, que a API já conhece.\n\n**Pública, sem token** — quem chega é o navegador do cliente depois do redirect. Justamente por isso a rota não acredita na URL: ela relê a Checkout Session no Stripe antes de mexer em qualquer coisa. Se o pagamento já estiver lá, ela quita e entrega a OS em vez de rebaixá-la.\n\nEfeito: OS `COMPLETED` → `AWAITING_PAYMENT` (cobrança em aberto). Em qualquer outro estado a OS fica como está, e a resposta mostra isso."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /payment/success · confirma o pagamento e entrega a OS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('retorno de sucesso (200)', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const r = pm.response.json();",
+                  "  if (r.billingStatus === 'PAID') {",
+                  "    pm.test('OS entregue', () => pm.expect(r.serviceOrderStatus).to.eql('DELIVERED'));",
+                  "  } else {",
+                  "    // A rota relê a sessão no Stripe: sem pagamento confirmado ela devolve",
+                  "    // 200 sem mexer em status. Checar só o código esconderia isso.",
+                  "    pm.test('sem pagamento no gateway: nada muda de status', () => {",
+                  "      pm.expect(r.serviceOrderStatus).to.be.oneOf(['COMPLETED', 'AWAITING_PAYMENT']);",
+                  "    });",
+                  "    console.log('Cobranca em ' + r.billingStatus + '. Pague pelo paymentLink do passo 14 e rode de novo.');",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payment/success?session_id={{checkoutSessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment",
+                "success"
+              ],
+              "query": [
+                {
+                  "key": "session_id",
+                  "description": "Id da Checkout Session. O Stripe preenche no redirect via {CHECKOUT_SESSION_ID}; aqui vem do passo 14.",
+                  "value": "{{checkoutSessionId}}"
+                }
+              ]
+            },
+            "description": "URL de retorno depois do pagamento (`PAYMENT_SUCCESS_URL`).\n\nO `session_id` é preenchido pelo Stripe no redirect, via `{CHECKOUT_SESSION_ID}`. Aqui ele vem da variável `checkoutSessionId`, que o **passo 14** grava a partir do `gatewayTransactionId` da cobrança.\n\n**Pública, sem token** — quem chega é o navegador do cliente. A URL não prova nada, então a rota consulta a Checkout Session no Stripe: só com o pagamento confirmado lá ela quita a cobrança e leva a OS para `DELIVERED`.\n\n⚠️ **200 aqui não quer dizer \"entregue\".** Sem pagamento confirmado a resposta é 200 com os status inalterados — olhe `billingStatus` e `serviceOrderStatus` no corpo, não só o código.\n\nÉ idempotente: rodar de novo, ou junto com o webhook, devolve o mesmo estado sem erro.\n\nPara ver o caminho feliz: abra o `paymentLink` da cobrança do passo 14, pague com o cartão de teste `4242 4242 4242 4242` e rode este request. Um `stripe trigger checkout.session.completed` **não** serve — ele cria outra sessão, que não pertence a nenhuma cobrança, e o retorno responde 404."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "00 · Health check",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// document, email, plate, code e name sao @unique no banco. Sem gerar valores",
+              "// novos a cada execucao, a segunda rodada morre com 409 no passo 02.",
+              "const runId = Date.now();",
+              "pm.collectionVariables.set('runId', runId);",
+              "",
+              "const rnd = (n) => Math.floor(Math.random() * n);",
+              "const letra = () => String.fromCharCode(65 + rnd(26));",
+              "",
+              "// CPF com digitos verificadores validos: o Value Object Document recusa",
+              "// checksum errado, entao numero aleatorio puro nao serve.",
+              "const base = Array.from({ length: 9 }, () => rnd(10));",
+              "const dv = (digitos, peso) => {",
+              "  const soma = digitos.reduce((acc, d, i) => acc + d * (peso - i), 0);",
+              "  const resto = soma % 11;",
+              "  return resto < 2 ? 0 : 11 - resto;",
+              "};",
+              "const d1 = dv(base, 10);",
+              "const d2 = dv([...base, d1], 11);",
+              "pm.collectionVariables.set('cpf', [...base, d1, d2].join(''));",
+              "",
+              "// Placa no formato Mercosul: 3 letras, digito, letra, 2 digitos.",
+              "pm.collectionVariables.set('plate', `${letra()}${letra()}${letra()}${rnd(10)}${letra()}${rnd(10)}${rnd(10)}`);",
+              "",
+              "pm.collectionVariables.set('clientEmail', `maria.${runId}@example.com`);",
+              "pm.collectionVariables.set('partCode', `OIL-FILTER-${runId}`);",
+              "pm.collectionVariables.set('serviceName', `Troca de oleo e filtro ${runId}`);",
+              "pm.collectionVariables.set('idemKey', `entrada-${runId}`);",
+              "",
+              "// A API nao valida se o mecanico existe, so que ele nao tenha OS aberta.",
+              "// UUID novo a cada rodada evita o 409 'Mechanic already has an open service order'.",
+              "pm.collectionVariables.set('mechanicId', ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('uuid').v4()));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('API no ar (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "01 · Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login 200', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('accessToken', b.accessToken);",
+              "  pm.collectionVariables.set('refreshToken', b.refreshToken);",
+              "} else {",
+              "  postman.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "disabled": false,
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{email}}\",\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 · Cria cliente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('cliente criado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('clientId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Maria Silva\",\n  \"document\": \"{{cpf}}\",\n  \"email\": \"{{clientEmail}}\",\n  \"phone\": \"(11) 99999-8888\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/clients",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "clients"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 · Cadastra veículo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('veiculo criado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('vehicleId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"plate\": \"{{plate}}\",\n  \"brand\": \"Ford\",\n  \"model\": \"KA\",\n  \"year\": 2018\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/vehicles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "vehicles"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 · Cadastra serviço no catálogo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('servico criado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('serviceId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{serviceName}}\",\n  \"description\": \"Inclui oleo 5W30 e filtro\",\n  \"price\": 149.9\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "services"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 · Cadastra peça",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('peca criada (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { pm.collectionVariables.set('partId', pm.response.json().id); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{partCode}}\",\n  \"name\": \"Filtro de oleo\",\n  \"description\": \"Filtro para oleo do motor\",\n  \"type\": \"PART\",\n  \"unit\": \"UNIT\",\n  \"unitPrice\": 49.9,\n  \"minimumQuantity\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/parts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 · Entrada no estoque",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('entrada registrada (201)', () => pm.response.to.have.status(201));",
+              "pm.test('saldo suficiente para o despacho', () => pm.expect(pm.response.json().part.quantity).to.be.at.least(1));",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 10,\n  \"idempotencyKey\": \"{{idemKey}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/parts/{{partId}}/movements/in",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts",
+            "{{partId}}",
+            "movements",
+            "in"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07 · Abre ordem de serviço",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('OS aberta (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('serviceOrderId', b.id);",
+              "  pm.test('status RECEIVED', () => pm.expect(b.status).to.eql('RECEIVED'));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"description\": \"Barulho no motor ao acelerar\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/service-orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 · Atribui mecânico",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('mecanico atribuido (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { pm.test('status IN_DIAGNOSIS', () => pm.expect(pm.response.json().status).to.eql('IN_DIAGNOSIS')); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mechanicId\": \"{{mechanicId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/assign",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders",
+            "{{serviceOrderId}}",
+            "assign"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "09 · Gera orçamento",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('orcamento gerado (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('budgetId', b.id);",
+              "  pm.test('total = 199.80', () => pm.expect(b.totalAmount).to.eql(199.8));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceOrderId\": \"{{serviceOrderId}}\",\n  \"items\": [\n    {\n      \"serviceId\": \"{{serviceId}}\",\n      \"description\": \"Troca de oleo\",\n      \"type\": \"SERVICE\",\n      \"quantity\": 1,\n      \"unitPrice\": 149.9\n    },\n    {\n      \"partId\": \"{{partId}}\",\n      \"description\": \"Filtro de oleo\",\n      \"type\": \"PART\",\n      \"quantity\": 1,\n      \"unitPrice\": 49.9\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/budgets",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10 · Envia orçamento ao cliente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('orcamento enviado (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/budgets/{{budgetId}}/send",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets",
+            "{{budgetId}}",
+            "send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "11 · Aceita orçamento",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('orcamento aceito (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { pm.test('status ACCEPTED', () => pm.expect(pm.response.json().status).to.eql('ACCEPTED')); }",
+              "if (pm.response.code >= 400) { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/budgets/{{budgetId}}/accept",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets",
+            "{{budgetId}}",
+            "accept"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "12 · Despacha peças do estoque",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('despacho respondido (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const b = pm.response.json();",
+              "  pm.test('pecas baixadas (dispatched: true)', () => {",
+              "    pm.expect(b.dispatched, `faltou peca em estoque; pedido de compra ${b.purchaseOrderId} foi aberto`).to.be.true;",
+              "  });",
+              "  if (!b.dispatched) {",
+              "    pm.collectionVariables.set('purchaseOrderId', b.purchaseOrderId);",
+              "    postman.setNextRequest(null);",
+              "  }",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/parts/service-orders/{{serviceOrderId}}/dispatch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts",
+            "service-orders",
+            "{{serviceOrderId}}",
+            "dispatch"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "13 · Finaliza OS",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('OS finalizada (200)', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const b = pm.response.json();",
+              "  pm.test('status COMPLETED', () => pm.expect(b.status).to.eql('COMPLETED'));",
+              "  pm.test('tempo de execucao registrado', () => pm.expect(b.executionTimeMs).to.be.a('number'));",
+              "} else { postman.setNextRequest(null); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/complete",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders",
+            "{{serviceOrderId}}",
+            "complete"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "14 · Gera cobrança",
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('cobranca gerada (201)', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const b = pm.response.json();",
+              "  pm.collectionVariables.set('billingId', b.id);",
+              "  // id da Checkout Session do Stripe: e por ele que /payment/success",
+              "  // identifica a cobranca no retorno do checkout.",
+              "  pm.collectionVariables.set('checkoutSessionId', b.gatewayTransactionId);",
+              "  pm.test('valor = 199.80', () => pm.expect(b.amount).to.eql(199.8));",
+              "  pm.test('sessao de checkout registrada', () => pm.expect(b.gatewayTransactionId).to.be.a('string'));",
+              "} else { postman.setNextRequest(null); }"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceOrderId\": \"{{serviceOrderId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/billings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "billings"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "15 · Entrega a OS",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 409) {",
+              "  pm.test('OS entregue — BLOQUEADO: cobranca ainda nao esta PAID', () => {",
+              "    throw new Error('409. Rode o Stripe CLI antes deste passo: stripe listen --forward-to localhost:3000/api/v1/billings/stripe/webhook e depois stripe trigger checkout.session.completed');",
+              "  });",
+              "} else {",
+              "  pm.test('OS entregue (204)', () => pm.response.to.have.status(204));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/billings/{{billingId}}/deliver-service-order",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "billings",
+            "{{billingId}}",
+            "deliver-service-order"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    },
+    {
+      "key": "serviceId",
+      "value": ""
+    },
+    {
+      "key": "partId",
+      "value": ""
+    },
+    {
+      "key": "serviceOrderId",
+      "value": ""
+    },
+    {
+      "key": "budgetId",
+      "value": ""
+    },
+    {
+      "key": "billingId",
+      "value": ""
+    },
+    {
+      "key": "mechanicId",
+      "value": ""
+    },
+    {
+      "key": "cpf",
+      "value": ""
+    },
+    {
+      "key": "plate",
+      "value": ""
+    },
+    {
+      "key": "clientEmail",
+      "value": ""
+    },
+    {
+      "key": "partCode",
+      "value": ""
+    },
+    {
+      "key": "serviceName",
+      "value": ""
+    },
+    {
+      "key": "idemKey",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "budgetItemId",
+      "value": ""
+    },
+    {
+      "key": "purchaseOrderId",
+      "value": ""
+    },
+    {
+      "key": "purchaseOrderItemId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "poNumber",
+      "value": ""
+    },
+    {
+      "key": "checkoutSessionId",
+      "value": ""
+    }
+  ]
+}
