@@ -69,6 +69,10 @@ O Docker cria o banco, aplica as migrations, cria o administrador inicial e inic
 
 Use o Swagger para consultar e testar todos os endpoints.
 
+Para percorrer o fluxo completo — do login a entrega da ordem de servico —
+importe a colecao do Postman em `postman/`. As instrucoes estao em
+[docs/wiki/colecao-postman.md](docs/wiki/colecao-postman.md).
+
 Para acessar rotas administrativas, autentique-se em `POST /api/v1/auth/login` com o e-mail e a senha definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD`. Envie o `accessToken` retornado no cabecalho:
 
 ```http
@@ -111,5 +115,6 @@ npm run test:e2e
 Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto.
 
 - [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
+- [docs/wiki/colecao-postman.md](docs/wiki/colecao-postman.md) — a colecao do Postman: como importar, as variaveis que voce precisa preencher, o roteiro de ponta a ponta, o pagamento no Stripe e os erros mais comuns.
 - [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.
 - [docs/c4-diagrams/](docs/c4-diagrams/) — modelo C4 niveis 1 (contexto) e 2 (containers), em `.drawio`.

@@ -91,11 +91,15 @@ O projeto utiliza Stripe Checkout Sessions. Use somente chaves de teste no desen
 ```env
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-PAYMENT_SUCCESS_URL=http://localhost:3000/payment/success
-PAYMENT_CANCEL_URL=http://localhost:3000/payment/cancel
+PAYMENT_SUCCESS_URL=http://localhost:3000/api/v1/payment/success
+PAYMENT_CANCEL_URL=http://localhost:3000/api/v1/payment/cancel
 ```
 
-As URLs de sucesso e cancelamento sao rotas do cliente, nao endpoints desta API. Para testar um pagamento aprovado no Stripe Checkout, use o cartao `4242 4242 4242 4242`, data futura, qualquer CVC e CEP.
+As duas URLs sao para onde o Stripe redireciona o navegador do cliente ao fim do checkout, e a propria API as atende em `GET /payment/success` e `GET /payment/cancel`. As rotas sao publicas, porque quem chega nelas nao tem token, e nenhuma delas confia no que a URL diz: as duas releem a Checkout Session no gateway antes de alterar cobranca ou ordem de servico. O sucesso quita a cobranca e leva a OS para `DELIVERED`; o cancelamento deixa a OS em `AWAITING_PAYMENT`, com a cobranca em aberto.
+
+Uma cobranca so vira `PAID` pelo webhook `POST /billings/stripe/webhook`, que valida a assinatura do Stripe sobre o corpo cru da requisicao.
+
+Para testar um pagamento aprovado no Stripe Checkout, use o cartao `4242 4242 4242 4242`, data futura, qualquer CVC e CEP. O roteiro completo, com os comandos do Stripe CLI, esta em [colecao-postman.md](colecao-postman.md).
 
 ## Banco de dados e migrations
 
