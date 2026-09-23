@@ -96,6 +96,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env}
       STOCK_NOTIFICATION_EMAIL: ${STOCK_NOTIFICATION_EMAIL:-}
+      BUDGET_WEBHOOK_SECRET: ${BUDGET_WEBHOOK_SECRET:-}
     depends_on:
       db:
         condition: service_healthy

@@ -14,6 +14,7 @@ import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { BudgetRepository } from '../repositories/budget.repository';
+import { BudgetDecision } from '../dto/budget-webhook.dto';
 import { BudgetService } from './budget.service';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 
@@ -782,6 +783,83 @@ describe('BudgetService', () => {
 
     expect(budget.getVersion()).toBe(2);
   });
+  describe('decisão externa (webhook)', () => {
+    const waitingBudget = () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      repository.findById.mockResolvedValue(budget);
+      return budget;
+    };
+
+    it('aprovação aceita o orçamento e move a OS para aguardando peças', async () => {
+      const budget = waitingBudget();
+
+      const result = await service.applyExternalDecision({
+        budgetId: budget.getId(),
+        decision: BudgetDecision.APPROVED,
+      });
+
+      expect(result.getStatus()).toBe(BudgetStatus.ACCEPTED);
+      expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
+        budget.getServiceOrderId(),
+      );
+    });
+
+    it('recusa grava o motivo', async () => {
+      const budget = waitingBudget();
+
+      const result = await service.applyExternalDecision({
+        budgetId: budget.getId(),
+        decision: BudgetDecision.REFUSED,
+        reason: 'Achei caro',
+      });
+
+      expect(result.getStatus()).toBe(BudgetStatus.REFUSED);
+      expect(result.getRefusalReason()).toBe('Achei caro');
+    });
+
+    it('reentrega da mesma decisão não repete os efeitos', async () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      budget.accept();
+      repository.findById.mockResolvedValue(budget);
+
+      const result = await service.applyExternalDecision({
+        budgetId: budget.getId(),
+        decision: BudgetDecision.APPROVED,
+      });
+
+      expect(result).toBe(budget);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+      expect(serviceOrderController.awaitParts).not.toHaveBeenCalled();
+    });
+
+    it('decisão contrária à já registrada é conflito', async () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      budget.refuse('Achei caro');
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.applyExternalDecision({
+          budgetId: budget.getId(),
+          decision: BudgetDecision.APPROVED,
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('orçamento inexistente é 404', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.applyExternalDecision({
+          budgetId: 'x',
+          decision: BudgetDecision.APPROVED,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('recorte do CUSTOMER', () => {
     it('entrega o orçamento de OS do próprio cliente', async () => {
       const budget = makeBudget();

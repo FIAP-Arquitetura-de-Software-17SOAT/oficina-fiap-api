@@ -5,9 +5,11 @@ import { NotificationModule } from '../notification/notification.module';
 import { ServiceCatalogModule } from '../service-catalog/service-catalog.module';
 import { ServiceOrderModule } from '../service-order/service-order.module';
 import { StockModule } from '../stock/stock.module';
+import { BudgetWebhookController } from './controllers/budget-webhook.controller';
 import { BudgetController } from './controllers/budget.controller';
 import { BudgetRepository } from './repositories/budget.repository';
 import { BudgetService } from './services/budget.service';
+import { BudgetWebhookSignatureGuard } from './webhooks/budget-webhook-signature.guard';
 
 @Module({
   // O aceite e a recusa do orçamento movem a ordem de serviço; a OS nunca
@@ -23,8 +25,13 @@ import { BudgetService } from './services/budget.service';
     NotificationModule,
     forwardRef(() => StockModule),
   ],
-  controllers: [BudgetController],
-  providers: [BudgetService, BudgetRepository, BudgetController],
+  controllers: [BudgetController, BudgetWebhookController],
+  providers: [
+    BudgetService,
+    BudgetRepository,
+    BudgetController,
+    BudgetWebhookSignatureGuard,
+  ],
   exports: [BudgetService, BudgetController],
 })
 export class BudgetModule {}
