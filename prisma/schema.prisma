@@ -203,6 +203,7 @@ enum NotificationType {
   BUDGET_READY
   PAYMENT_LINK_READY
   STOCK_PARTS_REQUESTED
+  SERVICE_ORDER_STATUS_CHANGED
 }
 
 enum NotificationStatus {

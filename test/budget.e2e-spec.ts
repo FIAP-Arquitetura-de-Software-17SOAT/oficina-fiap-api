@@ -230,10 +230,13 @@ describe('Budget (e2e)', () => {
       }),
     );
 
-    const message = notifications.enqueue.mock.calls[0][0] as {
-      text: string;
-      html: string;
-    };
+    const [message] =
+      (
+        notifications.enqueue.mock.calls as [
+          { type: NotificationType; text: string; html: string },
+        ][]
+      ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];
+    if (!message) throw new Error('BUDGET_READY notification was not queued');
     expect(message.text).toContain('Oil filter');
     expect(message.text).toContain('R$ 120,00');
     expect(message.text).toContain('R$ 40,00');
@@ -492,12 +495,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
   let serviceOrderId: string;
 
   beforeEach(async () => {
-    emailSender = {
-      send: jest
-        .fn()
-        .mockRejectedValueOnce(new Error('SMTP temporarily unavailable'))
-        .mockResolvedValueOnce(undefined),
-    };
+    emailSender = { send: jest.fn().mockResolvedValue(undefined) };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({ imports: [AppModule] }),
     )
@@ -558,6 +556,14 @@ describe('Budget notification delivery resilience (e2e)', () => {
       .patch(`/api/v1/service-orders/${serviceOrderId}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
+
+    // A atribuição já avisa o cliente da mudança de status. A falha de SMTP que
+    // este teste exercita é a do email do orçamento, então ela entra agora.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    emailSender.send
+      .mockReset()
+      .mockRejectedValueOnce(new Error('SMTP temporarily unavailable'))
+      .mockResolvedValueOnce(undefined);
   });
 
   afterEach(async () => {

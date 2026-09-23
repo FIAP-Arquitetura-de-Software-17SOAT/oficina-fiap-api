@@ -2,6 +2,7 @@ import {
   budgetReadyEmail,
   escapeHtml,
   paymentLinkReadyEmail,
+  serviceOrderStatusChangedEmail,
   stockPartsRequestedEmail,
 } from './notification-templates';
 
@@ -14,7 +15,12 @@ describe('notification templates', () => {
     const message = budgetReadyEmail({
       serviceOrderId: 'os-<123>',
       items: [
-        { description: '<Brake & oil>', quantity: 1, unitPrice: 100, subtotal: 100 },
+        {
+          description: '<Brake & oil>',
+          quantity: 1,
+          unitPrice: 100,
+          subtotal: 100,
+        },
       ],
       total: 100,
     });
@@ -45,5 +51,28 @@ describe('notification templates', () => {
     expect(message.text).toContain('https://example.com/?q=<payment>');
     expect(message.html).toContain('os-&lt;123&gt;');
     expect(message.html).toContain('q=&lt;payment&gt;');
+  });
+
+  it('builds an escaped service-order-status email with the status label', () => {
+    const message = serviceOrderStatusChangedEmail({
+      serviceOrderId: 'os-<123>',
+      status: 'IN_PROGRESS',
+    });
+
+    expect(message.subject).toBe('A OS os-<123> está Em execução');
+    expect(message.text).toContain('Status atual: Em execução');
+    expect(message.html).toContain('os-&lt;123&gt;');
+    expect(message.html).toContain('<strong>Em execução</strong>');
+  });
+
+  it('adds the cancellation reason when there is one', () => {
+    const message = serviceOrderStatusChangedEmail({
+      serviceOrderId: 'os-123',
+      status: 'CANCELLED',
+      cancellationReason: '<Cliente desistiu>',
+    });
+
+    expect(message.text).toContain('Motivo: <Cliente desistiu>');
+    expect(message.html).toContain('Motivo: &lt;Cliente desistiu&gt;');
   });
 });
