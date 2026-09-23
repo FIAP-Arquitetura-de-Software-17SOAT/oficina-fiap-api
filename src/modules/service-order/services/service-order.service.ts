@@ -86,8 +86,17 @@ export class ServiceOrderService {
     return serviceOrder;
   }
 
+  /**
+   * A listagem do enunciado: sem as OS finalizadas e entregues, ordenada pela
+   * prioridade do status. A regra de ordem mora na entidade.
+   */
   async findAll(): Promise<ServiceOrder[]> {
-    return this.serviceOrderRepository.findAll();
+    const serviceOrders =
+      await this.serviceOrderRepository.findAllExcludingStatuses(
+        ServiceOrder.STATUSES_HIDDEN_FROM_LISTING,
+      );
+
+    return serviceOrders.sort(ServiceOrder.compareForListing);
   }
 
   /**

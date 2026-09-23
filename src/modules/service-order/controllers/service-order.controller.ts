@@ -57,7 +57,14 @@ export class ServiceOrderController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List service orders' })
+  @ApiOperation({
+    summary: 'List service orders',
+    description:
+      'Hides COMPLETED and DELIVERED orders (they are still stored and ' +
+      'reachable by id). Sorted by status: IN_PROGRESS, AWAITING_PARTS, ' +
+      'AWAITING_PAYMENT, AWAITING_APPROVAL, IN_DIAGNOSIS, RECEIVED, ' +
+      'CANCELLED; oldest first within each status.',
+  })
   @ApiOkResponse({ type: ServiceOrderResponseDto, isArray: true })
   async findAll(): Promise<ServiceOrderResponseDto[]> {
     return ServiceOrderMapper.toResponseList(

@@ -50,7 +50,7 @@ describe('ServiceOrderService', () => {
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
-      findAll: jest.fn(),
+      findAllExcludingStatuses: jest.fn(),
       findByClientId: jest.fn(),
       findCompleted: jest.fn(),
       findActiveByMechanicId: jest.fn().mockResolvedValue(null),
@@ -223,11 +223,25 @@ describe('ServiceOrderService', () => {
   });
 
   describe('findAll', () => {
-    it('delega para o repositório', async () => {
-      const serviceOrders = [makeServiceOrder()];
-      repository.findAll.mockResolvedValue(serviceOrders);
+    it('pede ao repositório só as OS visíveis na listagem', async () => {
+      repository.findAllExcludingStatuses.mockResolvedValue([]);
 
-      await expect(service.findAll()).resolves.toBe(serviceOrders);
+      await service.findAll();
+
+      expect(repository.findAllExcludingStatuses).toHaveBeenCalledWith(
+        ServiceOrder.STATUSES_HIDDEN_FROM_LISTING,
+      );
+    });
+
+    it('ordena pela prioridade do status', async () => {
+      const received = makeServiceOrder(ServiceOrderStatus.RECEIVED);
+      const inProgress = makeServiceOrder(ServiceOrderStatus.IN_PROGRESS);
+      repository.findAllExcludingStatuses.mockResolvedValue([
+        received,
+        inProgress,
+      ]);
+
+      await expect(service.findAll()).resolves.toEqual([inProgress, received]);
     });
   });
 
