@@ -6,7 +6,7 @@ O vocabulario de negocio fica em documento proprio: [linguagem-ubiqua.md](lingua
 
 ## Configuracao
 
-O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicadas diretamente no arquivo `docker-compose.yml`; `SMTP_USER`, `SMTP_PASSWORD` e `STOCK_NOTIFICATION_EMAIL` sao opcionais.
+O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicadas diretamente no arquivo `docker-compose.yml`; `SMTP_USER`, `SMTP_PASSWORD`, `STOCK_NOTIFICATION_EMAIL` e `BUDGET_WEBHOOK_SECRET` sao opcionais.
 
 | Variavel                   | Finalidade                                         |
 | -------------------------- | -------------------------------------------------- |
@@ -26,6 +26,7 @@ O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicad
 | `SMTP_PASSWORD`            | Senha SMTP, quando utilizado                       |
 | `MAIL_FROM`                | Remetente dos e-mails                              |
 | `STOCK_NOTIFICATION_EMAIL` | Destinatario dos avisos de estoque                 |
+| `BUDGET_WEBHOOK_SECRET`    | Segredo HMAC do webhook de decisao do orcamento    |
 
 `JWT_ACCESS_SECRET` e `JWT_REFRESH_SECRET` devem ser valores aleatorios e distintos. Os TTLs podem ser ajustados em `JWT_ACCESS_TTL` (padrao `15m`) e `JWT_REFRESH_TTL` (padrao `7d`).
 
@@ -201,3 +202,33 @@ Onde o modelo conceitual do Event Storming e o codigo nao se sobrepoem, esta e a
 - O ano deve estar entre 1900 e o proximo ano-calendario.
 - Placa e proprietario nao podem ser alterados apos o cadastro.
 - O cadastro exige um cliente existente e nao permite placa duplicada.
+
+## Webhook de decisao do orcamento
+
+Um sistema externo (assinatura eletronica, portal do cliente, e-mail com link) avisa a aprovacao ou recusa do orcamento em `POST /budgets/webhooks/decision`. A rota e publica: a autenticacao e uma assinatura HMAC-SHA256 com o segredo compartilhado `BUDGET_WEBHOOK_SECRET`. Sem o segredo configurado a rota responde `503`.
+
+```http
+POST /api/v1/budgets/webhooks/decision
+Content-Type: application/json
+x-budget-webhook-timestamp: 1790000000
+x-budget-webhook-signature: sha256=<hex do HMAC-SHA256 de "1790000000.<corpo>">
+
+{ "budgetId": "<uuid>", "decision": "APPROVED" }
+```
+
+- `decision` e `APPROVED` ou `REFUSED`; a recusa exige `reason`.
+- O timestamp (unix, em segundos) vale por 5 minutos, contra reenvio de requisicao capturada.
+- A mesma decisao reentregue responde `200` sem repetir efeitos; a decisao contraria a ja registrada responde `409`.
+
+Para gerar a assinatura num teste manual:
+
+```bash
+TS=$(date +%s)
+BODY='{"budgetId":"<uuid>","decision":"APPROVED"}'
+SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$BUDGET_WEBHOOK_SECRET" -hex | sed 's/^.* //')
+curl -X POST http://localhost:3000/api/v1/budgets/webhooks/decision \
+  -H 'Content-Type: application/json' \
+  -H "x-budget-webhook-timestamp: $TS" \
+  -H "x-budget-webhook-signature: sha256=$SIG" \
+  -d "$BODY"
+```

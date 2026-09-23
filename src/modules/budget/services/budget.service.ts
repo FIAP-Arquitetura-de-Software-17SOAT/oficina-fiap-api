@@ -16,6 +16,10 @@ import {
   CreateBudgetItemDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
+import {
+  BudgetDecision,
+  BudgetDecisionWebhookDto,
+} from '../dto/budget-webhook.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
@@ -27,6 +31,7 @@ import {
   Budget,
   BudgetItemProps,
   BudgetItemType,
+  BudgetStatus,
 } from '../entities/budget.entity';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BudgetRepository } from '../repositories/budget.repository';
@@ -147,6 +152,35 @@ export class BudgetService {
     budget.refuse(dto.reason);
 
     return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
+  }
+
+  /**
+   * Resposta do cliente vinda de fora, pelo webhook. Sistemas que entregam
+   * webhook reenviam quando não recebem 2xx, então a mesma decisão chegando de
+   * novo devolve o orçamento sem repetir os efeitos (baixa de peças, emails).
+   * Decisão contrária à já registrada é conflito: o cliente já respondeu.
+   */
+  async applyExternalDecision(dto: BudgetDecisionWebhookDto): Promise<Budget> {
+    const budget = await this.findById(dto.budgetId);
+    const target =
+      dto.decision === BudgetDecision.APPROVED
+        ? BudgetStatus.ACCEPTED
+        : BudgetStatus.REFUSED;
+    const status = budget.getStatus();
+
+    if (status === target) {
+      return budget;
+    }
+
+    if (status === BudgetStatus.ACCEPTED || status === BudgetStatus.REFUSED) {
+      throw new ConflictException(
+        `O orçamento já foi ${status === BudgetStatus.ACCEPTED ? 'aceito' : 'recusado'}`,
+      );
+    }
+
+    return dto.decision === BudgetDecision.APPROVED
+      ? this.accept(budget.getId())
+      : this.refuse(budget.getId(), { reason: dto.reason ?? '' });
   }
 
   /**
