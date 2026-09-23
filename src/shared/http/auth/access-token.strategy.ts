@@ -8,6 +8,7 @@ import { AuthenticatedUser } from './current-user.decorator';
 interface AccessTokenPayload {
   sub?: unknown;
   role?: unknown;
+  clientId?: unknown;
   type?: unknown;
   jti?: unknown;
   iat?: unknown;
@@ -45,9 +46,20 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid access token');
     }
 
+    if (payload.role !== Role.CUSTOMER) {
+      return { id: payload.sub, role: payload.role as Role };
+    }
+
+    // O CUSTOMER só enxerga o que é do próprio cliente; token sem cliente não
+    // tem o que enxergar.
+    if (typeof payload.clientId !== 'string' || !payload.clientId) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
     return {
       id: payload.sub,
-      role: payload.role as Role,
+      role: Role.CUSTOMER,
+      clientId: payload.clientId,
     };
   }
 }

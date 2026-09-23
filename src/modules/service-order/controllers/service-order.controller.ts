@@ -29,6 +29,11 @@ import { ServiceOrderMapper } from '../mappers/service-order.mapper';
 import { ServiceOrderService } from '../services/service-order.service';
 import { Role } from '../../../../generated/prisma/enums';
 import { Roles } from '../../../shared/http/auth/roles.decorator';
+import {
+  clientScopeOf,
+  CurrentUser,
+} from '../../../shared/http/auth/current-user.decorator';
+import type { AuthenticatedUser } from '../../../shared/http/auth/current-user.decorator';
 
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
@@ -86,15 +91,42 @@ export class ServiceOrderController {
     );
   }
 
+  @Get('mine')
+  @Roles(Role.CUSTOMER)
+  @ApiOperation({
+    summary: 'Service orders of the logged-in customer',
+    description:
+      'CUSTOMER only. Returns the customer service orders from newest to ' +
+      'oldest with their current status.',
+  })
+  @ApiOkResponse({ type: ServiceOrderResponseDto, isArray: true })
+  async findMine(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ServiceOrderResponseDto[]> {
+    return ServiceOrderMapper.toResponseList(
+      await this.serviceOrderService.findByClientId(user.clientId as string),
+    );
+  }
+
+  /**
+   * Também chamado por outros módulos sem `user`: a chamada interna não tem
+   * recorte, a autorização já aconteceu na entrada.
+   */
   @Get(':id')
-  @ApiOperation({ summary: 'Find a service order by id' })
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CUSTOMER)
+  @ApiOperation({
+    summary: 'Find a service order by id',
+    description:
+      'A CUSTOMER only sees their own service orders; any other id answers 404.',
+  })
   @ApiOkResponse({ type: ServiceOrderResponseDto })
   @ApiNotFoundResponse({ description: 'Service order not found' })
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
   ): Promise<ServiceOrderResponseDto> {
     return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.findById(id),
+      await this.serviceOrderService.findById(id, clientScopeOf(user)),
     );
   }
 

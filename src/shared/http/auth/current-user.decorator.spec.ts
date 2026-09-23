@@ -10,7 +10,7 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { CurrentUser } from './current-user.decorator';
+import { clientScopeOf, CurrentUser } from './current-user.decorator';
 
 @Injectable()
 class TestIdentityGuard implements CanActivate {
@@ -59,5 +59,17 @@ describe('@CurrentUser', () => {
     await request(http)
       .get('/current-user-test')
       .expect(200, { id: 'admin-id', role: 'ADMIN' });
+  });
+});
+
+describe('clientScopeOf', () => {
+  it('recorta pelo cliente do CUSTOMER', () => {
+    expect(
+      clientScopeOf({ id: 'u', role: 'CUSTOMER', clientId: 'client-id' }),
+    ).toBe('client-id');
+  });
+
+  it.each(['ADMIN', 'EMPLOYEE'] as const)('%s enxerga tudo', (role) => {
+    expect(clientScopeOf({ id: 'u', role })).toBeUndefined();
   });
 });

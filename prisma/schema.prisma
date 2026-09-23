@@ -20,6 +20,7 @@ datasource db {
 enum Role {
   ADMIN
   EMPLOYEE
+  CUSTOMER
 }
 
 enum PartType {
@@ -43,6 +44,11 @@ model User {
   email           String           @unique
   passwordHash    String
   role            Role             @default(ADMIN)
+  /// Só o CUSTOMER tem cliente, e todo CUSTOMER tem: é por ele que o cliente
+  /// enxerga as próprias OS e orçamentos. O Prisma não modela CHECK, então a
+  /// regra vive na migration 20260922120000_add_customer_role e na entidade.
+  clientId        String?          @unique @db.Uuid
+  client          Client?          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   refreshSessions RefreshSession[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -77,6 +83,7 @@ model Client {
 
   serviceOrders ServiceOrder[]
   vehicles      Vehicle[]
+  user          User?
 
   @@map("client")
 }

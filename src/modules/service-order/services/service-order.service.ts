@@ -69,10 +69,17 @@ export class ServiceOrderService {
     return this.serviceOrderRepository.create(serviceOrder);
   }
 
-  async findById(id: string): Promise<ServiceOrder> {
+  /**
+   * `clientScope` é o cliente do CUSTOMER que pergunta. A OS de outro cliente
+   * responde 404, como se não existisse — não revela que o id é válido.
+   */
+  async findById(id: string, clientScope?: string): Promise<ServiceOrder> {
     const serviceOrder = await this.serviceOrderRepository.findById(id);
 
-    if (!serviceOrder) {
+    if (
+      !serviceOrder ||
+      (clientScope !== undefined && serviceOrder.getClientId() !== clientScope)
+    ) {
       throw new NotFoundException('Service order not found');
     }
 

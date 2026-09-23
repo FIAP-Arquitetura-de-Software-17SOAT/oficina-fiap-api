@@ -782,6 +782,82 @@ describe('BudgetService', () => {
 
     expect(budget.getVersion()).toBe(2);
   });
+  describe('recorte do CUSTOMER', () => {
+    it('entrega o orçamento de OS do próprio cliente', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(service.findById(budget.getId(), 'client-1')).resolves.toBe(
+        budget,
+      );
+      expect(serviceOrderController.findById).toHaveBeenCalledWith(
+        budget.getServiceOrderId(),
+      );
+    });
+
+    it('esconde o orçamento de OS de outro cliente, como se não existisse', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.findById(budget.getId(), 'outro-cliente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('não deixa aceitar orçamento de outro cliente', async () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.accept(budget.getId(), 'outro-cliente'),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+      expect(serviceOrderController.awaitParts).not.toHaveBeenCalled();
+    });
+
+    it('não deixa recusar orçamento de outro cliente', async () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.refuse(budget.getId(), { reason: 'caro' }, 'outro-cliente'),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+    });
+
+    it('não lista os orçamentos de OS de outro cliente', async () => {
+      await expect(
+        service.findByServiceOrderId(
+          '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+          'outro-cliente',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.findByServiceOrderId).not.toHaveBeenCalled();
+    });
+
+    it('trata OS inexistente como fora do recorte', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+      serviceOrderController.findById.mockRejectedValue(
+        new NotFoundException('Service order not found'),
+      );
+
+      await expect(
+        service.findById(budget.getId(), 'client-1'),
+      ).rejects.toThrow('Orçamento não encontrado');
+    });
+
+    it('sem recorte, a oficina não consulta a OS', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+
+      await service.findById(budget.getId());
+
+      expect(serviceOrderController.findById).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('BudgetService — referência ao catálogo de serviços', () => {

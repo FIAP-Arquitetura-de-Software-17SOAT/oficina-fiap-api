@@ -192,6 +192,27 @@ describe('ServiceOrderService', () => {
       );
     });
 
+    it('entrega ao CUSTOMER a OS do próprio cliente', async () => {
+      const serviceOrder = makeServiceOrder();
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      await expect(
+        service.findById(serviceOrder.getId(), serviceOrder.getClientId()),
+      ).resolves.toBe(serviceOrder);
+    });
+
+    it('esconde do CUSTOMER a OS de outro cliente, como se não existisse', async () => {
+      const serviceOrder = makeServiceOrder();
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      await expect(
+        service.findById(
+          serviceOrder.getId(),
+          'dddddddd-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it('lança NotFound quando não existe', async () => {
       repository.findById.mockResolvedValue(null);
 

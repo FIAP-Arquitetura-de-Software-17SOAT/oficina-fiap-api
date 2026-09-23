@@ -109,8 +109,8 @@ export class BudgetService {
     return this.persistGeneratedChange(budget, expectedUpdatedAt);
   }
 
-  async accept(id: string): Promise<Budget> {
-    const budget = await this.findById(id);
+  async accept(id: string, clientScope?: string): Promise<Budget> {
+    const budget = await this.findById(id, clientScope);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.accept();
     const accepted = await this.persistWaitingApprovalDecision(
@@ -137,8 +137,12 @@ export class BudgetService {
    * uma recusa: para isso existe `PATCH /service-orders/:id/cancel`, que exige
    * motivo.
    */
-  async refuse(id: string, dto: RefuseBudgetDto): Promise<Budget> {
-    const budget = await this.findById(id);
+  async refuse(
+    id: string,
+    dto: RefuseBudgetDto,
+    clientScope?: string,
+  ): Promise<Budget> {
+    const budget = await this.findById(id, clientScope);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.refuse(dto.reason);
 
@@ -159,10 +163,18 @@ export class BudgetService {
     void this.enqueueStockPartsRequestNotification(budget);
   }
 
-  async findById(id: string): Promise<Budget> {
+  /**
+   * `clientScope` é o cliente do CUSTOMER que pergunta. O orçamento não guarda
+   * o cliente, então o recorte passa pela OS: orçamento de OS de outro cliente
+   * responde 404, como se não existisse.
+   */
+  async findById(id: string, clientScope?: string): Promise<Budget> {
     const budget = await this.budgetRepository.findById(id);
 
-    if (!budget) {
+    if (
+      !budget ||
+      !(await this.isVisibleTo(budget.getServiceOrderId(), clientScope))
+    ) {
       throw new NotFoundException('Orçamento não encontrado');
     }
 
@@ -173,10 +185,33 @@ export class BudgetService {
     return this.budgetRepository.findAll();
   }
 
-  async findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
-    return this.budgetRepository.findByServiceOrderId(
-      this.normalizeServiceOrderId(serviceOrderId),
-    );
+  async findByServiceOrderId(
+    serviceOrderId: string,
+    clientScope?: string,
+  ): Promise<Budget[]> {
+    const normalized = this.normalizeServiceOrderId(serviceOrderId);
+
+    if (!(await this.isVisibleTo(normalized, clientScope))) {
+      throw new NotFoundException('Ordem de serviço não encontrada');
+    }
+
+    return this.budgetRepository.findByServiceOrderId(normalized);
+  }
+
+  private async isVisibleTo(
+    serviceOrderId: string,
+    clientScope: string | undefined,
+  ): Promise<boolean> {
+    if (clientScope === undefined) return true;
+
+    try {
+      const serviceOrder =
+        await this.serviceOrderController.findById(serviceOrderId);
+      return serviceOrder.clientId === clientScope;
+    } catch (error) {
+      if (error instanceof NotFoundException) return false;
+      throw error;
+    }
   }
 
   private async createWithNextAvailableVersion(
