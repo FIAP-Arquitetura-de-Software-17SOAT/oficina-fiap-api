@@ -1,11 +1,28 @@
 import { randomUUID } from 'crypto';
 import { DomainException } from '../../../shared/domain/domain.exception';
+import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
+
+/**
+ * O que o cliente pediu ao abrir a OS. É pedido, não orçamento: não tem preço,
+ * e o orçamento de verdade continua saindo depois do diagnóstico.
+ */
+export interface RequestedService {
+  serviceId: string;
+  quantity: number;
+}
+
+export interface RequestedPart {
+  partId: string;
+  quantity: number;
+}
 
 export interface ServiceOrderProps {
   clientId: string;
   vehicleId: string;
   description: string;
+  requestedServices?: RequestedService[];
+  requestedParts?: RequestedPart[];
   status?: ServiceOrderStatus;
   cancellationReason?: string | null;
   mechanicId?: string | null;
@@ -54,6 +71,8 @@ export class ServiceOrder {
   private clientId: string;
   private vehicleId: string;
   private description: string;
+  private requestedServices: RequestedService[];
+  private requestedParts: RequestedPart[];
   private status: ServiceOrderStatus;
   private cancellationReason: string | null;
   private mechanicId: string | null;
@@ -69,6 +88,8 @@ export class ServiceOrder {
     this.setClientId(props.clientId);
     this.setVehicleId(props.vehicleId);
     this.setDescription(props.description);
+    this.setRequestedServices(props.requestedServices ?? []);
+    this.setRequestedParts(props.requestedParts ?? []);
     this.setStatus(props.status);
 
     this.cancellationReason = props.cancellationReason ?? null;
@@ -102,6 +123,14 @@ export class ServiceOrder {
 
   getDescription(): string {
     return this.description;
+  }
+
+  getRequestedServices(): RequestedService[] {
+    return this.requestedServices.map((service) => ({ ...service }));
+  }
+
+  getRequestedParts(): RequestedPart[] {
+    return this.requestedParts.map((part) => ({ ...part }));
   }
 
   getStatus(): ServiceOrderStatus {
@@ -266,6 +295,50 @@ export class ServiceOrder {
     }
 
     this.description = trimmed;
+  }
+
+  private setRequestedServices(services: RequestedService[]): void {
+    this.requestedServices = ServiceOrder.requestedItems(
+      services,
+      (service) => service.serviceId,
+      'Serviço pedido em duplicidade',
+    ).map(({ ref, quantity }) => ({ serviceId: ref, quantity }));
+  }
+
+  private setRequestedParts(parts: RequestedPart[]): void {
+    this.requestedParts = ServiceOrder.requestedItems(
+      parts,
+      (part) => part.partId,
+      'Peça pedida em duplicidade',
+    ).map(({ ref, quantity }) => ({ partId: ref, quantity }));
+  }
+
+  /**
+   * Mesma regra para serviço e peça: referência preenchida, quantidade inteira
+   * maior que zero (regra 17) e sem repetir o item — quem quer mais de um
+   * informa a quantidade.
+   */
+  private static requestedItems<T extends { quantity: number }>(
+    items: T[],
+    pickRef: (item: T) => string,
+    duplicateMessage: string,
+  ): { ref: string; quantity: number }[] {
+    const seen = new Set<string>();
+
+    return items.map((item) => {
+      const ref = (pickRef(item) ?? '').trim();
+
+      if (!ref) {
+        throw new DomainException('Item pedido sem referência');
+      }
+
+      if (seen.has(ref)) {
+        throw new DomainException(duplicateMessage);
+      }
+      seen.add(ref);
+
+      return { ref, quantity: Quantity.positive(item.quantity).getValue() };
+    });
   }
 
   private setStatus(status: ServiceOrderStatus | undefined): void {

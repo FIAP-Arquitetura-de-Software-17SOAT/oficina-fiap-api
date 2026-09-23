@@ -12,6 +12,10 @@ import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { allowAuthenticated } from './allow-authenticated';
+import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
+import { PartRepository } from '../src/modules/stock/repositories/part.repository';
+import { InMemoryPartRepository } from './in-memory-part.repository';
+import { InMemoryServiceRepository } from './in-memory-service.repository';
 
 const clientPayload = {
   name: 'Maria Silva',
@@ -29,8 +33,10 @@ const openPayload = (clientId: string, vehicleId: string) => ({
 describe('ServiceOrder (integração)', () => {
   let app: INestApplication<App>;
   let http: App;
+  let parts: InMemoryPartRepository;
 
   beforeEach(async () => {
+    parts = new InMemoryPartRepository();
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
         imports: [AppModule],
@@ -42,7 +48,11 @@ describe('ServiceOrder (integração)', () => {
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
-        .useValue(new InMemoryServiceOrderRepository()),
+        .useValue(new InMemoryServiceOrderRepository())
+        .overrideProvider(ServiceRepository)
+        .useValue(new InMemoryServiceRepository())
+        .overrideProvider(PartRepository)
+        .useValue(parts),
     ).compile();
 
     app = configureApp(
@@ -103,6 +113,94 @@ describe('ServiceOrder (integração)', () => {
         cancellationReason: null,
       });
       expect(response.body).toHaveProperty('id');
+    });
+
+    it('abre sem serviços nem peças e devolve as listas vazias', async () => {
+      const { clientId, vehicleId } = await createClientWithVehicle();
+
+      const response = await open(openPayload(clientId, vehicleId)).expect(201);
+
+      expect(response.body).toMatchObject({ services: [], parts: [] });
+    });
+
+    it('abre com os serviços e as peças pedidos pelo cliente', async () => {
+      const { clientId, vehicleId } = await createClientWithVehicle();
+      const service = await request(http)
+        .post('/api/v1/services')
+        .send({ name: 'Troca de óleo', price: 120 })
+        .expect(201);
+      const partId = parts.seed().getId();
+
+      const response = await open({
+        ...openPayload(clientId, vehicleId),
+        services: [{ serviceId: service.body.id }],
+        parts: [{ partId, quantity: 4 }],
+      }).expect(201);
+
+      expect(response.body).toMatchObject({
+        status: 'RECEIVED',
+        services: [{ serviceId: service.body.id, quantity: 1 }],
+        parts: [{ partId, quantity: 4 }],
+      });
+
+      const found = await request(http)
+        .get(`/api/v1/service-orders/${response.body.id}`)
+        .expect(200);
+      expect(found.body.parts).toEqual([{ partId, quantity: 4 }]);
+    });
+
+    it('devolve 404 quando o serviço pedido não existe', async () => {
+      const { clientId, vehicleId } = await createClientWithVehicle();
+
+      await open({
+        ...openPayload(clientId, vehicleId),
+        services: [{ serviceId: 'a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c' }],
+      }).expect(404);
+    });
+
+    it('devolve 404 quando a peça pedida não existe', async () => {
+      const { clientId, vehicleId } = await createClientWithVehicle();
+
+      await open({
+        ...openPayload(clientId, vehicleId),
+        parts: [
+          { partId: 'a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c', quantity: 1 },
+        ],
+      }).expect(404);
+    });
+
+    it.each([
+      [
+        'quantidade zero',
+        {
+          parts: [
+            { partId: 'a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c', quantity: 0 },
+          ],
+        },
+      ],
+      [
+        'peça sem quantidade',
+        { parts: [{ partId: 'a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c' }] },
+      ],
+      ['id que não é uuid', { services: [{ serviceId: 'x' }] }],
+      ['lista que não é lista', { services: 'x' }],
+    ])('devolve 400 com %s', async (_caso, extra) => {
+      const { clientId, vehicleId } = await createClientWithVehicle();
+
+      await open({ ...openPayload(clientId, vehicleId), ...extra }).expect(400);
+    });
+
+    it('devolve 400 quando a mesma peça vem duas vezes', async () => {
+      const { clientId, vehicleId } = await createClientWithVehicle();
+      const partId = parts.seed().getId();
+
+      await open({
+        ...openPayload(clientId, vehicleId),
+        parts: [
+          { partId, quantity: 1 },
+          { partId, quantity: 2 },
+        ],
+      }).expect(400);
     });
 
     it('devolve 404 quando o cliente não existe', async () => {

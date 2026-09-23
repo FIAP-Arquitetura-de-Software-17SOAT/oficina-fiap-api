@@ -1,9 +1,41 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
+
+export class RequestedServiceDto {
+  @ApiProperty({ format: 'uuid', description: 'Serviço do catálogo' })
+  @IsUUID()
+  serviceId: string;
+
+  @ApiPropertyOptional({ minimum: 1, default: 1, example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quantity?: number;
+}
+
+export class RequestedPartDto {
+  @ApiProperty({ format: 'uuid', description: 'Peça ou insumo do estoque' })
+  @IsUUID()
+  partId: string;
+
+  @ApiProperty({ minimum: 1, example: 4 })
+  @IsInt()
+  @Min(1)
+  quantity: number;
+}
 
 export class OpenServiceOrderDto {
   @ApiProperty({
@@ -29,6 +61,28 @@ export class OpenServiceOrderDto {
   @IsString()
   @IsNotEmpty()
   description: string;
+
+  @ApiPropertyOptional({
+    type: [RequestedServiceDto],
+    description:
+      'Serviços que o cliente pede. Opcional: sem preço, só registra o pedido; ' +
+      'o orçamento continua sendo gerado depois do diagnóstico.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RequestedServiceDto)
+  services?: RequestedServiceDto[];
+
+  @ApiPropertyOptional({
+    type: [RequestedPartDto],
+    description: 'Peças que o cliente pede. Opcional, como os serviços.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RequestedPartDto)
+  parts?: RequestedPartDto[];
 }
 
 export class AssignMechanicDto {
@@ -51,6 +105,22 @@ export class CancelServiceOrderDto {
   reason: string;
 }
 
+export class RequestedServiceResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  serviceId: string;
+
+  @ApiProperty()
+  quantity: number;
+}
+
+export class RequestedPartResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  partId: string;
+
+  @ApiProperty()
+  quantity: number;
+}
+
 export class ServiceOrderResponseDto {
   @ApiProperty({ format: 'uuid' })
   id: string;
@@ -63,6 +133,12 @@ export class ServiceOrderResponseDto {
 
   @ApiProperty()
   description: string;
+
+  @ApiProperty({ type: [RequestedServiceResponseDto] })
+  services: RequestedServiceResponseDto[];
+
+  @ApiProperty({ type: [RequestedPartResponseDto] })
+  parts: RequestedPartResponseDto[];
 
   @ApiProperty({
     enum: [

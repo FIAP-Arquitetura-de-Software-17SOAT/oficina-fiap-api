@@ -1,7 +1,15 @@
+import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
+
+interface RequestedItemRow {
+  type: string;
+  serviceId: string | null;
+  partId: string | null;
+  quantity: number;
+}
 
 interface ServiceOrderRow {
   id: string;
@@ -16,7 +24,11 @@ interface ServiceOrderRow {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  requestedItems?: RequestedItemRow[];
 }
+
+// Os itens pedidos fazem parte da OS: toda leitura os traz junto.
+const include = { requestedItems: true } as const;
 
 @Injectable()
 export class ServiceOrderRepository {
@@ -24,14 +36,23 @@ export class ServiceOrderRepository {
 
   async create(serviceOrder: ServiceOrder): Promise<ServiceOrder> {
     const row = await this.prisma.serviceOrder.create({
-      data: this.toPersistence(serviceOrder),
+      data: {
+        ...this.toPersistence(serviceOrder),
+        requestedItems: {
+          create: this.requestedItemsToPersistence(serviceOrder),
+        },
+      },
+      include,
     });
 
     return this.toDomain(row);
   }
 
   async findById(id: string): Promise<ServiceOrder | null> {
-    const row = await this.prisma.serviceOrder.findUnique({ where: { id } });
+    const row = await this.prisma.serviceOrder.findUnique({
+      where: { id },
+      include,
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -39,6 +60,7 @@ export class ServiceOrderRepository {
   async findAll(): Promise<ServiceOrder[]> {
     const rows = await this.prisma.serviceOrder.findMany({
       orderBy: { createdAt: 'desc' },
+      include,
     });
 
     return rows.map((row) => this.toDomain(row));
@@ -48,6 +70,7 @@ export class ServiceOrderRepository {
     const rows = await this.prisma.serviceOrder.findMany({
       where: { clientId },
       orderBy: { createdAt: 'desc' },
+      include,
     });
 
     return rows.map((row) => this.toDomain(row));
@@ -59,6 +82,7 @@ export class ServiceOrderRepository {
       // atribuição não entra na média.
       where: { completedAt: { not: null }, assignedAt: { not: null } },
       orderBy: { createdAt: 'desc' },
+      include,
     });
 
     return rows.map((row) => this.toDomain(row));
@@ -84,6 +108,7 @@ export class ServiceOrderRepository {
           ],
         },
       },
+      include,
     });
 
     return row ? this.toDomain(row) : null;
@@ -101,6 +126,7 @@ export class ServiceOrderRepository {
         completedAt: serviceOrder.getCompletedAt(),
         updatedAt: serviceOrder.getUpdatedAt(),
       },
+      include,
     });
 
     return this.toDomain(row);
@@ -123,11 +149,42 @@ export class ServiceOrderRepository {
     };
   }
 
+  private requestedItemsToPersistence(serviceOrder: ServiceOrder) {
+    return [
+      ...serviceOrder.getRequestedServices().map((service) => ({
+        id: randomUUID(),
+        type: 'SERVICE' as const,
+        serviceId: service.serviceId,
+        quantity: service.quantity,
+      })),
+      ...serviceOrder.getRequestedParts().map((part) => ({
+        id: randomUUID(),
+        type: 'PART' as const,
+        partId: part.partId,
+        quantity: part.quantity,
+      })),
+    ];
+  }
+
   private toDomain(row: ServiceOrderRow): ServiceOrder {
+    const items = row.requestedItems ?? [];
+
     return ServiceOrder.restore(row.id, {
       clientId: row.clientId,
       vehicleId: row.vehicleId,
       description: row.description,
+      requestedServices: items
+        .filter((item) => item.type === 'SERVICE' && item.serviceId)
+        .map((item) => ({
+          serviceId: item.serviceId as string,
+          quantity: item.quantity,
+        })),
+      requestedParts: items
+        .filter((item) => item.type === 'PART' && item.partId)
+        .map((item) => ({
+          partId: item.partId as string,
+          quantity: item.quantity,
+        })),
       status: row.status as ServiceOrderStatus,
       cancellationReason: row.cancellationReason,
       mechanicId: row.mechanicId,

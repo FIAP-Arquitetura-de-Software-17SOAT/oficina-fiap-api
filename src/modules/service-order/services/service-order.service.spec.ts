@@ -3,9 +3,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Client } from '../../client/entities/client.entity';
 import { ClientRepository } from '../../client/repositories/client.repository';
+import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
+import { PART_CATALOG } from '../ports/part-catalog.port';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderService } from './service-order.service';
 
@@ -39,8 +41,12 @@ describe('ServiceOrderService', () => {
   let repository: MockedRepository;
   let clientRepository: MockedClientRepository;
   let vehicleController: { findById: jest.Mock };
+  let serviceCatalog: { findById: jest.Mock };
+  let partCatalog: { findById: jest.Mock };
 
   beforeEach(async () => {
+    serviceCatalog = { findById: jest.fn().mockResolvedValue({}) };
+    partCatalog = { findById: jest.fn().mockResolvedValue({}) };
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -72,6 +78,8 @@ describe('ServiceOrderService', () => {
         { provide: ServiceOrderRepository, useValue: repository },
         { provide: ClientRepository, useValue: clientRepository },
         { provide: VehicleController, useValue: vehicleController },
+        { provide: ServiceController, useValue: serviceCatalog },
+        { provide: PART_CATALOG, useValue: partCatalog },
       ],
     }).compile();
 
@@ -96,6 +104,53 @@ describe('ServiceOrderService', () => {
       vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       description: 'Barulho no motor',
     };
+
+    it('abre a OS com os serviços e as peças pedidos, conferindo que existem', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      repository.create.mockImplementation((so: ServiceOrder) => so);
+
+      const result = await service.openServiceOrder({
+        ...dto,
+        services: [{ serviceId: 'svc-1' }],
+        parts: [{ partId: 'part-1', quantity: 4 }],
+      });
+
+      expect(serviceCatalog.findById).toHaveBeenCalledWith('svc-1');
+      expect(partCatalog.findById).toHaveBeenCalledWith('part-1');
+      expect(result.getRequestedServices()).toEqual([
+        { serviceId: 'svc-1', quantity: 1 },
+      ]);
+      expect(result.getRequestedParts()).toEqual([
+        { partId: 'part-1', quantity: 4 },
+      ]);
+    });
+
+    it('não grava a OS quando um serviço pedido não existe', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      serviceCatalog.findById.mockRejectedValue(
+        new NotFoundException('Serviço não encontrado'),
+      );
+
+      await expect(
+        service.openServiceOrder({ ...dto, services: [{ serviceId: 'x' }] }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('não grava a OS quando uma peça pedida não existe', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      partCatalog.findById.mockRejectedValue(
+        new NotFoundException('Peça não encontrada'),
+      );
+
+      await expect(
+        service.openServiceOrder({
+          ...dto,
+          parts: [{ partId: 'x', quantity: 1 }],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
 
     it('abre a OS quando o cliente existe', async () => {
       clientRepository.findById.mockResolvedValue(makeClient());

@@ -441,3 +441,71 @@ describe('ServiceOrder cobrança em aberto', () => {
     expect(() => serviceOrder.awaitPayment()).toThrow(DomainException);
   });
 });
+
+describe('ServiceOrder serviços e peças pedidos na abertura', () => {
+  const serviceId = '11111111-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+  const partId = '22222222-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+  it('abre sem serviços nem peças', () => {
+    const os = ServiceOrder.create(validProps());
+
+    expect(os.getRequestedServices()).toEqual([]);
+    expect(os.getRequestedParts()).toEqual([]);
+  });
+
+  it('guarda os serviços e as peças pedidos', () => {
+    const os = ServiceOrder.create(
+      validProps({
+        requestedServices: [{ serviceId, quantity: 1 }],
+        requestedParts: [{ partId, quantity: 4 }],
+      }),
+    );
+
+    expect(os.getRequestedServices()).toEqual([{ serviceId, quantity: 1 }]);
+    expect(os.getRequestedParts()).toEqual([{ partId, quantity: 4 }]);
+  });
+
+  it.each([0, -1, 1.5])('recusa quantidade %p', (quantity) => {
+    expect(() =>
+      ServiceOrder.create(
+        validProps({ requestedParts: [{ partId, quantity }] }),
+      ),
+    ).toThrow(DomainException);
+  });
+
+  it('recusa o mesmo serviço pedido duas vezes', () => {
+    expect(() =>
+      ServiceOrder.create(
+        validProps({
+          requestedServices: [
+            { serviceId, quantity: 1 },
+            { serviceId, quantity: 2 },
+          ],
+        }),
+      ),
+    ).toThrow('Serviço pedido em duplicidade');
+  });
+
+  it('recusa a mesma peça pedida duas vezes', () => {
+    expect(() =>
+      ServiceOrder.create(
+        validProps({
+          requestedParts: [
+            { partId, quantity: 1 },
+            { partId, quantity: 2 },
+          ],
+        }),
+      ),
+    ).toThrow('Peça pedida em duplicidade');
+  });
+
+  it('não deixa alterar a lista de fora da entidade', () => {
+    const os = ServiceOrder.create(
+      validProps({ requestedParts: [{ partId, quantity: 4 }] }),
+    );
+
+    os.getRequestedParts().push({ partId: 'outra', quantity: 1 });
+
+    expect(os.getRequestedParts()).toHaveLength(1);
+  });
+});

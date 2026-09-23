@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ClientRepository } from '../../client/repositories/client.repository';
+import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
 import {
   AssignMechanicDto,
@@ -12,6 +14,8 @@ import {
   OpenServiceOrderDto,
 } from '../dto/service-order.dto';
 import { ServiceOrder } from '../entities/service-order.entity';
+import { PART_CATALOG } from '../ports/part-catalog.port';
+import type { PartCatalog } from '../ports/part-catalog.port';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 
 @Injectable()
@@ -20,6 +24,9 @@ export class ServiceOrderService {
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly clientRepository: ClientRepository,
     private readonly vehicleController: VehicleController,
+    private readonly serviceCatalogController: ServiceController,
+    @Inject(PART_CATALOG)
+    private readonly partCatalog: PartCatalog,
   ) {}
 
   async openServiceOrder(dto: OpenServiceOrderDto): Promise<ServiceOrder> {
@@ -39,10 +46,24 @@ export class ServiceOrderService {
       );
     }
 
+    // Serviços e peças são opcionais, mas o que vier precisa existir: sem a
+    // conferência o id inválido só esbarraria na chave estrangeira, em 500.
+    for (const { serviceId } of dto.services ?? []) {
+      await this.serviceCatalogController.findById(serviceId);
+    }
+    for (const { partId } of dto.parts ?? []) {
+      await this.partCatalog.findById(partId);
+    }
+
     const serviceOrder = ServiceOrder.create({
       clientId: dto.clientId,
       vehicleId: dto.vehicleId,
       description: dto.description,
+      requestedServices: (dto.services ?? []).map((service) => ({
+        serviceId: service.serviceId,
+        quantity: service.quantity ?? 1,
+      })),
+      requestedParts: dto.parts ?? [],
     });
 
     return this.serviceOrderRepository.create(serviceOrder);

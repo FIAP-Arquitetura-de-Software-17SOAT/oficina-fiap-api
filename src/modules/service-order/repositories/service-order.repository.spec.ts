@@ -57,7 +57,52 @@ describe('ServiceOrderRepository', () => {
         status: ServiceOrderStatus.RECEIVED,
         cancellationReason: null,
       }) as unknown,
+      include: { requestedItems: true },
     });
+  });
+
+  it('grava os serviços e as peças pedidos junto com a OS', async () => {
+    prisma.serviceOrder.create.mockResolvedValue(row);
+    const serviceOrder = ServiceOrder.create({
+      clientId: row.clientId,
+      vehicleId: row.vehicleId,
+      description: row.description,
+      requestedServices: [{ serviceId: 'svc-1', quantity: 1 }],
+      requestedParts: [{ partId: 'part-1', quantity: 4 }],
+    });
+
+    await repository.create(serviceOrder);
+
+    const [args] = prisma.serviceOrder.create.mock.calls[0] as [
+      { data: { requestedItems: { create: unknown[] } } },
+    ];
+    expect(args.data.requestedItems.create).toEqual([
+      expect.objectContaining({
+        type: 'SERVICE',
+        serviceId: 'svc-1',
+        quantity: 1,
+      }),
+      expect.objectContaining({ type: 'PART', partId: 'part-1', quantity: 4 }),
+    ]);
+  });
+
+  it('reconstrói os serviços e as peças pedidos a partir das linhas', async () => {
+    prisma.serviceOrder.findUnique.mockResolvedValue({
+      ...row,
+      requestedItems: [
+        { type: 'SERVICE', serviceId: 'svc-1', partId: null, quantity: 1 },
+        { type: 'PART', serviceId: null, partId: 'part-1', quantity: 4 },
+      ],
+    });
+
+    const found = await repository.findById(row.id);
+
+    expect(found?.getRequestedServices()).toEqual([
+      { serviceId: 'svc-1', quantity: 1 },
+    ]);
+    expect(found?.getRequestedParts()).toEqual([
+      { partId: 'part-1', quantity: 4 },
+    ]);
   });
 
   it('reconstrói a entidade a partir da linha do banco', async () => {
@@ -83,6 +128,7 @@ describe('ServiceOrderRepository', () => {
 
     expect(prisma.serviceOrder.findUnique).toHaveBeenCalledWith({
       where: { id: row.id },
+      include: { requestedItems: true },
     });
     expect(found?.getId()).toBe(row.id);
 
@@ -97,6 +143,7 @@ describe('ServiceOrderRepository', () => {
 
     expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith({
       orderBy: { createdAt: 'desc' },
+      include: { requestedItems: true },
     });
     expect(serviceOrders).toHaveLength(1);
     expect(serviceOrders[0].getId()).toBe(row.id);
@@ -111,6 +158,7 @@ describe('ServiceOrderRepository', () => {
     expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith({
       where: { completedAt: { not: null }, assignedAt: { not: null } },
       orderBy: { createdAt: 'desc' },
+      include: { requestedItems: true },
     });
     expect(serviceOrders).toHaveLength(1);
     expect(serviceOrders[0].getId()).toBe(row.id);

@@ -18,6 +18,8 @@ describe('ServiceOrderMapper', () => {
       clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       description: 'Barulho no motor',
+      services: [],
+      parts: [],
       status: ServiceOrderStatus.RECEIVED,
       cancellationReason: null,
       mechanicId: null,
