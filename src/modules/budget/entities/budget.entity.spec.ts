@@ -419,3 +419,56 @@ describe('BudgetItem.partId', () => {
     expect(budget.getItems()).toHaveLength(1);
   });
 });
+
+describe('Budget link de aprovação', () => {
+  const makeGenerated = () =>
+    Budget.create({
+      serviceOrderId: 'service-order-id',
+      version: 1,
+      items: [
+        {
+          description: 'Troca de óleo',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: Money.fromDecimal(120),
+        },
+      ],
+    });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('orçamento gerado ainda não tem link', () => {
+    const budget = makeGenerated();
+
+    expect(budget.getApprovalTokenHash()).toBeNull();
+    expect(budget.isApprovalLinkExpired()).toBe(true);
+  });
+
+  it('enviar devolve o token e guarda só o hash, válido por 7 dias', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-01T12:00:00Z'));
+    const budget = makeGenerated();
+
+    const token = budget.sendToClient();
+
+    expect(budget.getApprovalTokenHash()).toBe(token.digest());
+    expect(budget.getApprovalTokenHash()).not.toBe(token.value);
+    expect(budget.getApprovalTokenExpiresAt()).toEqual(
+      new Date('2026-09-08T12:00:00Z'),
+    );
+  });
+
+  it('o link vence depois dos 7 dias', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-01T12:00:00Z'));
+    const budget = makeGenerated();
+    budget.sendToClient();
+
+    expect(budget.isApprovalLinkExpired(new Date('2026-09-08T12:00:00Z'))).toBe(
+      false,
+    );
+    expect(budget.isApprovalLinkExpired(new Date('2026-09-08T12:00:01Z'))).toBe(
+      true,
+    );
+  });
+});

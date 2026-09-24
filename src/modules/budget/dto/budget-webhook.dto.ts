@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
@@ -11,13 +11,20 @@ export enum BudgetDecision {
 }
 
 /**
- * Notificação que um sistema externo (assinatura eletrônica, portal, email
- * com link) manda quando o cliente responde o orçamento.
+ * Resposta do cliente ao orçamento, vinda do link do email: a página de
+ * confirmação posta aqui o token do link e a decisão.
  */
 export class BudgetDecisionWebhookDto {
-  @ApiProperty({ format: 'uuid', description: 'Orçamento respondido' })
-  @IsUUID()
-  budgetId: string;
+  @ApiProperty({
+    description:
+      'Token do link de aprovação que o cliente recebeu no email do ' +
+      'orçamento. É a prova de que a resposta veio de quem recebeu o email; ' +
+      'o id do orçamento sozinho não autoriza nada.',
+    example: 'q3Jm1xVb0c9yZ8Q2kPp7T4wL6sE5nR1aHdUfGiKoXjM',
+  })
+  @IsString()
+  @IsNotEmpty()
+  token: string;
 
   @ApiProperty({ enum: BudgetDecision, example: BudgetDecision.APPROVED })
   @IsEnum(BudgetDecision)

@@ -6,7 +6,7 @@ O vocabulario de negocio fica em documento proprio: [linguagem-ubiqua.md](lingua
 
 ## Configuracao
 
-O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicadas diretamente no arquivo `docker-compose.yml`; `SMTP_USER`, `SMTP_PASSWORD`, `STOCK_NOTIFICATION_EMAIL` e `BUDGET_WEBHOOK_SECRET` sao opcionais.
+O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicadas diretamente no arquivo `docker-compose.yml`; `SMTP_USER`, `SMTP_PASSWORD`, `STOCK_NOTIFICATION_EMAIL` e `PUBLIC_API_URL` sao opcionais.
 
 | Variavel                   | Finalidade                                         |
 | -------------------------- | -------------------------------------------------- |
@@ -26,7 +26,7 @@ O projeto reconhece as seguintes variaveis no `.env`. O Compose exige as indicad
 | `SMTP_PASSWORD`            | Senha SMTP, quando utilizado                       |
 | `MAIL_FROM`                | Remetente dos e-mails                              |
 | `STOCK_NOTIFICATION_EMAIL` | Destinatario dos avisos de estoque                 |
-| `BUDGET_WEBHOOK_SECRET`    | Segredo HMAC do webhook de decisao do orcamento    |
+| `PUBLIC_API_URL`           | Base do link de aprovacao no e-mail do orcamento   |
 
 `JWT_ACCESS_SECRET` e `JWT_REFRESH_SECRET` devem ser valores aleatorios e distintos. Os TTLs podem ser ajustados em `JWT_ACCESS_TTL` (padrao `15m`) e `JWT_REFRESH_TTL` (padrao `7d`).
 
@@ -203,32 +203,13 @@ Onde o modelo conceitual do Event Storming e o codigo nao se sobrepoem, esta e a
 - Placa e proprietario nao podem ser alterados apos o cadastro.
 - O cadastro exige um cliente existente e nao permite placa duplicada.
 
-## Webhook de decisao do orcamento
+## Aprovacao do orcamento pelo link do e-mail
 
-Um sistema externo (assinatura eletronica, portal do cliente, e-mail com link) avisa a aprovacao ou recusa do orcamento em `POST /budgets/webhooks/decision`. A rota e publica: a autenticacao e uma assinatura HMAC-SHA256 com o segredo compartilhado `BUDGET_WEBHOOK_SECRET`. Sem o segredo configurado a rota responde `503`.
+Quando a oficina envia o orcamento (`POST /budgets/:id/send`), o cliente recebe o e-mail do orcamento com um link pessoal de aprovacao. O link carrega um token aleatorio de 256 bits; o banco guarda so o SHA-256 dele (`budget.approvalTokenHash`), e o link vale 7 dias. Quem conhece so o id do orcamento nao consegue aprovar nem recusar.
 
-```http
-POST /api/v1/budgets/webhooks/decision
-Content-Type: application/json
-x-budget-webhook-timestamp: 1790000000
-x-budget-webhook-signature: sha256=<hex do HMAC-SHA256 de "1790000000.<corpo>">
+- `GET /budgets/webhooks/decision?token=...` e o que o link abre: uma pagina com os itens, o total e os botoes Aprovar e Recusar. O GET nao decide nada, porque scanners de e-mail (Outlook Safe Links, Gmail) abrem os links sozinhos.
+- `POST /budgets/webhooks/decision` e o webhook que decide. Recebe `{ token, decision: APPROVED | REFUSED, reason? }` em JSON ou pelo formulario da pagina (responde HTML quando o cliente pede `text/html`). A recusa exige `reason`.
+- Token desconhecido responde `404`; link vencido, `410`. A mesma decisao reentregue responde `200` sem repetir efeitos; a decisao contraria responde `409`.
+- As respostas HTML saem com `Referrer-Policy: no-referrer`, `Cache-Control: no-store` e `X-Frame-Options: DENY`, para o token nao vazar e o botao nao ser embutido em outra pagina.
 
-{ "budgetId": "<uuid>", "decision": "APPROVED" }
-```
-
-- `decision` e `APPROVED` ou `REFUSED`; a recusa exige `reason`.
-- O timestamp (unix, em segundos) vale por 5 minutos, contra reenvio de requisicao capturada.
-- A mesma decisao reentregue responde `200` sem repetir efeitos; a decisao contraria a ja registrada responde `409`.
-
-Para gerar a assinatura num teste manual:
-
-```bash
-TS=$(date +%s)
-BODY='{"budgetId":"<uuid>","decision":"APPROVED"}'
-SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$BUDGET_WEBHOOK_SECRET" -hex | sed 's/^.* //')
-curl -X POST http://localhost:3000/api/v1/budgets/webhooks/decision \
-  -H 'Content-Type: application/json' \
-  -H "x-budget-webhook-timestamp: $TS" \
-  -H "x-budget-webhook-signature: sha256=$SIG" \
-  -d "$BODY"
-```
+A base do link vem de `PUBLIC_API_URL` (padrao `http://localhost:3000`). Em desenvolvimento, o link aparece no e-mail capturado pelo SMTP de teste (Ethereal) e pode ser aberto direto no navegador.

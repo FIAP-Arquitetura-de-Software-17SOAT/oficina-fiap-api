@@ -216,8 +216,16 @@ describe('Budget (e2e)', () => {
     };
   };
 
-  it('queues every first-budget item in BRL without failing HTTP creation when notification delivery fails', async () => {
+  it('does not email the client while the budget is only generated', async () => {
     await createBudget();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(notifications.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('queues every budget item in BRL, with the approval link, when the budget is sent', async () => {
+    const { id } = await createBudget();
+    await request(http).post(`/api/v1/budgets/${id}/send`).expect(200);
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(notifications.enqueue).toHaveBeenCalledWith(
@@ -242,6 +250,9 @@ describe('Budget (e2e)', () => {
     expect(message.html).toContain('R$ 120,00');
     expect(message.html).toContain('R$ 40,00');
     expect(message.html).toContain('R$ 160,00');
+    expect(message.text).toMatch(
+      /budgets\/webhooks\/decision\?token=[A-Za-z0-9_-]{43}/,
+    );
   });
 
   it('creates, sends, accepts, and fetches a budget', async () => {
@@ -564,8 +575,8 @@ describe('Budget notification delivery resilience (e2e)', () => {
     await app.close();
   });
 
-  it('keeps budget creation successful after an email failure and sends the stored notification on retry', async () => {
-    await request(http)
+  it('keeps budget sending successful after an email failure and sends the stored notification on retry', async () => {
+    const created = await request(http)
       .post('/api/v1/budgets')
       .send({
         serviceOrderId,
@@ -579,6 +590,9 @@ describe('Budget notification delivery resilience (e2e)', () => {
         ],
       })
       .expect(201);
+    await request(http)
+      .post(`/api/v1/budgets/${created.body.id}/send`)
+      .expect(200);
 
     await new Promise<void>((resolve) => setImmediate(resolve));
 
