@@ -216,11 +216,15 @@ describe('Budget (e2e)', () => {
     };
   };
 
-  it('does not email the client while the budget is only generated', async () => {
+  it('does not email the budget while it is only generated', async () => {
     await createBudget();
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).not.toHaveBeenCalled();
+    // A OS já avisou o cliente da mudança de status; o que não pode sair
+    // ainda é o email do orçamento, cujo link só vale depois do envio.
+    expect(notifications.enqueue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: NotificationType.BUDGET_READY }),
+    );
   });
 
   it('queues every budget item in BRL, with the approval link, when the budget is sent', async () => {
