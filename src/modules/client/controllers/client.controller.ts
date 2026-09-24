@@ -27,7 +27,12 @@ import {
   CreateClientDto,
   UpdateClientDto,
 } from '../dto/client.dto';
+import {
+  ClientAccountResponseDto,
+  CreateClientAccountDto,
+} from '../dto/client-account.dto';
 import { ClientMapper } from '../mappers/client.mapper';
+import { ClientAccountService } from '../services/client-account.service';
 import { ClientService } from '../services/client.service';
 import { Role } from '../../../../generated/prisma/enums';
 import { Roles } from '../../../shared/http/auth/roles.decorator';
@@ -38,7 +43,10 @@ import { Roles } from '../../../shared/http/auth/roles.decorator';
 @ApiTags('clients')
 @Controller('clients')
 export class ClientController {
-  constructor(private readonly clientService: ClientService) {}
+  constructor(
+    private readonly clientService: ClientService,
+    private readonly clientAccountService: ClientAccountService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Cadastra um cliente' })
@@ -66,6 +74,34 @@ export class ClientController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ClientResponseDto> {
     return ClientMapper.toResponse(await this.clientService.findById(id));
+  }
+
+  @Post(':id/account')
+  @ApiOperation({
+    summary: 'Cria o login do cliente (papel CUSTOMER)',
+    description:
+      'O email do login é o do cadastro do cliente. Com ele o cliente ' +
+      'acompanha as próprias OS e aprova ou recusa o orçamento.',
+  })
+  @ApiCreatedResponse({ type: ClientAccountResponseDto })
+  @ApiBadRequestResponse({ description: 'Senha inválida' })
+  @ApiNotFoundResponse({ description: 'Client not found' })
+  @ApiConflictResponse({
+    description: 'O cliente já tem login, ou o email já é de outro login',
+  })
+  async createAccount(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateClientAccountDto,
+  ): Promise<ClientAccountResponseDto> {
+    const user = await this.clientAccountService.createAccount(id, dto);
+
+    return {
+      id: user.getId(),
+      email: user.getEmail(),
+      role: user.getRole(),
+      clientId: id,
+      createdAt: user.getCreatedAt(),
+    };
   }
 
   @Patch(':id')

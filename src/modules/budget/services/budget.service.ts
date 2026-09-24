@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  GoneException,
   Inject,
   Injectable,
   NotFoundException,
@@ -16,6 +17,10 @@ import {
   CreateBudgetItemDto,
   RefuseBudgetDto,
 } from '../dto/budget.dto';
+import {
+  BudgetDecision,
+  BudgetDecisionWebhookDto,
+} from '../dto/budget-webhook.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
@@ -27,9 +32,12 @@ import {
   Budget,
   BudgetItemProps,
   BudgetItemType,
+  BudgetStatus,
 } from '../entities/budget.entity';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BudgetRepository } from '../repositories/budget.repository';
+import { ApprovalToken } from '../value-objects/approval-token.vo';
+import { API_PREFIX } from '../../../setup-app';
 
 @Injectable()
 export class BudgetService {
@@ -73,9 +81,7 @@ export class BudgetService {
     // a execucao gera outro orcamento, e a OS ja nao esta mais em diagnostico -
     // nesse caso a transicao nao se aplica e o orcamento segue valido.
     if (budget.getVersion() === 1) {
-      const serviceOrder =
-        await this.serviceOrderController.awaitApproval(serviceOrderId);
-      void this.enqueueBudgetReadyNotification(budget, serviceOrder.clientId);
+      await this.serviceOrderController.awaitApproval(serviceOrderId);
     }
 
     return budget;
@@ -102,15 +108,24 @@ export class BudgetService {
     return budget.getTotal().value;
   }
 
+  /**
+   * O email do orçamento sai aqui, e não na criação: é o envio que deixa o
+   * orçamento aguardando aprovação, e o link de aprovação que vai no email só
+   * funciona a partir daí. Toda versão enviada ganha o seu email e o seu link.
+   */
   async send(id: string): Promise<Budget> {
     const budget = await this.findById(id);
     const expectedUpdatedAt = budget.getUpdatedAt();
-    budget.sendToClient();
-    return this.persistGeneratedChange(budget, expectedUpdatedAt);
+    const approvalToken = budget.sendToClient();
+    const sent = await this.persistGeneratedChange(budget, expectedUpdatedAt);
+
+    void this.enqueueBudgetReadyNotification(sent, approvalToken);
+
+    return sent;
   }
 
-  async accept(id: string): Promise<Budget> {
-    const budget = await this.findById(id);
+  async accept(id: string, clientScope?: string): Promise<Budget> {
+    const budget = await this.findById(id, clientScope);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.accept();
     const accepted = await this.persistWaitingApprovalDecision(
@@ -137,12 +152,69 @@ export class BudgetService {
    * uma recusa: para isso existe `PATCH /service-orders/:id/cancel`, que exige
    * motivo.
    */
-  async refuse(id: string, dto: RefuseBudgetDto): Promise<Budget> {
-    const budget = await this.findById(id);
+  async refuse(
+    id: string,
+    dto: RefuseBudgetDto,
+    clientScope?: string,
+  ): Promise<Budget> {
+    const budget = await this.findById(id, clientScope);
     const expectedUpdatedAt = budget.getUpdatedAt();
     budget.refuse(dto.reason);
 
     return this.persistWaitingApprovalDecision(budget, expectedUpdatedAt);
+  }
+
+  /**
+   * Resposta do cliente vinda de fora, pelo webhook. Sistemas que entregam
+   * webhook reenviam quando não recebem 2xx, então a mesma decisão chegando de
+   * novo devolve o orçamento sem repetir os efeitos (baixa de peças, emails).
+   * Decisão contrária à já registrada é conflito: o cliente já respondeu.
+   */
+  async applyExternalDecision(dto: BudgetDecisionWebhookDto): Promise<Budget> {
+    const budget = await this.findByApprovalToken(dto.token);
+    const target =
+      dto.decision === BudgetDecision.APPROVED
+        ? BudgetStatus.ACCEPTED
+        : BudgetStatus.REFUSED;
+    const status = budget.getStatus();
+
+    if (status === target) {
+      return budget;
+    }
+
+    if (status === BudgetStatus.ACCEPTED || status === BudgetStatus.REFUSED) {
+      throw new ConflictException(
+        `O orçamento já foi ${status === BudgetStatus.ACCEPTED ? 'aceito' : 'recusado'}`,
+      );
+    }
+
+    return dto.decision === BudgetDecision.APPROVED
+      ? this.accept(budget.getId())
+      : this.refuse(budget.getId(), { reason: dto.reason ?? '' });
+  }
+
+  /**
+   * O orçamento que o link do email aponta. O token é a prova de que quem
+   * responde recebeu o email do cliente: sem ele, conhecer o id do orçamento
+   * não basta. Link desconhecido responde 404; link vencido, 410.
+   */
+  async findByApprovalToken(rawToken: string): Promise<Budget> {
+    const token = ApprovalToken.parse(rawToken);
+    const budget = token
+      ? await this.budgetRepository.findByApprovalTokenHash(token.digest())
+      : null;
+
+    if (!budget) {
+      throw new NotFoundException('Link de aprovação inválido');
+    }
+
+    if (budget.isApprovalLinkExpired()) {
+      throw new GoneException(
+        'Link de aprovação vencido; peça à oficina um novo orçamento',
+      );
+    }
+
+    return budget;
   }
 
   /**
@@ -159,10 +231,18 @@ export class BudgetService {
     void this.enqueueStockPartsRequestNotification(budget);
   }
 
-  async findById(id: string): Promise<Budget> {
+  /**
+   * `clientScope` é o cliente do CUSTOMER que pergunta. O orçamento não guarda
+   * o cliente, então o recorte passa pela OS: orçamento de OS de outro cliente
+   * responde 404, como se não existisse.
+   */
+  async findById(id: string, clientScope?: string): Promise<Budget> {
     const budget = await this.budgetRepository.findById(id);
 
-    if (!budget) {
+    if (
+      !budget ||
+      !(await this.isVisibleTo(budget.getServiceOrderId(), clientScope))
+    ) {
       throw new NotFoundException('Orçamento não encontrado');
     }
 
@@ -173,10 +253,33 @@ export class BudgetService {
     return this.budgetRepository.findAll();
   }
 
-  async findByServiceOrderId(serviceOrderId: string): Promise<Budget[]> {
-    return this.budgetRepository.findByServiceOrderId(
-      this.normalizeServiceOrderId(serviceOrderId),
-    );
+  async findByServiceOrderId(
+    serviceOrderId: string,
+    clientScope?: string,
+  ): Promise<Budget[]> {
+    const normalized = this.normalizeServiceOrderId(serviceOrderId);
+
+    if (!(await this.isVisibleTo(normalized, clientScope))) {
+      throw new NotFoundException('Ordem de serviço não encontrada');
+    }
+
+    return this.budgetRepository.findByServiceOrderId(normalized);
+  }
+
+  private async isVisibleTo(
+    serviceOrderId: string,
+    clientScope: string | undefined,
+  ): Promise<boolean> {
+    if (clientScope === undefined) return true;
+
+    try {
+      const serviceOrder =
+        await this.serviceOrderController.findById(serviceOrderId);
+      return serviceOrder.clientId === clientScope;
+    } catch (error) {
+      if (error instanceof NotFoundException) return false;
+      throw error;
+    }
   }
 
   private async createWithNextAvailableVersion(
@@ -431,10 +534,15 @@ export class BudgetService {
 
   private async enqueueBudgetReadyNotification(
     budget: Budget,
-    clientId: string,
+    approvalToken: ApprovalToken,
   ): Promise<void> {
     try {
-      const client = await this.clientRepository.findById(clientId);
+      const serviceOrder = await this.serviceOrderController.findById(
+        budget.getServiceOrderId(),
+      );
+      const client = await this.clientRepository.findById(
+        serviceOrder.clientId,
+      );
       if (!client) return;
 
       const items = budget.getItems();
@@ -451,12 +559,27 @@ export class BudgetService {
             subtotal: item.getSubtotal().value,
           })),
           total: budget.getTotal().value,
+          approvalUrl: this.approvalUrl(approvalToken),
+          approvalExpiresAt: budget.getApprovalTokenExpiresAt() as Date,
         }),
       });
     } catch {
-      // A criação do orçamento e a transição da OS já ocorreram. Falhas de
-      // notificação não podem alterar esse resultado de negócio.
+      // O envio do orçamento já foi gravado. Falhas de notificação não podem
+      // alterar esse resultado de negócio; o email fica para reenvio.
     }
+  }
+
+  /**
+   * A página de confirmação atende o GET do link: abrir o link não decide nada
+   * (scanners de email abrem links sozinhos), só o POST da página decide.
+   */
+  private approvalUrl(token: ApprovalToken): string {
+    const base = (
+      this.config.get<string>('PUBLIC_API_URL')?.trim() ||
+      'http://localhost:3000'
+    ).replace(/\/+$/, '');
+
+    return `${base}/${API_PREFIX}/budgets/webhooks/decision?token=${token.value}`;
   }
 
   private async enqueueStockPartsRequestNotification(

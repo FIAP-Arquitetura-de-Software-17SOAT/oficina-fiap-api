@@ -20,6 +20,33 @@ describe('AccessTokenStrategy', () => {
     ).toEqual({ id: 'admin-id', role: 'ADMIN' });
   });
 
+  it('carries the client id of a CUSTOMER token', () => {
+    expect(
+      strategy.validate({
+        sub: 'customer-id',
+        role: 'CUSTOMER',
+        clientId: 'client-id',
+        type: 'access',
+        jti: 'access-jti',
+        iat: 1,
+        exp: 2,
+      }),
+    ).toEqual({ id: 'customer-id', role: 'CUSTOMER', clientId: 'client-id' });
+  });
+
+  it('rejects a CUSTOMER token without a client id', () => {
+    expect(() =>
+      strategy.validate({
+        sub: 'customer-id',
+        role: 'CUSTOMER',
+        type: 'access',
+        jti: 'access-jti',
+        iat: 1,
+        exp: 2,
+      }),
+    ).toThrow(UnauthorizedException);
+  });
+
   it('rejects a refresh-typed token even if its signature was accepted', () => {
     expect(() =>
       strategy.validate({

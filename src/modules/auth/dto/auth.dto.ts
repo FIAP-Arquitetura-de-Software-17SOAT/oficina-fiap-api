@@ -1,31 +1,10 @@
 import { Transform } from 'class-transformer';
-import {
-  buildMessage,
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  ValidateBy,
-} from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  BCRYPT_PASSWORD_MAX_BYTES,
-  isValidLoginPassword,
-  LOGIN_PASSWORD_MAX_CHARACTERS,
-  LOGIN_PASSWORD_MIN_CHARACTERS,
+  IsLoginPassword,
   normalizeLoginEmail,
 } from '../../../shared/identity/login-credentials';
-
-const IsLoginPassword = (): PropertyDecorator =>
-  ValidateBy({
-    name: 'isLoginPassword',
-    validator: {
-      validate: isValidLoginPassword,
-      defaultMessage: buildMessage(
-        (eachPrefix) =>
-          `${eachPrefix}$property must be ${LOGIN_PASSWORD_MIN_CHARACTERS} to ${LOGIN_PASSWORD_MAX_CHARACTERS} characters and at most ${BCRYPT_PASSWORD_MAX_BYTES} UTF-8 bytes`,
-      ),
-    },
-  });
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@example.com' })

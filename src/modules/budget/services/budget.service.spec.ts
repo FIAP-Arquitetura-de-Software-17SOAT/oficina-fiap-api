@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  GoneException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
@@ -14,7 +18,9 @@ import { ClientRepository } from '../../client/repositories/client.repository';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { BudgetRepository } from '../repositories/budget.repository';
+import { BudgetDecision } from '../dto/budget-webhook.dto';
 import { BudgetService } from './budget.service';
+import { ApprovalToken } from '../value-objects/approval-token.vo';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 type MockedRepository = {
@@ -58,6 +64,7 @@ describe('BudgetService', () => {
       updateGenerated: jest.fn((budget: Budget) => budget),
       updateWaitingApproval: jest.fn((budget: Budget) => budget),
       findById: jest.fn(),
+      findByApprovalTokenHash: jest.fn(),
       findAll: jest.fn(),
       findByServiceOrderId: jest.fn(),
       findWaitingApprovalByServiceOrderId: jest.fn().mockResolvedValue(null),
@@ -128,18 +135,8 @@ describe('BudgetService', () => {
     expect(repository.create).toHaveBeenCalled();
   });
 
-  it('queues the first budget after awaiting approval', async () => {
-    const client = Client.create({
-      name: 'Maria Silva',
-      document: '529.982.247-25',
-      email: 'maria@example.com',
-      phone: '(11) 99999-8888',
-    });
+  it('does not email the client when the budget is only generated', async () => {
     repository.findLastVersionByServiceOrderId.mockResolvedValue(0);
-    serviceOrderController.awaitApproval.mockResolvedValue({
-      clientId: client.getId(),
-    });
-    clientRepository.findById.mockResolvedValue(client);
 
     await service.create({
       serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
@@ -152,14 +149,41 @@ describe('BudgetService', () => {
         },
       ],
     });
+    await new Promise((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: NotificationType.BUDGET_READY,
-        to: client.getEmail().getValue(),
-        text: expect.stringContaining('Oil change'),
-        html: expect.stringContaining('R$'),
-      }),
+    expect(notifications.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('emails the budget with a personal approval link when it is sent', async () => {
+    const client = Client.create({
+      name: 'Maria Silva',
+      document: '529.982.247-25',
+      email: 'maria@example.com',
+      phone: '(11) 99999-8888',
+    });
+    const budget = makeBudget();
+    repository.findById.mockResolvedValue(budget);
+    clientRepository.findById.mockResolvedValue(client);
+    config.get.mockImplementation((key: string) =>
+      key === 'PUBLIC_API_URL' ? 'https://oficina.example/' : undefined,
+    );
+
+    const sent = await service.send(budget.getId());
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const [message] = notifications.enqueue.mock.calls[0] as [
+      { type: string; to: string; text: string },
+    ];
+    const token = /token=([A-Za-z0-9_-]{43})/.exec(message.text)?.[1];
+
+    expect(message.type).toBe(NotificationType.BUDGET_READY);
+    expect(message.to).toBe('maria@example.com');
+    expect(message.text).toContain(
+      'https://oficina.example/api/v1/budgets/webhooks/decision?token=',
+    );
+    expect(token).toBeDefined();
+    expect(sent.getApprovalTokenHash()).toBe(
+      ApprovalToken.parse(token as string)?.digest(),
     );
   });
 
@@ -781,6 +805,181 @@ describe('BudgetService', () => {
     });
 
     expect(budget.getVersion()).toBe(2);
+  });
+  describe('decisão pelo link do email (webhook)', () => {
+    const sentBudget = () => {
+      const budget = makeBudget();
+      const token = budget.sendToClient();
+      repository.findByApprovalTokenHash.mockImplementation((hash: string) =>
+        Promise.resolve(hash === token.digest() ? budget : null),
+      );
+      repository.findById.mockResolvedValue(budget);
+      return { budget, token: token.value };
+    };
+
+    it('aprovação com o token do email aceita e move a OS para aguardando peças', async () => {
+      const { budget, token } = sentBudget();
+
+      const result = await service.applyExternalDecision({
+        token,
+        decision: BudgetDecision.APPROVED,
+      });
+
+      expect(result.getStatus()).toBe(BudgetStatus.ACCEPTED);
+      expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
+        budget.getServiceOrderId(),
+      );
+    });
+
+    it('recusa grava o motivo', async () => {
+      const { token } = sentBudget();
+
+      const result = await service.applyExternalDecision({
+        token,
+        decision: BudgetDecision.REFUSED,
+        reason: 'Achei caro',
+      });
+
+      expect(result.getStatus()).toBe(BudgetStatus.REFUSED);
+      expect(result.getRefusalReason()).toBe('Achei caro');
+    });
+
+    it('token desconhecido é 404, e o id do orçamento não serve de token', async () => {
+      const { budget } = sentBudget();
+
+      await expect(
+        service.applyExternalDecision({
+          token: budget.getId(),
+          decision: BudgetDecision.APPROVED,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.applyExternalDecision({
+          token: 'A'.repeat(43),
+          decision: BudgetDecision.APPROVED,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+    });
+
+    it('link vencido é 410 e não altera nada', async () => {
+      const { token } = sentBudget();
+      jest
+        .useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+        .setSystemTime(Date.now() + ApprovalToken.TTL_MS + 1000);
+
+      await expect(
+        service.applyExternalDecision({
+          token,
+          decision: BudgetDecision.APPROVED,
+        }),
+      ).rejects.toThrow(GoneException);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('reentrega da mesma decisão não repete os efeitos', async () => {
+      const { budget, token } = sentBudget();
+      budget.accept();
+
+      const result = await service.applyExternalDecision({
+        token,
+        decision: BudgetDecision.APPROVED,
+      });
+
+      expect(result).toBe(budget);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+      expect(serviceOrderController.awaitParts).not.toHaveBeenCalled();
+    });
+
+    it('decisão contrária à já registrada é conflito', async () => {
+      const { budget, token } = sentBudget();
+      budget.refuse('Achei caro');
+
+      await expect(
+        service.applyExternalDecision({
+          token,
+          decision: BudgetDecision.APPROVED,
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('recorte do CUSTOMER', () => {
+    it('entrega o orçamento de OS do próprio cliente', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(service.findById(budget.getId(), 'client-1')).resolves.toBe(
+        budget,
+      );
+      expect(serviceOrderController.findById).toHaveBeenCalledWith(
+        budget.getServiceOrderId(),
+      );
+    });
+
+    it('esconde o orçamento de OS de outro cliente, como se não existisse', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.findById(budget.getId(), 'outro-cliente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('não deixa aceitar orçamento de outro cliente', async () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.accept(budget.getId(), 'outro-cliente'),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+      expect(serviceOrderController.awaitParts).not.toHaveBeenCalled();
+    });
+
+    it('não deixa recusar orçamento de outro cliente', async () => {
+      const budget = makeBudget();
+      budget.sendToClient();
+      repository.findById.mockResolvedValue(budget);
+
+      await expect(
+        service.refuse(budget.getId(), { reason: 'caro' }, 'outro-cliente'),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.updateWaitingApproval).not.toHaveBeenCalled();
+    });
+
+    it('não lista os orçamentos de OS de outro cliente', async () => {
+      await expect(
+        service.findByServiceOrderId(
+          '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+          'outro-cliente',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.findByServiceOrderId).not.toHaveBeenCalled();
+    });
+
+    it('trata OS inexistente como fora do recorte', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+      serviceOrderController.findById.mockRejectedValue(
+        new NotFoundException('Service order not found'),
+      );
+
+      await expect(
+        service.findById(budget.getId(), 'client-1'),
+      ).rejects.toThrow('Orçamento não encontrado');
+    });
+
+    it('sem recorte, a oficina não consulta a OS', async () => {
+      const budget = makeBudget();
+      repository.findById.mockResolvedValue(budget);
+
+      await service.findById(budget.getId());
+
+      expect(serviceOrderController.findById).not.toHaveBeenCalled();
+    });
   });
 });
 

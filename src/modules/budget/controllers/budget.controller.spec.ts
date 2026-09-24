@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BudgetItemType } from '../entities/budget.entity';
 import { Budget } from '../entities/budget.entity';
@@ -153,7 +154,7 @@ describe('BudgetController', () => {
 
     const result = await controller.accept(budget.getId());
 
-    expect(service.accept).toHaveBeenCalledWith(budget.getId());
+    expect(service.accept).toHaveBeenCalledWith(budget.getId(), undefined);
     expect(result.status).toBe('ACCEPTED');
   });
 
@@ -166,7 +167,7 @@ describe('BudgetController', () => {
 
     const result = await controller.refuse(budget.getId(), dto);
 
-    expect(service.refuse).toHaveBeenCalledWith(budget.getId(), dto);
+    expect(service.refuse).toHaveBeenCalledWith(budget.getId(), dto, undefined);
     expect(result.refusalReason).toBe('Customer found it expensive');
   });
 
@@ -176,7 +177,7 @@ describe('BudgetController', () => {
 
     const result = await controller.findById(budget.getId());
 
-    expect(service.findById).toHaveBeenCalledWith(budget.getId());
+    expect(service.findById).toHaveBeenCalledWith(budget.getId(), undefined);
     expect(result.id).toBe(budget.getId());
   });
 
@@ -201,11 +202,36 @@ describe('BudgetController', () => {
 
     expect(service.findByServiceOrderId).toHaveBeenCalledWith(
       '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+      undefined,
     );
     expect(service.findAll).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
     expect(result[0].serviceOrderId).toBe(
       '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
+  });
+
+  describe('CUSTOMER', () => {
+    const customer = {
+      id: 'customer-id',
+      role: 'CUSTOMER' as const,
+      clientId: 'client-id',
+    };
+
+    it('responde o orçamento recortado pelo próprio cliente', async () => {
+      const budget = makeBudget();
+      service.accept.mockResolvedValue(budget);
+
+      await controller.accept(budget.getId(), customer);
+
+      expect(service.accept).toHaveBeenCalledWith(budget.getId(), 'client-id');
+    });
+
+    it('precisa informar a OS para listar', async () => {
+      await expect(controller.findAll({}, customer)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
   });
 });

@@ -20,3 +20,43 @@ describe('User', () => {
     expect(user.getUpdatedAt()).toEqual(updatedAt);
   });
 });
+
+describe('User CUSTOMER', () => {
+  it('cria o login do cliente com o cliente vinculado', () => {
+    const user = User.createCustomer({
+      email: 'maria@example.com',
+      passwordHash: '$2b$12$hash',
+      clientId: 'client-id',
+    });
+
+    expect(user.getRole()).toBe('CUSTOMER');
+    expect(user.getClientId()).toBe('client-id');
+  });
+
+  it('usuário da oficina não tem cliente', () => {
+    const user = User.create({ email: 'a@example.com', passwordHash: 'h' });
+
+    expect(user.getClientId()).toBeNull();
+  });
+
+  it('recusa CUSTOMER sem cliente', () => {
+    expect(() =>
+      User.create({
+        email: 'a@example.com',
+        passwordHash: 'h',
+        role: 'CUSTOMER',
+      }),
+    ).toThrow('Login de cliente precisa estar vinculado a um cliente');
+  });
+
+  it('recusa cliente vinculado a usuário da oficina', () => {
+    expect(() =>
+      User.create({
+        email: 'a@example.com',
+        passwordHash: 'h',
+        role: 'EMPLOYEE',
+        clientId: 'client-id',
+      }),
+    ).toThrow('Só o login de cliente é vinculado a um cliente');
+  });
+});

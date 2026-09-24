@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -35,6 +36,11 @@ import { BudgetMapper } from '../mappers/budget.mapper';
 import { BudgetService } from '../services/budget.service';
 import { Role } from '../../../../generated/prisma/enums';
 import { Roles } from '../../../shared/http/auth/roles.decorator';
+import {
+  clientScopeOf,
+  CurrentUser,
+} from '../../../shared/http/auth/current-user.decorator';
+import type { AuthenticatedUser } from '../../../shared/http/auth/current-user.decorator';
 
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Token de acesso ausente ou inválido' })
@@ -131,7 +137,13 @@ export class BudgetController {
 
   @Post(':id/accept')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Aceita o orçamento' })
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CUSTOMER)
+  @ApiOperation({
+    summary: 'Aceita o orçamento',
+    description:
+      'O CUSTOMER só responde orçamento de OS própria; qualquer outro id ' +
+      'responde 404.',
+  })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({ description: 'Status do orçamento inválido' })
   @ApiConflictResponse({
@@ -140,13 +152,22 @@ export class BudgetController {
   @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async accept(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
   ): Promise<BudgetResponseDto> {
-    return BudgetMapper.toResponse(await this.budgetService.accept(id));
+    return BudgetMapper.toResponse(
+      await this.budgetService.accept(id, clientScopeOf(user)),
+    );
   }
 
   @Post(':id/refuse')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Recusa o orçamento' })
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CUSTOMER)
+  @ApiOperation({
+    summary: 'Recusa o orçamento',
+    description:
+      'O CUSTOMER só responde orçamento de OS própria; qualquer outro id ' +
+      'responde 404.',
+  })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiBadRequestResponse({
     description: 'Motivo ou status do orçamento inválido',
@@ -158,32 +179,61 @@ export class BudgetController {
   async refuse(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RefuseBudgetDto,
+    @CurrentUser() user?: AuthenticatedUser,
   ): Promise<BudgetResponseDto> {
-    return BudgetMapper.toResponse(await this.budgetService.refuse(id, dto));
+    return BudgetMapper.toResponse(
+      await this.budgetService.refuse(id, dto, clientScopeOf(user)),
+    );
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CUSTOMER)
   @ApiOperation({ summary: 'Busca um orçamento por id' })
   @ApiOkResponse({ type: BudgetResponseDto })
   @ApiNotFoundResponse({ description: 'Orçamento não encontrado' })
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
   ): Promise<BudgetResponseDto> {
-    return BudgetMapper.toResponse(await this.budgetService.findById(id));
+    return BudgetMapper.toResponse(
+      await this.budgetService.findById(id, clientScopeOf(user)),
+    );
   }
 
+  /**
+   * Também chamado pelo despacho de peças sem `user`: a chamada interna não
+   * tem recorte, a autorização já aconteceu na entrada.
+   */
   @Get()
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CUSTOMER)
   @ApiOperation({
     summary: 'Lista orçamentos, opcionalmente os de uma ordem de serviço',
+    description:
+      'O CUSTOMER precisa informar serviceOrderId, de uma OS própria.',
   })
   @ApiOkResponse({ type: BudgetResponseDto, isArray: true })
   @ApiBadRequestResponse({ description: 'Filtro inválido' })
+  @ApiNotFoundResponse({
+    description: 'CUSTOMER pediu os orçamentos de uma OS que não é dele',
+  })
   async findAll(
     @Query() query: FindBudgetsQueryDto,
+    @CurrentUser() user?: AuthenticatedUser,
   ): Promise<BudgetResponseDto[]> {
+    const clientScope = clientScopeOf(user);
+
+    if (clientScope !== undefined && !query.serviceOrderId) {
+      throw new BadRequestException(
+        'Informe serviceOrderId para listar os orçamentos',
+      );
+    }
+
     if (query.serviceOrderId) {
       return BudgetMapper.toResponseList(
-        await this.budgetService.findByServiceOrderId(query.serviceOrderId),
+        await this.budgetService.findByServiceOrderId(
+          query.serviceOrderId,
+          clientScope,
+        ),
       );
     }
 

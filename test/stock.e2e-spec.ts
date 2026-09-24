@@ -50,6 +50,8 @@ describe('Stock (e2e)', () => {
       {
         sub: 'stock-user-id',
         role,
+        // Token de CUSTOMER válido sempre traz o cliente dono do login.
+        ...(role === 'CUSTOMER' ? { clientId: 'client-id' } : {}),
         type: 'access',
         jti: 'stock-access-jti',
       },

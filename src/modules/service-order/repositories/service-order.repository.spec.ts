@@ -136,13 +136,21 @@ describe('ServiceOrderRepository', () => {
     await expect(repository.findById('x')).resolves.toBeNull();
   });
 
-  it('findAll ordena do mais recente para o mais antigo', async () => {
+  it('findAllExcludingStatuses filtra os status e ordena da mais antiga para a mais nova', async () => {
     prisma.serviceOrder.findMany.mockResolvedValue([row]);
 
-    const serviceOrders = await repository.findAll();
+    const serviceOrders = await repository.findAllExcludingStatuses([
+      ServiceOrderStatus.COMPLETED,
+      ServiceOrderStatus.DELIVERED,
+    ]);
 
     expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith({
-      orderBy: { createdAt: 'desc' },
+      where: {
+        status: {
+          notIn: [ServiceOrderStatus.COMPLETED, ServiceOrderStatus.DELIVERED],
+        },
+      },
+      orderBy: { createdAt: 'asc' },
       include: { requestedItems: true },
     });
     expect(serviceOrders).toHaveLength(1);
