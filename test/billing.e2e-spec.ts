@@ -217,10 +217,15 @@ describe('Billing (integracao)', () => {
         html: expect.stringContaining(response.body.paymentLink),
       }),
     );
-    const message = notifications.enqueue.mock.calls[0][0] as {
-      text: string;
-      html: string;
-    };
+    const [message] =
+      (
+        notifications.enqueue.mock.calls as [
+          { type: NotificationType; text: string; html: string },
+        ][]
+      ).find(([input]) => input.type === NotificationType.PAYMENT_LINK_READY) ??
+      [];
+    if (!message)
+      throw new Error('PAYMENT_LINK_READY notification was not queued');
     expect(message.text).toContain('R$ 150,00');
     expect(message.html).toContain('R$ 150,00');
   });

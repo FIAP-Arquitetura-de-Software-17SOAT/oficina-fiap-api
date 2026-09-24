@@ -66,7 +66,44 @@ const ALLOWED_TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
   [ServiceOrderStatus.CANCELLED]: [],
 };
 
+/**
+ * Ordem da listagem de OS pedida no enunciado da Fase 2: o que está em
+ * execução primeiro, depois o que espera algo, até o que acabou de chegar.
+ * AWAITING_PARTS e AWAITING_PAYMENT entram logo depois da execução, e a OS
+ * cancelada fica por último.
+ */
+const LISTING_PRIORITY: ServiceOrderStatus[] = [
+  ServiceOrderStatus.IN_PROGRESS,
+  ServiceOrderStatus.AWAITING_PARTS,
+  ServiceOrderStatus.AWAITING_PAYMENT,
+  ServiceOrderStatus.AWAITING_APPROVAL,
+  ServiceOrderStatus.IN_DIAGNOSIS,
+  ServiceOrderStatus.RECEIVED,
+  ServiceOrderStatus.CANCELLED,
+];
+
 export class ServiceOrder {
+  /**
+   * Exclusão lógica da listagem: a OS continua no banco e segue acessível por
+   * id, só não aparece em `GET /service-orders`.
+   */
+  static readonly STATUSES_HIDDEN_FROM_LISTING: ServiceOrderStatus[] = [
+    ServiceOrderStatus.COMPLETED,
+    ServiceOrderStatus.DELIVERED,
+  ];
+
+  /** Prioridade do status e, dentro do mesmo status, a mais antiga primeiro. */
+  static compareForListing(
+    this: void,
+    a: ServiceOrder,
+    b: ServiceOrder,
+  ): number {
+    const byStatus =
+      LISTING_PRIORITY.indexOf(a.status) - LISTING_PRIORITY.indexOf(b.status);
+
+    return byStatus || a.createdAt.getTime() - b.createdAt.getTime();
+  }
+
   private readonly id: string;
   private clientId: string;
   private vehicleId: string;

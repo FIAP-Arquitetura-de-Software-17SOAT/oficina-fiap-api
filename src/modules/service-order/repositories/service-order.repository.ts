@@ -57,9 +57,12 @@ export class ServiceOrderRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async findAll(): Promise<ServiceOrder[]> {
+  async findAllExcludingStatuses(
+    statuses: ServiceOrderStatus[],
+  ): Promise<ServiceOrder[]> {
     const rows = await this.prisma.serviceOrder.findMany({
-      orderBy: { createdAt: 'desc' },
+      where: { status: { notIn: statuses } },
+      orderBy: { createdAt: 'asc' },
       include,
     });
 

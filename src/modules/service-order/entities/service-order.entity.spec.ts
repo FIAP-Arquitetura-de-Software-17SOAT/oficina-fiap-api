@@ -509,3 +509,45 @@ describe('ServiceOrder serviços e peças pedidos na abertura', () => {
     expect(os.getRequestedParts()).toHaveLength(1);
   });
 });
+
+describe('ServiceOrder listagem', () => {
+  const at = (status: ServiceOrderStatus, createdAt: string) =>
+    ServiceOrder.restore(`${status}-${createdAt}`, {
+      ...validProps(),
+      status,
+      createdAt: new Date(createdAt),
+    });
+
+  it('esconde da listagem as OS finalizadas e entregues', () => {
+    expect(ServiceOrder.STATUSES_HIDDEN_FROM_LISTING).toEqual([
+      ServiceOrderStatus.COMPLETED,
+      ServiceOrderStatus.DELIVERED,
+    ]);
+  });
+
+  it('ordena pela prioridade do status e, dentro dele, da mais antiga para a mais nova', () => {
+    const orders = [
+      at(ServiceOrderStatus.RECEIVED, '2026-01-01T08:00:00Z'),
+      at(ServiceOrderStatus.CANCELLED, '2026-01-01T07:00:00Z'),
+      at(ServiceOrderStatus.IN_DIAGNOSIS, '2026-01-01T09:00:00Z'),
+      at(ServiceOrderStatus.AWAITING_APPROVAL, '2026-01-01T10:00:00Z'),
+      at(ServiceOrderStatus.AWAITING_PAYMENT, '2026-01-01T11:00:00Z'),
+      at(ServiceOrderStatus.AWAITING_PARTS, '2026-01-01T12:00:00Z'),
+      at(ServiceOrderStatus.IN_PROGRESS, '2026-01-02T08:00:00Z'),
+      at(ServiceOrderStatus.IN_PROGRESS, '2026-01-01T08:00:00Z'),
+    ];
+
+    const sorted = [...orders].sort(ServiceOrder.compareForListing);
+
+    expect(sorted.map((order) => order.getId())).toEqual([
+      'IN_PROGRESS-2026-01-01T08:00:00Z',
+      'IN_PROGRESS-2026-01-02T08:00:00Z',
+      'AWAITING_PARTS-2026-01-01T12:00:00Z',
+      'AWAITING_PAYMENT-2026-01-01T11:00:00Z',
+      'AWAITING_APPROVAL-2026-01-01T10:00:00Z',
+      'IN_DIAGNOSIS-2026-01-01T09:00:00Z',
+      'RECEIVED-2026-01-01T08:00:00Z',
+      'CANCELLED-2026-01-01T07:00:00Z',
+    ]);
+  });
+});

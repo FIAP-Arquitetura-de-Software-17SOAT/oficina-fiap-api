@@ -13,11 +13,13 @@ export class InMemoryServiceOrderRepository {
     return Promise.resolve(this.serviceOrders.get(id) ?? null);
   }
 
-  findAll(): Promise<ServiceOrder[]> {
+  findAllExcludingStatuses(statuses: string[]): Promise<ServiceOrder[]> {
     return Promise.resolve(
-      Array.from(this.serviceOrders.values()).sort(
-        (a, b) => b.getCreatedAt().getTime() - a.getCreatedAt().getTime(),
-      ),
+      Array.from(this.serviceOrders.values())
+        .filter((order) => !statuses.includes(order.getStatus()))
+        .sort(
+          (a, b) => a.getCreatedAt().getTime() - b.getCreatedAt().getTime(),
+        ),
     );
   }
 
