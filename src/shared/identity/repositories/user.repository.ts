@@ -7,6 +7,7 @@ interface UserRow {
   email: string;
   passwordHash: string;
   role: UserRole;
+  clientId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +22,28 @@ export class UserRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByClientId(clientId: string): Promise<User | null> {
+    const row = await this.prisma.user.findUnique({ where: { clientId } });
+
+    return row ? this.toDomain(row) : null;
+  }
+
+  async create(user: User): Promise<User> {
+    const row = await this.prisma.user.create({
+      data: {
+        id: user.getId(),
+        email: user.getEmail(),
+        passwordHash: user.getPasswordHash(),
+        role: user.getRole(),
+        clientId: user.getClientId(),
+        createdAt: user.getCreatedAt(),
+        updatedAt: user.getUpdatedAt(),
+      },
+    });
+
+    return this.toDomain(row);
+  }
+
   async findById(id: string): Promise<User | null> {
     const row = await this.prisma.user.findUnique({ where: { id } });
 
@@ -32,6 +55,7 @@ export class UserRepository {
       email: row.email,
       passwordHash: row.passwordHash,
       role: row.role,
+      clientId: row.clientId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });

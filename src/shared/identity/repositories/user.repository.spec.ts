@@ -1,4 +1,5 @@
 import { PrismaService } from '../../database/prisma.service';
+import { User } from '../entities/user.entity';
 import { UserRepository } from './user.repository';
 
 const row = {
@@ -12,10 +13,10 @@ const row = {
 
 describe('UserRepository', () => {
   let repository: UserRepository;
-  let prisma: { user: { findUnique: jest.Mock } };
+  let prisma: { user: { findUnique: jest.Mock; create: jest.Mock } };
 
   beforeEach(() => {
-    prisma = { user: { findUnique: jest.fn() } };
+    prisma = { user: { findUnique: jest.fn(), create: jest.fn() } };
     repository = new UserRepository(prisma as unknown as PrismaService);
   });
 
@@ -26,6 +27,11 @@ describe('UserRepository', () => {
       { email: row.email },
     ],
     ['findById', () => repository.findById(row.id), { id: row.id }],
+    [
+      'findByClientId',
+      () => repository.findByClientId('client-id'),
+      { clientId: 'client-id' },
+    ],
   ])(
     '%s maps the found persistence row to a user',
     async (_label, act, where) => {
@@ -47,5 +53,31 @@ describe('UserRepository', () => {
     prisma.user.findUnique.mockResolvedValue(null);
 
     await expect(repository.findByEmail(row.email)).resolves.toBeNull();
+  });
+
+  it('grava o login do cliente com o cliente vinculado', async () => {
+    const customerRow = {
+      ...row,
+      email: 'maria@example.com',
+      role: 'CUSTOMER' as const,
+      clientId: 'client-id',
+    };
+    prisma.user.create.mockResolvedValue(customerRow);
+    const user = User.createCustomer({
+      email: customerRow.email,
+      passwordHash: customerRow.passwordHash,
+      clientId: 'client-id',
+    });
+
+    const created = await repository.create(user);
+
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        id: user.getId(),
+        role: 'CUSTOMER',
+        clientId: 'client-id',
+      }) as unknown,
+    });
+    expect(created.getClientId()).toBe('client-id');
   });
 });

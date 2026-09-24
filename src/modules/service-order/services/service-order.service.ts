@@ -1,10 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { serviceOrderStatusChangedEmail } from '../../../shared/notifications/email/notification-templates';
 import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
+import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
 import {
   AssignMechanicDto,
@@ -12,14 +17,28 @@ import {
   OpenServiceOrderDto,
 } from '../dto/service-order.dto';
 import { ServiceOrder } from '../entities/service-order.entity';
+import { ServiceOrderStatus } from '../enums/service-order-status.enum';
+import { PART_CATALOG } from '../ports/part-catalog.port';
+import type { PartCatalog } from '../ports/part-catalog.port';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 
 @Injectable()
 export class ServiceOrderService {
+  /**
+   * Chegar em AWAITING_APPROVAL já dispara o email do orçamento, com os itens e
+   * o total. Um segundo email dizendo só "aguardando aprovação" seria ruído.
+   */
+  private static readonly STATUSES_WITHOUT_STATUS_EMAIL: ServiceOrderStatus[] =
+    [ServiceOrderStatus.AWAITING_APPROVAL];
+
   constructor(
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly clientRepository: ClientRepository,
     private readonly vehicleController: VehicleController,
+    private readonly serviceCatalogController: ServiceController,
+    @Inject(PART_CATALOG)
+    private readonly partCatalog: PartCatalog,
+    private readonly notifications: NotificationService,
   ) {}
 
   async openServiceOrder(dto: OpenServiceOrderDto): Promise<ServiceOrder> {
@@ -39,27 +58,57 @@ export class ServiceOrderService {
       );
     }
 
+    // Serviços e peças são opcionais, mas o que vier precisa existir: sem a
+    // conferência o id inválido só esbarraria na chave estrangeira, em 500.
+    for (const { serviceId } of dto.services ?? []) {
+      await this.serviceCatalogController.findById(serviceId);
+    }
+    for (const { partId } of dto.parts ?? []) {
+      await this.partCatalog.findById(partId);
+    }
+
     const serviceOrder = ServiceOrder.create({
       clientId: dto.clientId,
       vehicleId: dto.vehicleId,
       description: dto.description,
+      requestedServices: (dto.services ?? []).map((service) => ({
+        serviceId: service.serviceId,
+        quantity: service.quantity ?? 1,
+      })),
+      requestedParts: dto.parts ?? [],
     });
 
     return this.serviceOrderRepository.create(serviceOrder);
   }
 
-  async findById(id: string): Promise<ServiceOrder> {
+  /**
+   * `clientScope` é o cliente do CUSTOMER que pergunta. A OS de outro cliente
+   * responde 404, como se não existisse — não revela que o id é válido.
+   */
+  async findById(id: string, clientScope?: string): Promise<ServiceOrder> {
     const serviceOrder = await this.serviceOrderRepository.findById(id);
 
-    if (!serviceOrder) {
+    if (
+      !serviceOrder ||
+      (clientScope !== undefined && serviceOrder.getClientId() !== clientScope)
+    ) {
       throw new NotFoundException('Service order not found');
     }
 
     return serviceOrder;
   }
 
+  /**
+   * A listagem do enunciado: sem as OS finalizadas e entregues, ordenada pela
+   * prioridade do status. A regra de ordem mora na entidade.
+   */
   async findAll(): Promise<ServiceOrder[]> {
-    return this.serviceOrderRepository.findAll();
+    const serviceOrders =
+      await this.serviceOrderRepository.findAllExcludingStatuses(
+        ServiceOrder.STATUSES_HIDDEN_FROM_LISTING,
+      );
+
+    return serviceOrders.sort(ServiceOrder.compareForListing);
   }
 
   /**
@@ -100,7 +149,7 @@ export class ServiceOrderService {
 
     serviceOrder.assignToMechanic(dto.mechanicId);
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   async awaitApproval(id: string): Promise<ServiceOrder> {
@@ -108,7 +157,7 @@ export class ServiceOrderService {
 
     serviceOrder.awaitApproval();
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   async awaitParts(id: string): Promise<ServiceOrder> {
@@ -116,7 +165,7 @@ export class ServiceOrderService {
 
     serviceOrder.awaitParts();
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   /**
@@ -128,7 +177,7 @@ export class ServiceOrderService {
 
     serviceOrder.registerPartsDispatched();
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   async complete(id: string): Promise<ServiceOrder> {
@@ -136,7 +185,7 @@ export class ServiceOrderService {
 
     serviceOrder.complete();
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   /**
@@ -148,7 +197,7 @@ export class ServiceOrderService {
 
     serviceOrder.awaitPayment();
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   async deliver(id: string): Promise<ServiceOrder> {
@@ -156,7 +205,7 @@ export class ServiceOrderService {
 
     serviceOrder.deliver();
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   async cancel(id: string, dto: CancelServiceOrderDto): Promise<ServiceOrder> {
@@ -164,7 +213,7 @@ export class ServiceOrderService {
 
     serviceOrder.cancel(dto.reason);
 
-    return this.serviceOrderRepository.update(serviceOrder);
+    return this.persistStatusChange(serviceOrder);
   }
 
   async getAverageExecutionTime(): Promise<{
@@ -187,5 +236,50 @@ export class ServiceOrderService {
       averageExecutionTimeMs: Math.round(totalMs / completed.length),
       sampleSize: completed.length,
     };
+  }
+
+  /**
+   * Toda mudança de status avisa o cliente por email — a "atualização de status
+   * via email" do enunciado. O aviso sai depois de gravar e não é aguardado:
+   * falha de email nunca desfaz a transição, e o NotificationService guarda a
+   * falha para reenvio.
+   */
+  private async persistStatusChange(
+    serviceOrder: ServiceOrder,
+  ): Promise<ServiceOrder> {
+    const saved = await this.serviceOrderRepository.update(serviceOrder);
+
+    if (
+      !ServiceOrderService.STATUSES_WITHOUT_STATUS_EMAIL.includes(
+        saved.getStatus(),
+      )
+    ) {
+      void this.enqueueStatusChangedNotification(saved);
+    }
+
+    return saved;
+  }
+
+  private async enqueueStatusChangedNotification(
+    serviceOrder: ServiceOrder,
+  ): Promise<void> {
+    try {
+      const client = await this.clientRepository.findById(
+        serviceOrder.getClientId(),
+      );
+      if (!client) return;
+
+      await this.notifications.enqueue({
+        type: NotificationType.SERVICE_ORDER_STATUS_CHANGED,
+        to: client.getEmail().getValue(),
+        ...serviceOrderStatusChangedEmail({
+          serviceOrderId: serviceOrder.getId(),
+          status: serviceOrder.getStatus(),
+          cancellationReason: serviceOrder.getCancellationReason(),
+        }),
+      });
+    } catch {
+      // A transição já foi gravada; o aviso é consequência, não condição.
+    }
   }
 }

@@ -3,9 +3,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Client } from '../../client/entities/client.entity';
 import { ClientRepository } from '../../client/repositories/client.repository';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { NotificationService } from '../../notification/services/notification.service';
+import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
+import { PART_CATALOG } from '../ports/part-catalog.port';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderService } from './service-order.service';
 
@@ -39,12 +43,18 @@ describe('ServiceOrderService', () => {
   let repository: MockedRepository;
   let clientRepository: MockedClientRepository;
   let vehicleController: { findById: jest.Mock };
+  let serviceCatalog: { findById: jest.Mock };
+  let partCatalog: { findById: jest.Mock };
+  let notifications: { enqueue: jest.Mock };
 
   beforeEach(async () => {
+    serviceCatalog = { findById: jest.fn().mockResolvedValue({}) };
+    partCatalog = { findById: jest.fn().mockResolvedValue({}) };
+    notifications = { enqueue: jest.fn().mockResolvedValue(undefined) };
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
-      findAll: jest.fn(),
+      findAllExcludingStatuses: jest.fn(),
       findByClientId: jest.fn(),
       findCompleted: jest.fn(),
       findActiveByMechanicId: jest.fn().mockResolvedValue(null),
@@ -72,6 +82,9 @@ describe('ServiceOrderService', () => {
         { provide: ServiceOrderRepository, useValue: repository },
         { provide: ClientRepository, useValue: clientRepository },
         { provide: VehicleController, useValue: vehicleController },
+        { provide: ServiceController, useValue: serviceCatalog },
+        { provide: PART_CATALOG, useValue: partCatalog },
+        { provide: NotificationService, useValue: notifications },
       ],
     }).compile();
 
@@ -96,6 +109,53 @@ describe('ServiceOrderService', () => {
       vehicleId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       description: 'Barulho no motor',
     };
+
+    it('abre a OS com os serviços e as peças pedidos, conferindo que existem', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      repository.create.mockImplementation((so: ServiceOrder) => so);
+
+      const result = await service.openServiceOrder({
+        ...dto,
+        services: [{ serviceId: 'svc-1' }],
+        parts: [{ partId: 'part-1', quantity: 4 }],
+      });
+
+      expect(serviceCatalog.findById).toHaveBeenCalledWith('svc-1');
+      expect(partCatalog.findById).toHaveBeenCalledWith('part-1');
+      expect(result.getRequestedServices()).toEqual([
+        { serviceId: 'svc-1', quantity: 1 },
+      ]);
+      expect(result.getRequestedParts()).toEqual([
+        { partId: 'part-1', quantity: 4 },
+      ]);
+    });
+
+    it('não grava a OS quando um serviço pedido não existe', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      serviceCatalog.findById.mockRejectedValue(
+        new NotFoundException('Serviço não encontrado'),
+      );
+
+      await expect(
+        service.openServiceOrder({ ...dto, services: [{ serviceId: 'x' }] }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('não grava a OS quando uma peça pedida não existe', async () => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      partCatalog.findById.mockRejectedValue(
+        new NotFoundException('Peça não encontrada'),
+      );
+
+      await expect(
+        service.openServiceOrder({
+          ...dto,
+          parts: [{ partId: 'x', quantity: 1 }],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
 
     it('abre a OS quando o cliente existe', async () => {
       clientRepository.findById.mockResolvedValue(makeClient());
@@ -137,6 +197,27 @@ describe('ServiceOrderService', () => {
       );
     });
 
+    it('entrega ao CUSTOMER a OS do próprio cliente', async () => {
+      const serviceOrder = makeServiceOrder();
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      await expect(
+        service.findById(serviceOrder.getId(), serviceOrder.getClientId()),
+      ).resolves.toBe(serviceOrder);
+    });
+
+    it('esconde do CUSTOMER a OS de outro cliente, como se não existisse', async () => {
+      const serviceOrder = makeServiceOrder();
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      await expect(
+        service.findById(
+          serviceOrder.getId(),
+          'dddddddd-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it('lança NotFound quando não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
@@ -147,11 +228,25 @@ describe('ServiceOrderService', () => {
   });
 
   describe('findAll', () => {
-    it('delega para o repositório', async () => {
-      const serviceOrders = [makeServiceOrder()];
-      repository.findAll.mockResolvedValue(serviceOrders);
+    it('pede ao repositório só as OS visíveis na listagem', async () => {
+      repository.findAllExcludingStatuses.mockResolvedValue([]);
 
-      await expect(service.findAll()).resolves.toBe(serviceOrders);
+      await service.findAll();
+
+      expect(repository.findAllExcludingStatuses).toHaveBeenCalledWith(
+        ServiceOrder.STATUSES_HIDDEN_FROM_LISTING,
+      );
+    });
+
+    it('ordena pela prioridade do status', async () => {
+      const received = makeServiceOrder(ServiceOrderStatus.RECEIVED);
+      const inProgress = makeServiceOrder(ServiceOrderStatus.IN_PROGRESS);
+      repository.findAllExcludingStatuses.mockResolvedValue([
+        received,
+        inProgress,
+      ]);
+
+      await expect(service.findAll()).resolves.toEqual([inProgress, received]);
     });
   });
 
@@ -336,6 +431,81 @@ describe('ServiceOrderService', () => {
         NotFoundException,
       );
       expect(repository.findByClientId).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('aviso de mudança de status por email', () => {
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    beforeEach(() => {
+      clientRepository.findById.mockResolvedValue(makeClient());
+      repository.update.mockImplementation((so: ServiceOrder) => so);
+    });
+
+    it('avisa o cliente quando a OS muda de status', async () => {
+      const serviceOrder = makeServiceOrder(ServiceOrderStatus.RECEIVED);
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      await service.cancel(serviceOrder.getId(), { reason: 'Desistiu' });
+      await flush();
+
+      expect(clientRepository.findById).toHaveBeenCalledWith(
+        serviceOrder.getClientId(),
+      );
+      expect(notifications.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: NotificationType.SERVICE_ORDER_STATUS_CHANGED,
+          to: 'maria@example.com',
+          subject: `A OS ${serviceOrder.getId()} está Cancelada`,
+        }),
+      );
+    });
+
+    it.each([
+      ['assignToMechanic', ServiceOrderStatus.RECEIVED],
+      ['awaitParts', ServiceOrderStatus.AWAITING_APPROVAL],
+      ['registerPartsDispatched', ServiceOrderStatus.AWAITING_PARTS],
+      ['complete', ServiceOrderStatus.IN_PROGRESS],
+      ['awaitPayment', ServiceOrderStatus.COMPLETED],
+      ['deliver', ServiceOrderStatus.COMPLETED],
+    ] as const)('avisa em %s', async (method, from) => {
+      const serviceOrder = makeServiceOrder(from);
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      if (method === 'assignToMechanic') {
+        await service.assignToMechanic(serviceOrder.getId(), {
+          mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+        });
+      } else {
+        await service[method](serviceOrder.getId());
+      }
+      await flush();
+
+      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+    });
+
+    it('não avisa em AWAITING_APPROVAL: o email do orçamento já cobre essa etapa', async () => {
+      const serviceOrder = makeServiceOrder(ServiceOrderStatus.IN_DIAGNOSIS);
+      repository.findById.mockResolvedValue(serviceOrder);
+
+      await service.awaitApproval(serviceOrder.getId());
+      await flush();
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('falha ao montar o aviso não desfaz a mudança de status', async () => {
+      const serviceOrder = makeServiceOrder(ServiceOrderStatus.RECEIVED);
+      repository.findById.mockResolvedValue(serviceOrder);
+      clientRepository.findById.mockRejectedValue(new Error('db down'));
+
+      const result = await service.cancel(serviceOrder.getId(), {
+        reason: 'Desistiu',
+      });
+      await flush();
+
+      expect(result.getStatus()).toBe(ServiceOrderStatus.CANCELLED);
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
   });
 });

@@ -216,8 +216,20 @@ describe('Budget (e2e)', () => {
     };
   };
 
-  it('queues every first-budget item in BRL without failing HTTP creation when notification delivery fails', async () => {
+  it('does not email the budget while it is only generated', async () => {
     await createBudget();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    // A OS já avisou o cliente da mudança de status; o que não pode sair
+    // ainda é o email do orçamento, cujo link só vale depois do envio.
+    expect(notifications.enqueue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: NotificationType.BUDGET_READY }),
+    );
+  });
+
+  it('queues every budget item in BRL, with the approval link, when the budget is sent', async () => {
+    const { id } = await createBudget();
+    await request(http).post(`/api/v1/budgets/${id}/send`).expect(200);
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(notifications.enqueue).toHaveBeenCalledWith(
@@ -230,10 +242,13 @@ describe('Budget (e2e)', () => {
       }),
     );
 
-    const message = notifications.enqueue.mock.calls[0][0] as {
-      text: string;
-      html: string;
-    };
+    const [message] =
+      (
+        notifications.enqueue.mock.calls as [
+          { type: NotificationType; text: string; html: string },
+        ][]
+      ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];
+    if (!message) throw new Error('BUDGET_READY notification was not queued');
     expect(message.text).toContain('Oil filter');
     expect(message.text).toContain('R$ 120,00');
     expect(message.text).toContain('R$ 40,00');
@@ -242,6 +257,9 @@ describe('Budget (e2e)', () => {
     expect(message.html).toContain('R$ 120,00');
     expect(message.html).toContain('R$ 40,00');
     expect(message.html).toContain('R$ 160,00');
+    expect(message.text).toMatch(
+      /budgets\/webhooks\/decision\?token=[A-Za-z0-9_-]{43}/,
+    );
   });
 
   it('creates, sends, accepts, and fetches a budget', async () => {
@@ -492,12 +510,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
   let serviceOrderId: string;
 
   beforeEach(async () => {
-    emailSender = {
-      send: jest
-        .fn()
-        .mockRejectedValueOnce(new Error('SMTP temporarily unavailable'))
-        .mockResolvedValueOnce(undefined),
-    };
+    emailSender = { send: jest.fn().mockResolvedValue(undefined) };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({ imports: [AppModule] }),
     )
@@ -558,14 +571,22 @@ describe('Budget notification delivery resilience (e2e)', () => {
       .patch(`/api/v1/service-orders/${serviceOrderId}/assign`)
       .send({ mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c' })
       .expect(200);
+
+    // A atribuição já avisa o cliente da mudança de status. A falha de SMTP que
+    // este teste exercita é a do email do orçamento, então ela entra agora.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    emailSender.send
+      .mockReset()
+      .mockRejectedValueOnce(new Error('SMTP temporarily unavailable'))
+      .mockResolvedValueOnce(undefined);
   });
 
   afterEach(async () => {
     await app.close();
   });
 
-  it('keeps budget creation successful after an email failure and sends the stored notification on retry', async () => {
-    await request(http)
+  it('keeps budget sending successful after an email failure and sends the stored notification on retry', async () => {
+    const created = await request(http)
       .post('/api/v1/budgets')
       .send({
         serviceOrderId,
@@ -579,6 +600,9 @@ describe('Budget notification delivery resilience (e2e)', () => {
         ],
       })
       .expect(201);
+    await request(http)
+      .post(`/api/v1/budgets/${created.body.id}/send`)
+      .expect(200);
 
     await new Promise<void>((resolve) => setImmediate(resolve));
 

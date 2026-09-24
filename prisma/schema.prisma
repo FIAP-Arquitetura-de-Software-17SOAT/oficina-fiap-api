@@ -20,6 +20,7 @@ datasource db {
 enum Role {
   ADMIN
   EMPLOYEE
+  CUSTOMER
 }
 
 enum PartType {
@@ -43,6 +44,11 @@ model User {
   email           String           @unique
   passwordHash    String
   role            Role             @default(ADMIN)
+  /// Só o CUSTOMER tem cliente, e todo CUSTOMER tem: é por ele que o cliente
+  /// enxerga as próprias OS e orçamentos. O Prisma não modela CHECK, então a
+  /// regra vive na migration 20260922120000_add_customer_role e na entidade.
+  clientId        String?          @unique @db.Uuid
+  client          Client?          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   refreshSessions RefreshSession[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -77,13 +83,14 @@ model Client {
 
   serviceOrders ServiceOrder[]
   vehicles      Vehicle[]
+  user          User?
 
   @@map("client")
 }
 
 model Part {
-  id                 String              @id @db.Uuid
-  code               String              @unique
+  id                 String                      @id @db.Uuid
+  code               String                      @unique
   name               String
   description        String?
   type               PartType
@@ -91,11 +98,12 @@ model Part {
   unitPriceCents     Int
   quantity           Int
   minimumQuantity    Int
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
   stockMovements     StockMovement[]
   budgetItems        BudgetItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  requestedIn        ServiceOrderRequestedItem[]
 
   @@map("part")
 }
@@ -195,6 +203,7 @@ enum NotificationType {
   BUDGET_READY
   PAYMENT_LINK_READY
   STOCK_PARTS_REQUESTED
+  SERVICE_ORDER_STATUS_CHANGED
 }
 
 enum NotificationStatus {
@@ -204,18 +213,23 @@ enum NotificationStatus {
 }
 
 model Budget {
-  id             String       @id @db.Uuid
+  id                     String       @id @db.Uuid
   // Referência externa ao agregado OrdemDeServico: sem FK de propósito, já que
   // o desenho de Event Storming trata orçamento e OS como agregados distintos.
-  serviceOrderId String
-  version        Int
-  status         BudgetStatus
-  totalCents     Int
-  refusalReason  String?
-  sentAt         DateTime?
-  answeredAt     DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  serviceOrderId         String
+  version                Int
+  status                 BudgetStatus
+  totalCents             Int
+  refusalReason          String?
+  sentAt                 DateTime?
+  answeredAt             DateTime?
+  /// SHA-256 do token do link de aprovação que vai no email do orçamento. O
+  /// token em si nunca é gravado; é ele, e não o id, que autoriza a resposta
+  /// pelo webhook.
+  approvalTokenHash      String?      @unique
+  approvalTokenExpiresAt DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   items    BudgetItem[]
   billings Billing[]
@@ -323,9 +337,10 @@ model ServiceOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  client  Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  billing Billing?
+  client         Client                      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehicle        Vehicle                     @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  billing        Billing?
+  requestedItems ServiceOrderRequestedItem[]
 
   @@index([clientId])
   @@index([vehicleId])
@@ -333,14 +348,44 @@ model ServiceOrder {
   @@map("service_order")
 }
 
+enum ServiceOrderRequestedItemType {
+  SERVICE
+  PART
+}
+
+/// O que o cliente pediu ao abrir a OS: serviço do catálogo ou peça do estoque,
+/// sem preço — o orçamento continua sendo gerado depois do diagnóstico.
+/// Exatamente uma das referências vem preenchida, conforme o `type`; o Prisma
+/// não modela CHECK, então a restrição vive na migration
+/// 20260922110000_add_service_order_requested_items e na entidade.
+model ServiceOrderRequestedItem {
+  id             String                        @id @db.Uuid
+  serviceOrderId String                        @db.Uuid
+  type           ServiceOrderRequestedItemType
+  serviceId      String?                       @db.Uuid
+  partId         String?                       @db.Uuid
+  quantity       Int
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  service      Service?     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  part         Part?        @relation(fields: [partId], references: [id], onDelete: Restrict)
+
+  @@unique([serviceOrderId, serviceId])
+  @@unique([serviceOrderId, partId])
+  @@index([serviceId])
+  @@index([partId])
+  @@map("service_order_requested_item")
+}
+
 model Service {
-  id          String       @id @db.Uuid
-  name        String       @unique
+  id          String                      @id @db.Uuid
+  name        String                      @unique
   description String?
   priceCents  Int
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
   budgetItems BudgetItem[]
+  requestedIn ServiceOrderRequestedItem[]
 
   @@map("service")
 }

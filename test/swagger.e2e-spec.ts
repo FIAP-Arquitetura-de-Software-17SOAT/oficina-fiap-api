@@ -6,6 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp, setupSwagger } from '../src/setup-app';
+import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
 import { AuthTestModule } from './auth-test.controller';
 import { allowAuthenticated } from './allow-authenticated';
 
@@ -442,6 +443,16 @@ describe('Swagger', () => {
         'ServiceOrderResponseDto',
         'AverageExecutionTimeResponseDto',
       ]),
+    );
+  });
+
+  it('documenta todos os status da ordem de serviço na resposta', () => {
+    const schema = document.components?.schemas?.ServiceOrderResponseDto as {
+      properties: Record<string, { enum?: string[] }>;
+    };
+
+    expect(schema.properties.status.enum).toEqual(
+      Object.values(ServiceOrderStatus),
     );
   });
 });

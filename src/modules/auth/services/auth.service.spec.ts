@@ -92,6 +92,7 @@ describe('AuthService', () => {
   let passwordHash: PasswordHashService;
   let sessions: InMemoryRefreshSessionRepository;
   let prisma: InMemoryPrisma;
+  let users: { findByEmail: jest.Mock; findById: jest.Mock };
 
   beforeEach(async () => {
     passwordHash = new PasswordHashService();
@@ -105,11 +106,12 @@ describe('AuthService', () => {
     sessions = new InMemoryRefreshSessionRepository();
     prisma = new InMemoryPrisma(sessions.sessions);
     jwt = new JwtService({ secret: ACCESS_SECRET });
+    users = {
+      findByEmail: jest.fn().mockResolvedValue(user),
+      findById: jest.fn().mockResolvedValue(user),
+    };
     service = new AuthService(
-      {
-        findByEmail: jest.fn().mockResolvedValue(user),
-        findById: jest.fn().mockResolvedValue(user),
-      } as never,
+      users as never,
       sessions as never,
       passwordHash,
       jwt,
@@ -268,6 +270,67 @@ describe('AuthService', () => {
     await expect(service.logout(tokens.refreshToken)).resolves.toBeUndefined();
 
     expect((await sessions.findByJti(payload.jti))?.isRevoked()).toBe(true);
+  });
+
+  it('puts the client id in the tokens of a CUSTOMER and lets it refresh', async () => {
+    const customer = User.createCustomer({
+      email: 'maria@example.com',
+      passwordHash: await passwordHash.hash(PASSWORD),
+      clientId: 'client-id',
+    });
+    users.findByEmail.mockResolvedValue(customer);
+    users.findById.mockResolvedValue(customer);
+
+    const tokens = await service.login({
+      email: 'maria@example.com',
+      password: PASSWORD,
+    });
+    const access = await jwt.verifyAsync<AuthTokenPayload>(tokens.accessToken, {
+      secret: ACCESS_SECRET,
+    });
+    const renewed = await service.refresh(tokens.refreshToken);
+    const renewedAccess = await jwt.verifyAsync<AuthTokenPayload>(
+      renewed.accessToken,
+      { secret: ACCESS_SECRET },
+    );
+
+    expect(access).toMatchObject({ role: 'CUSTOMER', clientId: 'client-id' });
+    expect(renewedAccess).toMatchObject({
+      role: 'CUSTOMER',
+      clientId: 'client-id',
+    });
+  });
+
+  it('lets an EMPLOYEE refresh too', async () => {
+    const employee = User.create({
+      email: 'employee@example.com',
+      passwordHash: await passwordHash.hash(PASSWORD),
+      role: 'EMPLOYEE',
+    });
+    users.findByEmail.mockResolvedValue(employee);
+    users.findById.mockResolvedValue(employee);
+
+    const tokens = await service.login({
+      email: 'employee@example.com',
+      password: PASSWORD,
+    });
+
+    await expect(service.refresh(tokens.refreshToken)).resolves.toEqual({
+      accessToken: expect.any(String),
+      refreshToken: expect.any(String),
+    });
+  });
+
+  it('keeps the client id out of staff tokens', async () => {
+    const tokens = await service.login({
+      email: 'admin@example.com',
+      password: PASSWORD,
+    });
+    const access = await jwt.verifyAsync<AuthTokenPayload>(tokens.accessToken, {
+      secret: ACCESS_SECRET,
+    });
+
+    expect(access).not.toHaveProperty('clientId');
   });
 
   it('rejects an access-typed token even when it has a refresh-token signature', async () => {

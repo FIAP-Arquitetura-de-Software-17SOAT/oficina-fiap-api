@@ -246,12 +246,24 @@ describe('Authentication and authorization (e2e)', () => {
   });
 
   it('denies CUSTOMER access when the route requires ADMIN', async () => {
-    const token = await accessToken({ role: 'CUSTOMER' });
+    const token = await accessToken({
+      role: 'CUSTOMER',
+      clientId: 'client-id',
+    });
 
     await request(http)
       .get('/api/v1/test-auth/admin')
       .auth(token, { type: 'bearer' })
       .expect(403);
+  });
+
+  it('rejects a CUSTOMER token that does not carry its client', async () => {
+    const token = await accessToken({ role: 'CUSTOMER' });
+
+    await request(http)
+      .get('/api/v1/test-auth/admin')
+      .auth(token, { type: 'bearer' })
+      .expect(401);
   });
 
   it('protege as rotas administrativas: sem token não passa', async () => {

@@ -8,6 +8,8 @@ export class ServiceOrderMapper {
       clientId: serviceOrder.getClientId(),
       vehicleId: serviceOrder.getVehicleId(),
       description: serviceOrder.getDescription(),
+      services: serviceOrder.getRequestedServices(),
+      parts: serviceOrder.getRequestedParts(),
       status: serviceOrder.getStatus(),
       cancellationReason: serviceOrder.getCancellationReason(),
       mechanicId: serviceOrder.getMechanicId(),
