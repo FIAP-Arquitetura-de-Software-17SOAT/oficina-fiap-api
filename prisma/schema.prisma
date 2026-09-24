@@ -213,18 +213,23 @@ enum NotificationStatus {
 }
 
 model Budget {
-  id             String       @id @db.Uuid
+  id                     String       @id @db.Uuid
   // Referência externa ao agregado OrdemDeServico: sem FK de propósito, já que
   // o desenho de Event Storming trata orçamento e OS como agregados distintos.
-  serviceOrderId String
-  version        Int
-  status         BudgetStatus
-  totalCents     Int
-  refusalReason  String?
-  sentAt         DateTime?
-  answeredAt     DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  serviceOrderId         String
+  version                Int
+  status                 BudgetStatus
+  totalCents             Int
+  refusalReason          String?
+  sentAt                 DateTime?
+  answeredAt             DateTime?
+  /// SHA-256 do token do link de aprovação que vai no email do orçamento. O
+  /// token em si nunca é gravado; é ele, e não o id, que autoriza a resposta
+  /// pelo webhook.
+  approvalTokenHash      String?      @unique
+  approvalTokenExpiresAt DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   items    BudgetItem[]
   billings Billing[]

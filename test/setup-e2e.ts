@@ -7,5 +7,3 @@ process.env.STRIPE_SECRET_KEY = 'sk_test_e2e';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_e2e';
 process.env.PAYMENT_SUCCESS_URL = 'http://localhost:3000/payment/success';
 process.env.PAYMENT_CANCEL_URL = 'http://localhost:3000/payment/cancel';
-
-process.env.BUDGET_WEBHOOK_SECRET = 'e2e-budget-webhook-secret';

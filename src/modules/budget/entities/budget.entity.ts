@@ -3,6 +3,7 @@ import { DomainException } from '../../../shared/domain/domain.exception';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
 import { BudgetItemType } from '../enums/budget-item-type.enum';
 import { BudgetStatus } from '../enums/budget-status.enum';
+import { ApprovalToken } from '../value-objects/approval-token.vo';
 
 export { BudgetItemType, BudgetStatus };
 
@@ -43,6 +44,9 @@ export interface BudgetProps extends CreateBudgetProps {
   refusalReason?: string | null;
   sentAt?: Date | null;
   answeredAt?: Date | null;
+  /** SHA-256 do token do link de aprovação enviado por email. */
+  approvalTokenHash?: string | null;
+  approvalTokenExpiresAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -204,6 +208,8 @@ export class Budget {
   private refusalReason: string | null;
   private sentAt: Date | null;
   private answeredAt: Date | null;
+  private approvalTokenHash: string | null;
+  private approvalTokenExpiresAt: Date | null;
   private readonly createdAt: Date;
   private updatedAt: Date;
 
@@ -216,6 +222,8 @@ export class Budget {
     this.refusalReason = props.refusalReason ?? null;
     this.sentAt = props.sentAt ?? null;
     this.answeredAt = props.answeredAt ?? null;
+    this.approvalTokenHash = props.approvalTokenHash ?? null;
+    this.approvalTokenExpiresAt = props.approvalTokenExpiresAt ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }
@@ -256,12 +264,35 @@ export class Budget {
     this.touch();
   }
 
-  /** Comando "Enviar orçamento ao cliente" (§6.2). */
-  sendToClient(): void {
+  /**
+   * Comando "Enviar orçamento ao cliente" (§6.2).
+   *
+   * Todo orçamento enviado ganha um link de aprovação: o token volta para quem
+   * monta o email, e aqui fica só o hash. É o token, e não o id do orçamento,
+   * que autoriza a resposta pelo webhook.
+   */
+  sendToClient(): ApprovalToken {
     this.assertGenerated();
+    const token = ApprovalToken.issue();
+    const now = new Date();
+
     this.status = BudgetStatus.WAITING_APPROVAL;
-    this.sentAt = new Date();
+    this.sentAt = now;
+    this.approvalTokenHash = token.digest();
+    this.approvalTokenExpiresAt = new Date(
+      now.getTime() + ApprovalToken.TTL_MS,
+    );
     this.touch();
+
+    return token;
+  }
+
+  /** O link do email só vale até `approvalTokenExpiresAt`. */
+  isApprovalLinkExpired(now: Date = new Date()): boolean {
+    return (
+      !this.approvalTokenExpiresAt ||
+      now.getTime() > this.approvalTokenExpiresAt.getTime()
+    );
   }
 
   accept(): void {
@@ -322,6 +353,14 @@ export class Budget {
 
   getAnsweredAt(): Date | null {
     return this.answeredAt;
+  }
+
+  getApprovalTokenHash(): string | null {
+    return this.approvalTokenHash;
+  }
+
+  getApprovalTokenExpiresAt(): Date | null {
+    return this.approvalTokenExpiresAt;
   }
 
   getCreatedAt(): Date {

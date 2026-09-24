@@ -4,12 +4,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import {
-  BUDGET_WEBHOOK_SIGNATURE_HEADER,
-  BUDGET_WEBHOOK_TIMESTAMP_HEADER,
-  signBudgetWebhook,
-} from '../src/modules/budget/webhooks/budget-webhook-signature.guard';
 import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
@@ -21,21 +17,25 @@ import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 
-const SECRET = 'e2e-budget-webhook-secret';
 const WEBHOOK = '/api/v1/budgets/webhooks/decision';
 
 /**
- * O webhook com corpo bruto e assinatura de verdade. O resto do fluxo (abrir
- * OS, gerar e enviar orçamento) usa o atalho de autenticação dos outros e2e;
- * a rota do webhook é pública e não depende dele.
+ * A aprovação do orçamento pelo link do email, de ponta a ponta: o envio
+ * manda o link, o GET mostra a página sem decidir nada e o POST com o token
+ * decide. O resto do fluxo usa o atalho de autenticação dos outros e2e; as
+ * rotas do link são públicas e não dependem dele.
  */
-describe('Budget decision webhook (e2e)', () => {
+describe('Budget approval link and webhook (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
+  let notifications: { enqueue: jest.Mock };
   let serviceOrderId: string;
   let budgetId: string;
+  let token: string;
+  let approvalUrl: string;
 
   beforeEach(async () => {
+    notifications = { enqueue: jest.fn() };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({ imports: [AppModule] }),
     )
@@ -50,23 +50,23 @@ describe('Budget decision webhook (e2e)', () => {
       .overrideProvider(BudgetRepository)
       .useValue(new InMemoryBudgetRepository())
       .overrideProvider(NotificationService)
-      .useValue({ enqueue: jest.fn() })
+      .useValue(notifications)
       .compile();
 
     app = configureApp(
-      moduleFixture.createNestApplication({ rawBody: true }),
+      moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
     http = app.getHttpServer();
 
-    ({ serviceOrderId, budgetId } = await budgetWaitingApproval());
+    await sendBudget();
   });
 
   afterEach(async () => {
     await app.close();
   });
 
-  async function budgetWaitingApproval() {
+  async function sendBudget() {
     const client = await request(http)
       .post('/api/v1/clients')
       .send({
@@ -115,121 +115,173 @@ describe('Budget decision webhook (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/send`)
       .expect(200);
+    await new Promise((resolve) => setImmediate(resolve));
 
-    return {
-      serviceOrderId: order.body.id as string,
-      budgetId: budget.body.id as string,
-    };
+    serviceOrderId = order.body.id as string;
+    budgetId = budget.body.id as string;
+
+    const [email] =
+      (
+        notifications.enqueue.mock.calls as [
+          { type: NotificationType; to: string; text: string },
+        ][]
+      ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];
+    if (!email) throw new Error('budget email was not queued');
+
+    approvalUrl = /(http\S+decision\?token=\S+)/.exec(email.text)?.[1] ?? '';
+    token = new URL(approvalUrl).searchParams.get('token') ?? '';
   }
-
-  const deliver = (
-    payload: Record<string, unknown>,
-    options: { secret?: string; timestamp?: number } = {},
-  ) => {
-    const body = JSON.stringify(payload);
-    const timestamp = String(
-      options.timestamp ?? Math.floor(Date.now() / 1000),
-    );
-
-    return request(http)
-      .post(WEBHOOK)
-      .set('Content-Type', 'application/json')
-      .set(BUDGET_WEBHOOK_TIMESTAMP_HEADER, timestamp)
-      .set(
-        BUDGET_WEBHOOK_SIGNATURE_HEADER,
-        signBudgetWebhook(
-          options.secret ?? SECRET,
-          timestamp,
-          Buffer.from(body),
-        ),
-      )
-      .send(body);
-  };
 
   const orderStatus = async () =>
     (await request(http).get(`/api/v1/service-orders/${serviceOrderId}`)).body
       .status as string;
+  const budgetStatus = async () =>
+    (await request(http).get(`/api/v1/budgets/${budgetId}`)).body
+      .status as string;
 
-  it('aprovação aceita o orçamento e move a OS para aguardando peças', async () => {
-    const response = await deliver({ budgetId, decision: 'APPROVED' }).expect(
-      200,
-    );
-
-    expect(response.body.status).toBe('ACCEPTED');
-    expect(await orderStatus()).toBe('AWAITING_PARTS');
-  });
-
-  it('recusa grava o motivo e mantém a OS aguardando aprovação', async () => {
-    const response = await deliver({
-      budgetId,
-      decision: 'REFUSED',
-      reason: 'Achei caro',
-    }).expect(200);
-
-    expect(response.body).toMatchObject({
-      status: 'REFUSED',
-      refusalReason: 'Achei caro',
+  describe('email do orçamento', () => {
+    it('manda ao cliente o link pessoal da página de confirmação', () => {
+      expect(approvalUrl).toMatch(
+        /^http:\/\/localhost:3000\/api\/v1\/budgets\/webhooks\/decision\?token=[A-Za-z0-9_-]{43}$/,
+      );
     });
-    expect(await orderStatus()).toBe('AWAITING_APPROVAL');
   });
 
-  it('reentrega da mesma decisão responde 200 sem repetir efeitos', async () => {
-    await deliver({ budgetId, decision: 'APPROVED' }).expect(200);
+  describe('GET do link', () => {
+    it('mostra o orçamento com os botões, sem decidir nada', async () => {
+      const page = await request(http)
+        .get(WEBHOOK)
+        .query({ token })
+        .expect(200)
+        .expect('Content-Type', /text\/html/);
 
-    const replay = await deliver({ budgetId, decision: 'APPROVED' }).expect(
-      200,
-    );
-
-    expect(replay.body.status).toBe('ACCEPTED');
-    expect(await orderStatus()).toBe('AWAITING_PARTS');
-  });
-
-  it('decisão contrária à já registrada responde 409', async () => {
-    await deliver({ budgetId, decision: 'APPROVED' }).expect(200);
-
-    await deliver({ budgetId, decision: 'REFUSED', reason: 'x' }).expect(409);
-  });
-
-  it('recusa sem motivo responde 400', async () => {
-    await deliver({ budgetId, decision: 'REFUSED' }).expect(400);
-  });
-
-  it('orçamento inexistente responde 404', async () => {
-    await deliver({
-      budgetId: 'a1b2c3d4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
-      decision: 'APPROVED',
-    }).expect(404);
-  });
-
-  it('corpo inválido, mas assinado, responde 400', async () => {
-    await deliver({ budgetId, decision: 'MAYBE' }).expect(400);
-  });
-
-  describe('autenticação', () => {
-    it('não exige token de acesso', async () => {
-      const response = await deliver({ budgetId, decision: 'APPROVED' });
-
-      expect(response.status).toBe(200);
+      expect(page.text).toContain('Troca de óleo');
+      expect(page.text).toContain('R$');
+      expect(page.text).toContain('value="APPROVED"');
+      expect(page.text).toContain('value="REFUSED"');
+      expect(await budgetStatus()).toBe('WAITING_APPROVAL');
     });
 
-    it('assinatura com outro segredo responde 401 e não altera nada', async () => {
-      await deliver(
-        { budgetId, decision: 'APPROVED' },
-        { secret: 'segredo-errado' },
-      ).expect(401);
-
-      expect(await orderStatus()).toBe('AWAITING_APPROVAL');
+    it('não deixa o token vazar nem a página ser embutida', async () => {
+      await request(http)
+        .get(WEBHOOK)
+        .query({ token })
+        .expect('Referrer-Policy', 'no-referrer')
+        .expect('X-Frame-Options', 'DENY')
+        .expect('Cache-Control', 'no-store');
     });
 
-    it('sem assinatura responde 401, antes mesmo de validar o corpo', async () => {
-      await request(http).post(WEBHOOK).send({ decision: 'MAYBE' }).expect(401);
+    it('link inválido mostra página de erro 404', async () => {
+      const page = await request(http)
+        .get(WEBHOOK)
+        .query({ token: 'A'.repeat(43) })
+        .expect(404);
+
+      expect(page.text).toContain('Link inválido');
+    });
+  });
+
+  describe('POST do formulário da página', () => {
+    it('aprovar aceita o orçamento e responde uma página', async () => {
+      const page = await request(http)
+        .post(WEBHOOK)
+        .set('Accept', 'text/html')
+        .type('form')
+        .send({ token, decision: 'APPROVED' })
+        .expect(200)
+        .expect('Content-Type', /text\/html/);
+
+      expect(page.text).toContain('Orçamento aprovado');
+      expect(await budgetStatus()).toBe('ACCEPTED');
+      expect(await orderStatus()).toBe('AWAITING_PARTS');
     });
 
-    it('timestamp de mais de 5 minutos responde 401', async () => {
-      await deliver(
-        { budgetId, decision: 'APPROVED' },
-        { timestamp: Math.floor(Date.now() / 1000) - 600 },
-      ).expect(401);
+    it('recusar grava o motivo', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .set('Accept', 'text/html')
+        .type('form')
+        .send({ token, decision: 'REFUSED', reason: 'Achei caro' })
+        .expect(200);
+
+      const budget = await request(http).get(`/api/v1/budgets/${budgetId}`);
+      expect(budget.body).toMatchObject({
+        status: 'REFUSED',
+        refusalReason: 'Achei caro',
+      });
+    });
+  });
+
+  describe('POST em JSON (webhook)', () => {
+    it('aprova com o token do email', async () => {
+      const response = await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'APPROVED' })
+        .expect(200);
+
+      expect(response.body.status).toBe('ACCEPTED');
+    });
+
+    it('o id do orçamento não serve de token', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token: budgetId, decision: 'APPROVED' })
+        .expect(404);
+
+      expect(await budgetStatus()).toBe('WAITING_APPROVAL');
+    });
+
+    it('sem token responde 400', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .send({ decision: 'APPROVED' })
+        .expect(400);
+    });
+
+    it('recusa sem motivo responde 400', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'REFUSED' })
+        .expect(400);
+    });
+
+    it('reentrega da mesma decisão responde 200 sem repetir efeitos', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'APPROVED' })
+        .expect(200);
+
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'APPROVED' })
+        .expect(200);
+      expect(await orderStatus()).toBe('AWAITING_PARTS');
+    });
+
+    it('decisão contrária à já registrada responde 409', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'APPROVED' })
+        .expect(200);
+
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'REFUSED', reason: 'x' })
+        .expect(409);
+    });
+
+    it('depois de respondido, o link mostra a decisão em vez dos botões', async () => {
+      await request(http)
+        .post(WEBHOOK)
+        .send({ token, decision: 'APPROVED' })
+        .expect(200);
+
+      const page = await request(http)
+        .get(WEBHOOK)
+        .query({ token })
+        .expect(200);
+      expect(page.text).toContain('já foi aprovado');
+      expect(page.text).not.toContain('value="APPROVED"');
     });
   });
 });

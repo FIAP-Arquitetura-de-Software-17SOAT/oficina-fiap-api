@@ -33,10 +33,20 @@ export function escapeHtml(value: string): string {
   });
 }
 
+const date = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'America/Sao_Paulo',
+});
+
 export function budgetReadyEmail(input: {
   serviceOrderId: string;
   items: BudgetItemEmailData[];
   total: number;
+  /** Link pessoal do cliente: abre a página que confirma a decisão. */
+  approvalUrl: string;
+  approvalExpiresAt: Date;
 }): Pick<EmailMessage, 'subject' | 'text' | 'html'> {
   const textItems = input.items.map(
     (item) =>
@@ -47,6 +57,7 @@ export function budgetReadyEmail(input: {
       `<tr><td>${escapeHtml(item.description)}</td><td>${quantity.format(item.quantity)}</td><td>${currency.format(item.unitPrice)}</td><td>${currency.format(item.subtotal)}</td></tr>`,
   );
   const total = currency.format(input.total);
+  const expiresAt = date.format(input.approvalExpiresAt);
 
   return {
     subject: `Orçamento disponível para a OS ${input.serviceOrderId}`,
@@ -57,12 +68,17 @@ export function budgetReadyEmail(input: {
       ...textItems,
       '',
       `Total: ${total}`,
+      '',
+      `Para aprovar ou recusar: ${input.approvalUrl}`,
+      `O link vale até ${expiresAt} e é pessoal: não o encaminhe.`,
     ].join('\n'),
     html: [
       `<p>Orçamento disponível para a ordem de serviço ${escapeHtml(input.serviceOrderId)}.</p>`,
       '<table><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th>Subtotal</th></tr></thead><tbody>',
       ...htmlItems,
       `</tbody></table><p><strong>Total: ${total}</strong></p>`,
+      `<p><a href="${escapeHtml(input.approvalUrl)}">Aprovar ou recusar o orçamento</a></p>`,
+      `<p>O link vale até ${escapeHtml(expiresAt)} e é pessoal: não o encaminhe.</p>`,
     ].join(''),
   };
 }
