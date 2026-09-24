@@ -19,8 +19,8 @@ describe('Prisma schema contracts', () => {
       /model ServiceOrder \{[\s\S]*?\n\}/,
     )?.[0];
 
-    expect(budgetModel).toContain('serviceOrderId String');
-    expect(budgetModel).not.toContain('serviceOrderId String       @db.Uuid');
+    expect(budgetModel).toMatch(/serviceOrderId\s+String\n/);
+    expect(budgetModel).not.toMatch(/serviceOrderId\s+String\s+@db\.Uuid/);
     expect(budgetModel).not.toContain('serviceOrder ServiceOrder');
     expect(serviceOrderModel).not.toContain('budgets Budget[]');
   });
@@ -33,7 +33,9 @@ describe('Prisma schema contracts', () => {
     expect(billingModel).toMatch(/paymentLink\s+String\?/);
     expect(billingModel).toMatch(/gatewayTransactionId\s+String\?\s+@unique/);
     expect(billingModel).toMatch(/paymentMethod\s+PaymentMethod\?/);
-    expect(billingModel).toMatch(/generatedAt\s+DateTime\s+@default\(now\(\)\)/);
+    expect(billingModel).toMatch(
+      /generatedAt\s+DateTime\s+@default\(now\(\)\)/,
+    );
     expect(billingModel).toMatch(/paidAt\s+DateTime\?/);
     expect(billingModel).toMatch(/expiresAt\s+DateTime\?/);
     expect(billingModel).not.toContain('payments     BillingPayment[]');

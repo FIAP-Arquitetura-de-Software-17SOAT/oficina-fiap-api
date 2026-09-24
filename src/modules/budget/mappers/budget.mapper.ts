@@ -14,6 +14,8 @@ type BudgetWithItems = {
   refusalReason: string | null;
   sentAt: Date | null;
   answeredAt: Date | null;
+  approvalTokenHash: string | null;
+  approvalTokenExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   items: Array<{
@@ -67,6 +69,8 @@ export class BudgetMapper {
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
+      approvalTokenHash: budget.getApprovalTokenHash(),
+      approvalTokenExpiresAt: budget.getApprovalTokenExpiresAt(),
       createdAt: budget.getCreatedAt(),
       updatedAt: budget.getUpdatedAt(),
       items: {
@@ -107,6 +111,8 @@ export class BudgetMapper {
       refusalReason: record.refusalReason,
       sentAt: record.sentAt,
       answeredAt: record.answeredAt,
+      approvalTokenHash: record.approvalTokenHash,
+      approvalTokenExpiresAt: record.approvalTokenExpiresAt,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       items: record.items.map((item) => ({

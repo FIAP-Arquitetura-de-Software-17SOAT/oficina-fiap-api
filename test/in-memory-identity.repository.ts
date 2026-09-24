@@ -19,6 +19,17 @@ export class InMemoryUserRepository {
       this.users.find((user) => user.getId() === id) ?? null,
     );
   }
+
+  findByClientId(clientId: string): Promise<User | null> {
+    return Promise.resolve(
+      this.users.find((user) => user.getClientId() === clientId) ?? null,
+    );
+  }
+
+  create(user: User): Promise<User> {
+    this.users.push(user);
+    return Promise.resolve(user);
+  }
 }
 
 export class InMemoryRefreshSessionRepository {

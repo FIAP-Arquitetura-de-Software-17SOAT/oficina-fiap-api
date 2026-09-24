@@ -59,6 +59,14 @@ export class InMemoryBudgetRepository {
     return Promise.resolve(budget ? this.clone(budget) : null);
   }
 
+  findByApprovalTokenHash(hash: string): Promise<Budget | null> {
+    const found = [...this.budgets.values()].find(
+      (budget) => budget.getApprovalTokenHash() === hash,
+    );
+
+    return Promise.resolve(found ? this.clone(found) : null);
+  }
+
   findAll(): Promise<Budget[]> {
     return Promise.resolve(
       Array.from(this.budgets.values()).map((budget) => this.clone(budget)),
@@ -114,6 +122,8 @@ export class InMemoryBudgetRepository {
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
+      approvalTokenHash: budget.getApprovalTokenHash(),
+      approvalTokenExpiresAt: budget.getApprovalTokenExpiresAt(),
       createdAt: budget.getCreatedAt(),
       updatedAt: budget.getUpdatedAt(),
     });

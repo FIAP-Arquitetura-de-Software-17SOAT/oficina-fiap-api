@@ -10,6 +10,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { ServiceOrderStatus } from '../enums/service-order-status.enum';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
@@ -140,18 +141,9 @@ export class ServiceOrderResponseDto {
   @ApiProperty({ type: [RequestedPartResponseDto] })
   parts: RequestedPartResponseDto[];
 
-  @ApiProperty({
-    enum: [
-      'RECEIVED',
-      'IN_DIAGNOSIS',
-      'AWAITING_APPROVAL',
-      'AWAITING_PARTS',
-      'IN_PROGRESS',
-      'COMPLETED',
-      'DELIVERED',
-      'CANCELLED',
-    ],
-  })
+  // O enum do domínio, e não uma lista copiada: a cópia já ficou para trás
+  // uma vez, quando AWAITING_PAYMENT entrou.
+  @ApiProperty({ enum: ServiceOrderStatus })
   status: string;
 
   @ApiProperty({ nullable: true, type: String })

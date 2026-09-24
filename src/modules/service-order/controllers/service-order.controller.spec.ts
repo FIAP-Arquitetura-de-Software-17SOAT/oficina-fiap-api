@@ -83,7 +83,10 @@ describe('ServiceOrderController', () => {
 
     const response = await controller.findById(serviceOrder.getId());
 
-    expect(service.findById).toHaveBeenCalledWith(serviceOrder.getId());
+    expect(service.findById).toHaveBeenCalledWith(
+      serviceOrder.getId(),
+      undefined,
+    );
     expect(response.id).toBe(serviceOrder.getId());
   });
 

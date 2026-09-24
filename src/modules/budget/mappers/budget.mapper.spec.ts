@@ -46,6 +46,8 @@ describe('BudgetMapper', () => {
       refusalReason: 'Too expensive',
       sentAt: createdAt,
       answeredAt: updatedAt,
+      approvalTokenHash: 'a'.repeat(64),
+      approvalTokenExpiresAt: updatedAt,
       createdAt,
       updatedAt,
       items: [
@@ -66,5 +68,26 @@ describe('BudgetMapper', () => {
     expect(budget.getItems()[0].getQuantity()).toBe(2.5);
     expect(budget.getItems()[0].getUnitPrice().value).toBe(40.2);
     expect(budget.getCreatedAt()).toEqual(createdAt);
+  });
+
+  it('grava e relê o hash do link de aprovação, nunca o token', () => {
+    const budget = Budget.create({
+      serviceOrderId: '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
+      version: 1,
+      items: [
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: Money.fromDecimal(50),
+        },
+      ],
+    });
+    const token = budget.sendToClient();
+
+    const persistence = BudgetMapper.toPersistence(budget);
+
+    expect(persistence.approvalTokenHash).toBe(token.digest());
+    expect(JSON.stringify(persistence)).not.toContain(token.value);
   });
 });

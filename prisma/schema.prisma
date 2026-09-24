@@ -20,6 +20,7 @@ datasource db {
 enum Role {
   ADMIN
   EMPLOYEE
+  CUSTOMER
 }
 
 enum PartType {
@@ -43,6 +44,11 @@ model User {
   email           String           @unique
   passwordHash    String
   role            Role             @default(ADMIN)
+  /// Só o CUSTOMER tem cliente, e todo CUSTOMER tem: é por ele que o cliente
+  /// enxerga as próprias OS e orçamentos. O Prisma não modela CHECK, então a
+  /// regra vive na migration 20260922120000_add_customer_role e na entidade.
+  clientId        String?          @unique @db.Uuid
+  client          Client?          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   refreshSessions RefreshSession[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -77,6 +83,7 @@ model Client {
 
   serviceOrders ServiceOrder[]
   vehicles      Vehicle[]
+  user          User?
 
   @@map("client")
 }
@@ -196,6 +203,7 @@ enum NotificationType {
   BUDGET_READY
   PAYMENT_LINK_READY
   STOCK_PARTS_REQUESTED
+  SERVICE_ORDER_STATUS_CHANGED
 }
 
 enum NotificationStatus {
@@ -205,18 +213,23 @@ enum NotificationStatus {
 }
 
 model Budget {
-  id             String       @id @db.Uuid
+  id                     String       @id @db.Uuid
   // Referência externa ao agregado OrdemDeServico: sem FK de propósito, já que
   // o desenho de Event Storming trata orçamento e OS como agregados distintos.
-  serviceOrderId String
-  version        Int
-  status         BudgetStatus
-  totalCents     Int
-  refusalReason  String?
-  sentAt         DateTime?
-  answeredAt     DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  serviceOrderId         String
+  version                Int
+  status                 BudgetStatus
+  totalCents             Int
+  refusalReason          String?
+  sentAt                 DateTime?
+  answeredAt             DateTime?
+  /// SHA-256 do token do link de aprovação que vai no email do orçamento. O
+  /// token em si nunca é gravado; é ele, e não o id, que autoriza a resposta
+  /// pelo webhook.
+  approvalTokenHash      String?      @unique
+  approvalTokenExpiresAt DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   items    BudgetItem[]
   billings Billing[]

@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Client } from '../entities/client.entity';
+import { User } from '../../../shared/identity/entities/user.entity';
+import { ClientAccountService } from '../services/client-account.service';
 import { ClientService } from '../services/client.service';
 import { ClientController } from './client.controller';
 
@@ -22,8 +24,10 @@ describe('ClientController', () => {
     update: jest.Mock;
     delete: jest.Mock;
   };
+  let accounts: { createAccount: jest.Mock };
 
   beforeEach(async () => {
+    accounts = { createAccount: jest.fn() };
     service = {
       create: jest.fn(),
       findAll: jest.fn(),
@@ -34,7 +38,10 @@ describe('ClientController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ClientController],
-      providers: [{ provide: ClientService, useValue: service }],
+      providers: [
+        { provide: ClientService, useValue: service },
+        { provide: ClientAccountService, useValue: accounts },
+      ],
     }).compile();
 
     controller = module.get<ClientController>(ClientController);
@@ -97,5 +104,29 @@ describe('ClientController', () => {
 
     await expect(controller.delete('id')).resolves.toBeUndefined();
     expect(service.delete).toHaveBeenCalledWith('id');
+  });
+
+  it('createAccount devolve o login criado, sem a senha', async () => {
+    const user = User.createCustomer({
+      email: 'maria@example.com',
+      passwordHash: '$2b$12$hash',
+      clientId: 'client-id',
+    });
+    accounts.createAccount.mockResolvedValue(user);
+
+    const response = await controller.createAccount('client-id', {
+      password: 'senha-forte-123',
+    });
+
+    expect(accounts.createAccount).toHaveBeenCalledWith('client-id', {
+      password: 'senha-forte-123',
+    });
+    expect(response).toEqual({
+      id: user.getId(),
+      email: 'maria@example.com',
+      role: 'CUSTOMER',
+      clientId: 'client-id',
+      createdAt: user.getCreatedAt(),
+    });
   });
 });

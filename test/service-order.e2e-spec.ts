@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -10,6 +11,8 @@ import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { ServiceOrder } from '../src/modules/service-order/entities/service-order.entity';
+import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { allowAuthenticated } from './allow-authenticated';
 import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
@@ -34,9 +37,11 @@ describe('ServiceOrder (integração)', () => {
   let app: INestApplication<App>;
   let http: App;
   let parts: InMemoryPartRepository;
+  let serviceOrders: InMemoryServiceOrderRepository;
 
   beforeEach(async () => {
     parts = new InMemoryPartRepository();
+    serviceOrders = new InMemoryServiceOrderRepository();
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
         imports: [AppModule],
@@ -48,7 +53,7 @@ describe('ServiceOrder (integração)', () => {
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
-        .useValue(new InMemoryServiceOrderRepository())
+        .useValue(serviceOrders)
         .overrideProvider(ServiceRepository)
         .useValue(new InMemoryServiceRepository())
         .overrideProvider(PartRepository)
@@ -248,6 +253,57 @@ describe('ServiceOrder (integração)', () => {
         .expect(200);
 
       expect(response.body).toHaveLength(1);
+    });
+
+    it('ordena por status, da mais antiga para a mais nova, sem as finalizadas e entregues', async () => {
+      const seed = async (status: ServiceOrderStatus, createdAt: string) => {
+        const order = ServiceOrder.restore(randomUUID(), {
+          clientId: randomUUID(),
+          vehicleId: randomUUID(),
+          description: `${status} ${createdAt}`,
+          status,
+          createdAt: new Date(createdAt),
+        });
+        await serviceOrders.create(order);
+      };
+
+      await seed(ServiceOrderStatus.RECEIVED, '2026-01-01T08:00:00Z');
+      await seed(ServiceOrderStatus.COMPLETED, '2026-01-01T07:00:00Z');
+      await seed(ServiceOrderStatus.DELIVERED, '2026-01-01T07:30:00Z');
+      await seed(ServiceOrderStatus.IN_DIAGNOSIS, '2026-01-01T09:00:00Z');
+      await seed(ServiceOrderStatus.IN_PROGRESS, '2026-01-02T08:00:00Z');
+      await seed(ServiceOrderStatus.AWAITING_APPROVAL, '2026-01-01T10:00:00Z');
+      await seed(ServiceOrderStatus.IN_PROGRESS, '2026-01-01T08:00:00Z');
+
+      const response = await request(http)
+        .get('/api/v1/service-orders')
+        .expect(200);
+
+      expect(
+        (response.body as { description: string }[]).map(
+          (order) => order.description,
+        ),
+      ).toEqual([
+        'IN_PROGRESS 2026-01-01T08:00:00Z',
+        'IN_PROGRESS 2026-01-02T08:00:00Z',
+        'AWAITING_APPROVAL 2026-01-01T10:00:00Z',
+        'IN_DIAGNOSIS 2026-01-01T09:00:00Z',
+        'RECEIVED 2026-01-01T08:00:00Z',
+      ]);
+    });
+
+    it('a OS escondida da listagem continua acessível por id', async () => {
+      const delivered = ServiceOrder.restore(randomUUID(), {
+        clientId: randomUUID(),
+        vehicleId: randomUUID(),
+        description: 'Entregue',
+        status: ServiceOrderStatus.DELIVERED,
+      });
+      await serviceOrders.create(delivered);
+
+      await request(http)
+        .get(`/api/v1/service-orders/${delivered.getId()}`)
+        .expect(200);
     });
   });
 

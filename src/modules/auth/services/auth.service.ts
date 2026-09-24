@@ -16,6 +16,7 @@ type JwtTtl = Exclude<SignOptions['expiresIn'], number | undefined>;
 export interface AuthTokenPayload {
   sub: string;
   role: UserRole;
+  clientId?: string;
   type: 'access' | 'refresh';
   jti: string;
   iat: number;
@@ -25,6 +26,7 @@ export interface AuthTokenPayload {
 interface TokenClaims {
   sub: string;
   role: UserRole;
+  clientId?: string;
   type: 'access' | 'refresh';
   jti: string;
 }
@@ -36,6 +38,9 @@ export interface JwtSettings {
   refreshTtl: JwtTtl;
 }
 
+// Antes só ADMIN renovava o token, de quando ele era o único papel: o EMPLOYEE
+// perdia a sessão ao fim do access token. Todo papel conhecido renova.
+const USER_ROLES: readonly string[] = ['ADMIN', 'EMPLOYEE', 'CUSTOMER'];
 const TTL_PATTERN = /^([1-9]\d*)(ms|s|m|h|d|w|y)$/;
 const MIN_PRODUCTION_SECRET_BYTES = 32;
 const LEGACY_SECRET_PLACEHOLDERS = new Set([
@@ -261,9 +266,13 @@ export class AuthService {
   }
 
   private createClaims(user: User, type: 'access' | 'refresh'): TokenClaims {
+    const clientId = user.getClientId();
+
     return {
       sub: user.getId(),
       role: user.getRole(),
+      // Só o CUSTOMER tem cliente; é o que recorta o que ele pode ver.
+      ...(clientId ? { clientId } : {}),
       type,
       jti: randomUUID(),
     };
@@ -282,7 +291,7 @@ export class AuthService {
       if (
         payload.type !== 'refresh' ||
         !payload.sub ||
-        payload.role !== 'ADMIN' ||
+        !USER_ROLES.includes(payload.role) ||
         !payload.jti ||
         !Number.isFinite(payload.iat) ||
         !Number.isFinite(payload.exp)

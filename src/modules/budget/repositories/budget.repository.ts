@@ -94,6 +94,16 @@ export class BudgetRepository {
     return record ? this.toDomain(record) : null;
   }
 
+  /** Busca pelo hash do token do link do email — o token nunca é gravado. */
+  async findByApprovalTokenHash(hash: string): Promise<Budget | null> {
+    const record = await this.prisma.budget.findUnique({
+      where: { approvalTokenHash: hash },
+      include: { items: true },
+    });
+
+    return record ? this.toDomain(record) : null;
+  }
+
   async findAll(): Promise<Budget[]> {
     const records = await this.prisma.budget.findMany({
       include: { items: true },
@@ -160,6 +170,8 @@ export class BudgetRepository {
       refusalReason: budget.getRefusalReason(),
       sentAt: budget.getSentAt(),
       answeredAt: budget.getAnsweredAt(),
+      approvalTokenHash: budget.getApprovalTokenHash(),
+      approvalTokenExpiresAt: budget.getApprovalTokenExpiresAt(),
       updatedAt: budget.getUpdatedAt(),
     };
   }
