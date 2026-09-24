@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ClientModule } from '../client/client.module';
+import { NotificationModule } from '../notification/notification.module';
 import { ServiceCatalogModule } from '../service-catalog/service-catalog.module';
 import { StockModule } from '../stock/stock.module';
 import { VehicleModule } from '../vehicle/vehicle.module';
@@ -13,6 +14,7 @@ import { ServiceOrderService } from './services/service-order.service';
   imports: [
     ClientModule,
     VehicleModule,
+    NotificationModule,
     ServiceCatalogModule,
     forwardRef(() => StockModule),
   ],
