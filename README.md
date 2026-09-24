@@ -63,7 +63,6 @@ O Docker cria o banco, aplica as migrations, cria o administrador inicial e inic
 
 | Recurso      | Endereco                            |
 | ------------ | ----------------------------------- |
-| API          | http://localhost:3000/api/v1        |
 | Swagger      | http://localhost:3000/api/v1/docs   |
 | Health check | http://localhost:3000/api/v1/health |
 
