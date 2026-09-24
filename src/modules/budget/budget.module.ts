@@ -9,7 +9,6 @@ import { BudgetWebhookController } from './controllers/budget-webhook.controller
 import { BudgetController } from './controllers/budget.controller';
 import { BudgetRepository } from './repositories/budget.repository';
 import { BudgetService } from './services/budget.service';
-import { BudgetWebhookSignatureGuard } from './webhooks/budget-webhook-signature.guard';
 
 @Module({
   // O aceite e a recusa do orçamento movem a ordem de serviço; a OS nunca
@@ -26,12 +25,7 @@ import { BudgetWebhookSignatureGuard } from './webhooks/budget-webhook-signature
     forwardRef(() => StockModule),
   ],
   controllers: [BudgetController, BudgetWebhookController],
-  providers: [
-    BudgetService,
-    BudgetRepository,
-    BudgetController,
-    BudgetWebhookSignatureGuard,
-  ],
+  providers: [BudgetService, BudgetRepository, BudgetController],
   exports: [BudgetService, BudgetController],
 })
 export class BudgetModule {}
