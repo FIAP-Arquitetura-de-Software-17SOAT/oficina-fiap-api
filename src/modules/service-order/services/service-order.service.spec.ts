@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
-import { Client } from '../../client/entities/client.entity';
-import { ClientRepository } from '../../client/repositories/client.repository';
+import { Client } from '../../client/domain/entities/client.entity';
+import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
@@ -36,7 +36,7 @@ const makeClient = () =>
   });
 
 type MockedRepository = { [K in keyof ServiceOrderRepository]: jest.Mock };
-type MockedClientRepository = { [K in keyof ClientRepository]: jest.Mock };
+type MockedClientRepository = { [K in keyof ClientRepositoryPort]: jest.Mock };
 
 describe('ServiceOrderService', () => {
   let service: ServiceOrderService;
@@ -80,7 +80,7 @@ describe('ServiceOrderService', () => {
       providers: [
         ServiceOrderService,
         { provide: ServiceOrderRepository, useValue: repository },
-        { provide: ClientRepository, useValue: clientRepository },
+        { provide: ClientRepositoryPort, useValue: clientRepository },
         { provide: VehicleController, useValue: vehicleController },
         { provide: ServiceController, useValue: serviceCatalog },
         { provide: PART_CATALOG, useValue: partCatalog },

@@ -9,7 +9,7 @@ import { isUniqueViolation } from '../../../shared/database/prisma-errors';
 import { paymentLinkReadyEmail } from '../../../shared/notifications/email/notification-templates';
 import { BudgetStatus } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
-import { ClientRepository } from '../../client/repositories/client.repository';
+import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceOrder } from '../../service-order/entities/service-order.entity';
@@ -53,7 +53,7 @@ export class BillingService {
     private readonly budgetService: BudgetService,
     private readonly serviceOrderService: ServiceOrderService,
     private readonly paymentGateway: PaymentGateway,
-    private readonly clientRepository: ClientRepository,
+    private readonly clientRepository: ClientRepositoryPort,
     private readonly notifications: NotificationService,
   ) {}
 

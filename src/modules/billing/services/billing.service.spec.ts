@@ -10,8 +10,8 @@ import {
   BudgetStatus,
 } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
-import { Client } from '../../client/entities/client.entity';
-import { ClientRepository } from '../../client/repositories/client.repository';
+import { Client } from '../../client/domain/entities/client.entity';
+import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceOrder } from '../../service-order/entities/service-order.entity';
@@ -58,7 +58,7 @@ const acceptedBudget = (version: number, total: number) =>
 describe('BillingService', () => {
   let repository: jest.Mocked<BillingRepository>;
   let budgetService: jest.Mocked<BudgetService>;
-  let clientRepository: jest.Mocked<ClientRepository>;
+  let clientRepository: jest.Mocked<ClientRepositoryPort>;
   let notifications: jest.Mocked<NotificationService>;
   let serviceOrderService: jest.Mocked<ServiceOrderService>;
   let paymentGateway: jest.Mocked<PaymentGateway>;
@@ -80,7 +80,7 @@ describe('BillingService', () => {
     } as unknown as jest.Mocked<BudgetService>;
     clientRepository = {
       findById: jest.fn(),
-    } as unknown as jest.Mocked<ClientRepository>;
+    } as unknown as jest.Mocked<ClientRepositoryPort>;
     notifications = {
       enqueue: jest.fn(),
     } as unknown as jest.Mocked<NotificationService>;
@@ -670,7 +670,7 @@ describe('BillingService payment returns', () => {
       {} as unknown as jest.Mocked<BudgetService>,
       serviceOrderService,
       paymentGateway,
-      {} as unknown as jest.Mocked<ClientRepository>,
+      {} as unknown as jest.Mocked<ClientRepositoryPort>,
       {} as unknown as jest.Mocked<NotificationService>,
     );
   });

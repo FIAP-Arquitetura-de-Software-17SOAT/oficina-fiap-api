@@ -25,7 +25,7 @@ import { ServiceOrderController } from '../../service-order/controllers/service-
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { PartController } from '../../stock/controllers/part.controller';
-import { ClientRepository } from '../../client/repositories/client.repository';
+import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import {
@@ -54,7 +54,7 @@ export class BudgetService {
   constructor(
     private readonly budgetRepository: BudgetRepository,
     private readonly serviceOrderController: ServiceOrderController,
-    private readonly clientRepository: ClientRepository,
+    private readonly clientRepository: ClientRepositoryPort,
     private readonly notifications: NotificationService,
     private readonly config: ConfigService,
     private readonly serviceCatalogController: ServiceController,

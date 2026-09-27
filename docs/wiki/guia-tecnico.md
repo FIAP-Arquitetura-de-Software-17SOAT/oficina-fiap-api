@@ -138,6 +138,8 @@ O projeto e um monolito NestJS organizado por modulos de dominio. Cada modulo se
 | `mappers/`       | Conversao entre dominio, persistencia e API |
 | `dto/`           | Validacao e contrato Swagger                |
 
+> A migracao dos modulos para Clean Architecture (Fase 2) esta documentada em [migracao-clean-architecture.md](migracao-clean-architecture.md). O modulo `client` ja segue o layout novo; os demais continuam no layout acima ate serem migrados.
+
 Sao sete os agregados de negocio implementados: **Cliente**, **Veiculo**, **Ordem de Servico**, **Orcamento**, **Peca**, **Pedido de Compra** e **Cobranca**. Autenticacao e notificacao sao modulos transversais.
 
 > **Estoque e o contexto, nao o agregado.** O agregado operacional e a **Peca** (`Part`) e a **Movimentacao de estoque** (`StockMovement`) e o registro da entrada ou da saida. Por isso o recurso HTTP e `/api/v1/parts`, enquanto a pasta do modulo continua `src/modules/stock`: ela representa o contexto Estoque e Compras, que abriga os dois.

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClientService } from '../../client/services/client.service';
+import { FindClientUseCase } from '../../client/application/use-cases/find-client.use-case';
 import { CreateVehicleDto, UpdateVehicleDto } from '../dto/vehicle.dto';
 import { Vehicle } from '../entities/vehicle.entity';
 import { VehicleRepository } from '../repositories/vehicle.repository';
@@ -13,7 +13,7 @@ import { Plate } from '../value-objects/plate.vo';
 export class VehicleService {
   constructor(
     private readonly vehicleRepository: VehicleRepository,
-    private readonly clientService: ClientService,
+    private readonly findClient: FindClientUseCase,
   ) {}
 
   async create(dto: CreateVehicleDto): Promise<Vehicle> {
@@ -22,7 +22,7 @@ export class VehicleService {
     const plate = Plate.create(dto.plate);
 
     // Lança NotFound se o cliente não existir, antes de gravar um veículo órfão.
-    await this.clientService.findById(dto.clientId);
+    await this.findClient.execute(dto.clientId);
     await this.assertPlateIsAvailable(plate);
 
     const vehicle = Vehicle.create({
@@ -48,7 +48,7 @@ export class VehicleService {
 
   async findAll(clientId?: string): Promise<Vehicle[]> {
     if (clientId) {
-      await this.clientService.findById(clientId);
+      await this.findClient.execute(clientId);
     }
 
     return this.vehicleRepository.findAll(clientId);

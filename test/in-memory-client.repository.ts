@@ -1,11 +1,12 @@
-import { Client } from '../src/modules/client/entities/client.entity';
+import { Client } from '../src/modules/client/domain/entities/client.entity';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 
 /**
  * Substitui o Prisma nos testes de integração: o objetivo é exercitar o
  * pipeline HTTP completo (validação, filtro de domínio, service, entidade e
  * mapper) sem depender de um banco em pé.
  */
-export class InMemoryClientRepository {
+export class InMemoryClientRepository implements ClientRepositoryPort {
   private readonly clients = new Map<string, Client>();
 
   create(client: Client): Promise<Client> {

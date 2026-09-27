@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -48,7 +48,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepository)
         .useValue(parts)
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())
@@ -267,7 +267,7 @@ describe('Orçamento x estoque (integração)', () => {
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepository)
         .useValue(parts)
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())

@@ -5,7 +5,7 @@ import { VehicleRepository } from './repositories/vehicle.repository';
 import { VehicleService } from './services/vehicle.service';
 
 @Module({
-  // ClientModule exporta o ClientService, usado para garantir que o dono do
+  // ClientModule exporta FindClientUseCase, usado para garantir que o dono do
   // veículo existe antes do cadastro.
   imports: [ClientModule],
   controllers: [VehicleController],
