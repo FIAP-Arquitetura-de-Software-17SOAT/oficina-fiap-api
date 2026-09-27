@@ -6,7 +6,7 @@ import { ClientRepositoryPort } from '../../client/application/ports/client-repo
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
-import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
+import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
 import { PART_CATALOG } from '../ports/part-catalog.port';
@@ -42,7 +42,7 @@ describe('ServiceOrderService', () => {
   let service: ServiceOrderService;
   let repository: MockedRepository;
   let clientRepository: MockedClientRepository;
-  let vehicleController: { findById: jest.Mock };
+  let findVehicle: { execute: jest.Mock };
   let serviceCatalog: { findById: jest.Mock };
   let partCatalog: { findById: jest.Mock };
   let notifications: { enqueue: jest.Mock };
@@ -61,9 +61,9 @@ describe('ServiceOrderService', () => {
       update: jest.fn(),
     };
     // por padrão o veículo existe e pertence ao cliente da OS
-    vehicleController = {
-      findById: jest.fn().mockResolvedValue({
-        clientId: 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+    findVehicle = {
+      execute: jest.fn().mockResolvedValue({
+        getClientId: () => 'aaaaaaaa-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       }),
     };
     clientRepository = {
@@ -81,7 +81,7 @@ describe('ServiceOrderService', () => {
         ServiceOrderService,
         { provide: ServiceOrderRepository, useValue: repository },
         { provide: ClientRepositoryPort, useValue: clientRepository },
-        { provide: VehicleController, useValue: vehicleController },
+        { provide: FindVehicleUseCase, useValue: findVehicle },
         { provide: ServiceController, useValue: serviceCatalog },
         { provide: PART_CATALOG, useValue: partCatalog },
         { provide: NotificationService, useValue: notifications },
@@ -94,8 +94,8 @@ describe('ServiceOrderService', () => {
   describe('openServiceOrder', () => {
     it('recusa abrir OS com veículo de outro cliente', async () => {
       clientRepository.findById.mockResolvedValue({});
-      vehicleController.findById.mockResolvedValue({
-        clientId: 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
+      findVehicle.execute.mockResolvedValue({
+        getClientId: () => 'bbbbbbbb-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       });
 
       await expect(service.openServiceOrder(dto)).rejects.toThrow(

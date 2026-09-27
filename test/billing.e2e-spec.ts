@@ -14,7 +14,7 @@ import { ClientRepositoryPort } from '../src/modules/client/application/ports/cl
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { allowAuthenticated } from './allow-authenticated';
@@ -42,7 +42,7 @@ describe('Billing (integracao)', () => {
       .useValue({})
       .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
-      .overrideProvider(VehicleRepository)
+      .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
       .overrideProvider(ServiceOrderRepository)
       .useValue(new InMemoryServiceOrderRepository())

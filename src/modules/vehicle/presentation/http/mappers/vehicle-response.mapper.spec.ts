@@ -1,5 +1,5 @@
-import { Vehicle } from '../entities/vehicle.entity';
-import { VehicleMapper } from './vehicle.mapper';
+import { Vehicle } from '../../../domain/entities/vehicle.entity';
+import { VehicleResponseMapper } from './vehicle-response.mapper';
 
 const CLIENT_ID = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
@@ -12,9 +12,9 @@ const makeVehicle = (plate = 'abc-1d23') =>
     year: 2022,
   });
 
-describe('VehicleMapper', () => {
+describe('VehicleResponseMapper', () => {
   it('desembrulha os Value Objects para primitivos', () => {
-    expect(VehicleMapper.toResponse(makeVehicle())).toEqual({
+    expect(VehicleResponseMapper.toResponse(makeVehicle())).toEqual({
       id: expect.any(String) as string,
       clientId: CLIENT_ID,
       plate: 'ABC1D23',
@@ -28,7 +28,7 @@ describe('VehicleMapper', () => {
 
   it('serializa plate como string e year como número', () => {
     const json = JSON.parse(
-      JSON.stringify(VehicleMapper.toResponse(makeVehicle())),
+      JSON.stringify(VehicleResponseMapper.toResponse(makeVehicle())),
     ) as Record<string, unknown>;
 
     expect(typeof json.plate).toBe('string');
@@ -36,7 +36,7 @@ describe('VehicleMapper', () => {
   });
 
   it('mapeia listas preservando a ordem', () => {
-    const responses = VehicleMapper.toResponseList([
+    const responses = VehicleResponseMapper.toResponseList([
       makeVehicle('ABC1234'),
       makeVehicle('XYZ9876'),
     ]);
@@ -45,6 +45,6 @@ describe('VehicleMapper', () => {
   });
 
   it('mapeia lista vazia', () => {
-    expect(VehicleMapper.toResponseList([])).toEqual([]);
+    expect(VehicleResponseMapper.toResponseList([])).toEqual([]);
   });
 });

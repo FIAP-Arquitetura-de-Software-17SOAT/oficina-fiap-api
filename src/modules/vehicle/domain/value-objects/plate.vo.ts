@@ -1,4 +1,4 @@
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 
 /** Formato anterior ao Mercosul: três letras e quatro dígitos (ABC1234). */
 const FORMATO_ANTIGO = /^[A-Z]{3}\d{4}$/;
