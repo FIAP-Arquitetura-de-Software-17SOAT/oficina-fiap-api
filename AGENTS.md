@@ -37,15 +37,20 @@ The `client` module is the reference for the Clean Architecture migration:
   inputs/results in `application/contracts/`.
 - `application/ports/`: framework-independent persistence and integration
   contracts; application depends on these, never concrete adapters.
-- `application/errors/`: pure errors translated at the HTTP boundary.
+- `application/errors/`: `<Module>ApplicationError extends ApplicationError`
+  (`src/shared/application`) with typed codes and a semantic `kind`; the single
+  global `ApplicationExceptionFilter` (`src/shared/http/filters`) maps `kind` to
+  the HTTP status. Modules never define their own HTTP filter.
 - `infrastructure/persistence/`: Prisma repository and persistence mapper.
 - `infrastructure/identity/`: adapter to the existing identity subsystem.
-- `presentation/http/`: controllers, DTOs, response mappers, and error filters.
+- `presentation/http/`: controllers, DTOs and response mappers.
 - `<feature>.module.ts`: Nest composition through providers and factories.
 
 Use cases are tested through direct instantiation with fake ports. Keep DTO
 validation/Swagger at the HTTP boundary. Preserve the existing API contracts.
-Run the client architecture boundary test with the unit suite.
+`src/architecture.spec.ts` (with `test/architecture/`) enforces the import
+boundaries for every module listed in `test/architecture/migrated-modules.ts`
+and checks the module graph; add each migrated module to that list.
 
 Other modules still use the following legacy layout; migrate them only when
 the active plan requests it:
