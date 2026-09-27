@@ -22,15 +22,19 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Role } from '../../../../generated/prisma/enums';
-import { Roles } from '../../../shared/http/auth/roles.decorator';
+import { Role } from '../../../../../generated/prisma/enums';
+import { Roles } from '../../../../shared/http/auth/roles.decorator';
 import {
   CreateServiceDto,
   ServiceResponseDto,
   UpdateServiceDto,
-} from '../dto/service.dto';
-import { ServiceMapper } from '../mappers/service.mapper';
-import { ServiceCatalogService } from '../services/service-catalog.service';
+} from './dto/service.dto';
+import { ServiceResponseMapper } from './mappers/service-response.mapper';
+import { CreateServiceUseCase } from '../../application/use-cases/create-service.use-case';
+import { FindServiceUseCase } from '../../application/use-cases/find-service.use-case';
+import { ListServicesUseCase } from '../../application/use-cases/list-services.use-case';
+import { UpdateServiceUseCase } from '../../application/use-cases/update-service.use-case';
+import { DeleteServiceUseCase } from '../../application/use-cases/delete-service.use-case';
 
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
@@ -38,7 +42,13 @@ import { ServiceCatalogService } from '../services/service-catalog.service';
 @ApiTags('services')
 @Controller('services')
 export class ServiceController {
-  constructor(private readonly serviceCatalog: ServiceCatalogService) {}
+  constructor(
+    private readonly createService: CreateServiceUseCase,
+    private readonly findService: FindServiceUseCase,
+    private readonly listServices: ListServicesUseCase,
+    private readonly updateService: UpdateServiceUseCase,
+    private readonly deleteService: DeleteServiceUseCase,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Cadastra um serviço no catálogo' })
@@ -46,14 +56,18 @@ export class ServiceController {
   @ApiBadRequestResponse({ description: 'Nome ou preço inválido' })
   @ApiConflictResponse({ description: 'Service already exists' })
   async create(@Body() dto: CreateServiceDto): Promise<ServiceResponseDto> {
-    return ServiceMapper.toResponse(await this.serviceCatalog.create(dto));
+    return ServiceResponseMapper.toResponse(
+      await this.createService.execute(dto),
+    );
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista os serviços do catálogo' })
   @ApiOkResponse({ type: ServiceResponseDto, isArray: true })
   async findAll(): Promise<ServiceResponseDto[]> {
-    return ServiceMapper.toResponseList(await this.serviceCatalog.findAll());
+    return ServiceResponseMapper.toResponseList(
+      await this.listServices.execute(),
+    );
   }
 
   @Get(':id')
@@ -63,7 +77,7 @@ export class ServiceController {
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ServiceResponseDto> {
-    return ServiceMapper.toResponse(await this.serviceCatalog.findById(id));
+    return ServiceResponseMapper.toResponse(await this.findService.execute(id));
   }
 
   @Patch(':id')
@@ -76,7 +90,9 @@ export class ServiceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateServiceDto,
   ): Promise<ServiceResponseDto> {
-    return ServiceMapper.toResponse(await this.serviceCatalog.update(id, dto));
+    return ServiceResponseMapper.toResponse(
+      await this.updateService.execute(id, dto),
+    );
   }
 
   @Delete(':id')
@@ -85,6 +101,6 @@ export class ServiceController {
   @ApiNoContentResponse({ description: 'Serviço removido' })
   @ApiNotFoundResponse({ description: 'Service not found' })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.serviceCatalog.delete(id);
+    await this.deleteService.execute(id);
   }
 }

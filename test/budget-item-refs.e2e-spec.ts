@@ -6,7 +6,7 @@ import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
+import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PartRepository } from '../src/modules/stock/repositories/part.repository';
@@ -54,7 +54,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(ServiceRepository)
+        .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
         .overrideProvider(NotificationService)
         .useValue({ enqueue: jest.fn() }),
@@ -273,7 +273,7 @@ describe('Orçamento x estoque (integração)', () => {
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(ServiceRepository)
+        .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
         .overrideProvider(NotificationService)
         .useValue({ enqueue: jest.fn() }),

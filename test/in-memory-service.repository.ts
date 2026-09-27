@@ -1,11 +1,12 @@
-import { Service } from '../src/modules/service-catalog/entities/service.entity';
+import { Service } from '../src/modules/service-catalog/domain/entities/service.entity';
+import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
 
 /**
  * Substitui o Prisma nos testes de integração do catálogo: exercita o pipeline
  * HTTP inteiro (validação, filtro de domínio, service, entidade e mapper) sem
  * depender de um banco em pé.
  */
-export class InMemoryServiceRepository {
+export class InMemoryServiceRepository implements ServiceRepositoryPort {
   private readonly services = new Map<string, Service>();
 
   create(service: Service): Promise<Service> {

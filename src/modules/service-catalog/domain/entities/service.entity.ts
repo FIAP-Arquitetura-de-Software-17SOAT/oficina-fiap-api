@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { DomainException } from '../../../shared/domain/domain.exception';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { DomainException } from '../../../../shared/domain/domain.exception';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
 
 export interface ServiceProps {
   name: string;

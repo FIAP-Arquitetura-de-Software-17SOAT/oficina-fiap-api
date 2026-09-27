@@ -1,8 +1,8 @@
-import { ConflictException } from '@nestjs/common';
-import { PrismaService } from '../../../shared/database/prisma.service';
-import { Service } from '../entities/service.entity';
-import { ServiceRepository } from './service.repository';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { PrismaService } from '../../../../shared/database/prisma.service';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
+import { ServiceCatalogApplicationError } from '../../application/errors/service-catalog-application.error';
+import { Service } from '../../domain/entities/service.entity';
+import { PrismaServiceRepository } from './prisma-service.repository';
 
 const row = {
   id: 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
@@ -22,8 +22,8 @@ const makeService = () =>
     price: Money.fromDecimal(149.9),
   });
 
-describe('ServiceRepository', () => {
-  let repository: ServiceRepository;
+describe('PrismaServiceRepository', () => {
+  let repository: PrismaServiceRepository;
   let prisma: {
     service: {
       create: jest.Mock;
@@ -45,7 +45,9 @@ describe('ServiceRepository', () => {
       },
     };
 
-    repository = new ServiceRepository(prisma as unknown as PrismaService);
+    repository = new PrismaServiceRepository(
+      prisma as unknown as PrismaService,
+    );
   });
 
   it('persiste o preço em centavos inteiros', async () => {
@@ -64,11 +66,16 @@ describe('ServiceRepository', () => {
     });
   });
 
-  it('traduz P2002 do insert em 409', async () => {
+  it('traduz P2002 do insert em SERVICE_ALREADY_EXISTS', async () => {
     prisma.service.create.mockRejectedValue(uniqueViolation);
 
+    await expect(repository.create(makeService())).rejects.toMatchObject({
+      code: 'SERVICE_ALREADY_EXISTS',
+      kind: 'CONFLICT',
+      message: 'Service already exists',
+    });
     await expect(repository.create(makeService())).rejects.toBeInstanceOf(
-      ConflictException,
+      ServiceCatalogApplicationError,
     );
   });
 
@@ -136,12 +143,12 @@ describe('ServiceRepository', () => {
     });
   });
 
-  it('traduz P2002 do update em 409', async () => {
+  it('traduz P2002 do update em SERVICE_ALREADY_EXISTS', async () => {
     prisma.service.update.mockRejectedValue(uniqueViolation);
 
-    await expect(repository.update(makeService())).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(repository.update(makeService())).rejects.toMatchObject({
+      code: 'SERVICE_ALREADY_EXISTS',
+    });
   });
 
   it('propaga erro desconhecido do update', async () => {

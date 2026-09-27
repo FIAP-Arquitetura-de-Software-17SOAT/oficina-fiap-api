@@ -1,8 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Service } from '../entities/service.entity';
-import { ServiceCatalogService } from '../services/service-catalog.service';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
+import { Service } from '../../domain/entities/service.entity';
+import { CreateServiceUseCase } from '../../application/use-cases/create-service.use-case';
+import { FindServiceUseCase } from '../../application/use-cases/find-service.use-case';
+import { ListServicesUseCase } from '../../application/use-cases/list-services.use-case';
+import { UpdateServiceUseCase } from '../../application/use-cases/update-service.use-case';
+import { DeleteServiceUseCase } from '../../application/use-cases/delete-service.use-case';
 import { ServiceController } from './service.controller';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 const makeService = () =>
   Service.create({
@@ -32,7 +36,28 @@ describe('ServiceController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ServiceController],
-      providers: [{ provide: ServiceCatalogService, useValue: catalog }],
+      providers: [
+        {
+          provide: CreateServiceUseCase,
+          useValue: { execute: catalog.create },
+        },
+        {
+          provide: FindServiceUseCase,
+          useValue: { execute: catalog.findById },
+        },
+        {
+          provide: ListServicesUseCase,
+          useValue: { execute: catalog.findAll },
+        },
+        {
+          provide: UpdateServiceUseCase,
+          useValue: { execute: catalog.update },
+        },
+        {
+          provide: DeleteServiceUseCase,
+          useValue: { execute: catalog.delete },
+        },
+      ],
     }).compile();
 
     controller = module.get<ServiceController>(ServiceController);

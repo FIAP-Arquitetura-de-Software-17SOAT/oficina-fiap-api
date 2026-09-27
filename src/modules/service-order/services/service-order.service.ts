@@ -9,7 +9,7 @@ import { serviceOrderStatusChangedEmail } from '../../../shared/notifications/em
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
-import { ServiceController } from '../../service-catalog/controllers/service.controller';
+import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import {
   AssignMechanicDto,
@@ -35,7 +35,7 @@ export class ServiceOrderService {
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly clientRepository: ClientRepositoryPort,
     private readonly findVehicle: FindVehicleUseCase,
-    private readonly serviceCatalogController: ServiceController,
+    private readonly findService: FindServiceUseCase,
     @Inject(PART_CATALOG)
     private readonly partCatalog: PartCatalog,
     private readonly notifications: NotificationService,
@@ -61,7 +61,7 @@ export class ServiceOrderService {
     // Serviços e peças são opcionais, mas o que vier precisa existir: sem a
     // conferência o id inválido só esbarraria na chave estrangeira, em 500.
     for (const { serviceId } of dto.services ?? []) {
-      await this.serviceCatalogController.findById(serviceId);
+      await this.findService.execute(serviceId);
     }
     for (const { partId } of dto.parts ?? []) {
       await this.partCatalog.findById(partId);

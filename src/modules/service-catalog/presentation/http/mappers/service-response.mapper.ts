@@ -1,12 +1,12 @@
 import { ServiceResponseDto } from '../dto/service.dto';
-import { Service } from '../entities/service.entity';
+import { Service } from '../../../domain/entities/service.entity';
 
 /**
  * Desembrulha o Money na fronteira HTTP: sem isso o preço sairia como
  * `{ "cents": 14990 }` e o contrato do Swagger deixaria de bater com a
  * resposta real.
  */
-export class ServiceMapper {
+export class ServiceResponseMapper {
   static toResponse(service: Service): ServiceResponseDto {
     return {
       id: service.getId(),
@@ -19,6 +19,6 @@ export class ServiceMapper {
   }
 
   static toResponseList(services: Service[]): ServiceResponseDto[] {
-    return services.map((service) => ServiceMapper.toResponse(service));
+    return services.map((service) => ServiceResponseMapper.toResponse(service));
   }
 }
