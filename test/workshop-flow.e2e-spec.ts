@@ -6,10 +6,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
-import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
-import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
-import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
+import { PaymentMethod } from '../src/modules/billing/domain/enums/payment-method.enum';
+import { FakePaymentGateway } from '../src/modules/billing/infrastructure/payment/fake-payment.gateway';
+import { PaymentGatewayPort } from '../src/modules/billing/application/ports/payment-gateway.port';
+import { BillingRepositoryPort } from '../src/modules/billing/application/ports/billing-repository.port';
 import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
@@ -85,9 +85,9 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(new InMemoryStockMovementRepository(parts))
         .overrideProvider(PurchaseOrderRepositoryPort)
         .useValue(new InMemoryPurchaseOrderRepository())
-        .overrideProvider(BillingRepository)
+        .overrideProvider(BillingRepositoryPort)
         .useValue(new InMemoryBillingRepository())
-        .overrideProvider(PaymentGateway)
+        .overrideProvider(PaymentGatewayPort)
         .useValue(new FakePaymentGateway())
         .overrideProvider(EnqueueNotificationUseCase)
         .useValue(notifications)
@@ -312,7 +312,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(409);
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway = app.get(PaymentGatewayPort) as FakePaymentGateway;
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,

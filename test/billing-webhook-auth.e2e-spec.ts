@@ -6,8 +6,8 @@ import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import {
   InvalidPaymentWebhookSignatureError,
-  PaymentGateway,
-} from '../src/modules/billing/gateways/payment-gateway';
+  PaymentGatewayPort,
+} from '../src/modules/billing/application/ports/payment-gateway.port';
 import { configureApp } from '../src/setup-app';
 import { PrismaService } from '../src/shared/database/prisma.service';
 
@@ -21,7 +21,7 @@ describe('Billing Stripe webhook authentication', () => {
     })
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(PaymentGateway)
+      .overrideProvider(PaymentGatewayPort)
       .useValue({
         parsePaymentWebhook: jest
           .fn()
