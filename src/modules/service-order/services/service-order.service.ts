@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +9,7 @@ import { ClientRepositoryPort } from '../../client/application/ports/client-repo
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
+import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
 import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import {
   AssignMechanicDto,
@@ -18,8 +18,6 @@ import {
 } from '../dto/service-order.dto';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
-import { PART_CATALOG } from '../ports/part-catalog.port';
-import type { PartCatalog } from '../ports/part-catalog.port';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 
 @Injectable()
@@ -36,8 +34,7 @@ export class ServiceOrderService {
     private readonly clientRepository: ClientRepositoryPort,
     private readonly findVehicle: FindVehicleUseCase,
     private readonly findService: FindServiceUseCase,
-    @Inject(PART_CATALOG)
-    private readonly partCatalog: PartCatalog,
+    private readonly findPart: FindPartUseCase,
     private readonly notifications: EnqueueNotificationUseCase,
   ) {}
 
@@ -64,7 +61,7 @@ export class ServiceOrderService {
       await this.findService.execute(serviceId);
     }
     for (const { partId } of dto.parts ?? []) {
-      await this.partCatalog.findById(partId);
+      await this.findPart.execute(partId);
     }
 
     const serviceOrder = ServiceOrder.create({

@@ -22,7 +22,7 @@ import {
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
-import { PartController } from '../../stock/controllers/part.controller';
+import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
@@ -56,7 +56,7 @@ export class BudgetService {
     private readonly notifications: EnqueueNotificationUseCase,
     private readonly config: ConfigService,
     private readonly findService: FindServiceUseCase,
-    private readonly partController: PartController,
+    private readonly findPart: FindPartUseCase,
   ) {}
 
   async create(dto: CreateBudgetDto): Promise<Budget> {
@@ -489,7 +489,7 @@ export class BudgetService {
       items,
       (item) => item.partId,
     )) {
-      await this.partController.findById(partId);
+      await this.findPart.execute(partId);
     }
   }
 

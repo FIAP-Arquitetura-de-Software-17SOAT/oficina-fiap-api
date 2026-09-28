@@ -17,7 +17,7 @@ import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-o
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { allowAuthenticated } from './allow-authenticated';
 import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { InMemoryPartRepository } from './in-memory-part.repository';
 import { InMemoryServiceRepository } from './in-memory-service.repository';
 
@@ -57,7 +57,7 @@ describe('ServiceOrder (integração)', () => {
         .useValue(serviceOrders)
         .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts),
     ).compile();
 

@@ -12,7 +12,7 @@ import {
 } from '../entities/budget.entity';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
-import { PartController } from '../../stock/controllers/part.controller';
+import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
 import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
@@ -53,7 +53,7 @@ describe('BudgetService', () => {
     findById: jest.Mock;
   };
   let serviceCatalogController: { execute: jest.Mock };
-  let partController: { findById: jest.Mock };
+  let partController: { execute: jest.Mock };
   let clientRepository: { findById: jest.Mock };
   let notifications: { execute: jest.Mock };
   let config: { get: jest.Mock };
@@ -81,7 +81,7 @@ describe('BudgetService', () => {
       }),
     };
     serviceCatalogController = { execute: jest.fn() };
-    partController = { findById: jest.fn() };
+    partController = { execute: jest.fn() };
     clientRepository = { findById: jest.fn() };
     notifications = { execute: jest.fn() };
     config = { get: jest.fn() };
@@ -98,7 +98,7 @@ describe('BudgetService', () => {
           provide: FindServiceUseCase,
           useValue: serviceCatalogController,
         },
-        { provide: PartController, useValue: partController },
+        { provide: FindPartUseCase, useValue: partController },
         { provide: ClientRepositoryPort, useValue: clientRepository },
         { provide: EnqueueNotificationUseCase, useValue: notifications },
         { provide: ConfigService, useValue: config },
@@ -1101,7 +1101,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       findLastVersionByServiceOrderId: jest.fn().mockResolvedValue(0),
     };
     const serviceCatalogController = { execute: jest.fn() };
-    const partController = { findById: jest.fn() };
+    const partController = { execute: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -1120,7 +1120,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
           },
         },
         { provide: FindServiceUseCase, useValue: serviceCatalogController },
-        { provide: PartController, useValue: partController },
+        { provide: FindPartUseCase, useValue: partController },
         { provide: ClientRepositoryPort, useValue: { findById: jest.fn() } },
         {
           provide: EnqueueNotificationUseCase,
