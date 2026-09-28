@@ -1,29 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../shared/database/prisma.service';
-import { Notification } from '../entities/notification.entity';
-import { NotificationStatus } from '../enums/notification-status.enum';
-import { NotificationType } from '../enums/notification-type.enum';
-import { NotificationMapper } from '../mappers/notification.mapper';
-
-export interface NotificationFilters {
-  status?: NotificationStatus;
-  type?: NotificationType;
-}
+import { PrismaService } from '../../../../shared/database/prisma.service';
+import { Notification } from '../../domain/entities/notification.entity';
+import { NotificationFilters } from '../../application/contracts/notification.input';
+import { NotificationRepositoryPort } from '../../application/ports/notification-repository.port';
+import { NotificationPersistenceMapper } from './notification-persistence.mapper';
 
 @Injectable()
-export class NotificationRepository {
+export class PrismaNotificationRepository implements NotificationRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(notification: Notification): Promise<Notification> {
     const created = await this.prisma.notification.create({
-      data: NotificationMapper.toPersistence(notification),
+      data: NotificationPersistenceMapper.toPersistence(notification),
     });
-    return NotificationMapper.toDomain(created);
+    return NotificationPersistenceMapper.toDomain(created);
   }
 
   async findById(id: string): Promise<Notification | null> {
     const record = await this.prisma.notification.findUnique({ where: { id } });
-    return record ? NotificationMapper.toDomain(record) : null;
+    return record ? NotificationPersistenceMapper.toDomain(record) : null;
   }
 
   async findAll(filters: NotificationFilters = {}): Promise<Notification[]> {
@@ -31,10 +26,15 @@ export class NotificationRepository {
       where: filters,
       orderBy: { createdAt: 'desc' },
     });
-    return records.map((record) => NotificationMapper.toDomain(record));
+    return records.map((record) =>
+      NotificationPersistenceMapper.toDomain(record),
+    );
   }
 
-  async update(notification: Notification, expectedUpdatedAt: Date): Promise<Notification | null> {
+  async update(
+    notification: Notification,
+    expectedUpdatedAt: Date,
+  ): Promise<Notification | null> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.notification.updateMany({
         where: { id: notification.getId(), updatedAt: expectedUpdatedAt },
@@ -51,6 +51,6 @@ export class NotificationRepository {
         where: { id: notification.getId() },
       });
     });
-    return updated ? NotificationMapper.toDomain(updated) : null;
+    return updated ? NotificationPersistenceMapper.toDomain(updated) : null;
   }
 }

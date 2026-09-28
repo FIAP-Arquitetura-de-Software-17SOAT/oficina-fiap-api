@@ -11,8 +11,8 @@ import { BillingRepository } from '../src/modules/billing/repositories/billing.r
 import { BillingService } from '../src/modules/billing/services/billing.service';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -27,12 +27,12 @@ import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 describe('Billing (integracao)', () => {
   let app: INestApplication<App>;
   let http: App;
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   const jwt = new JwtService();
   let token: string;
 
   beforeEach(async () => {
-    notifications = { enqueue: jest.fn() };
+    notifications = { execute: jest.fn() };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({
         imports: [AppModule],
@@ -52,7 +52,7 @@ describe('Billing (integracao)', () => {
       .useValue(new InMemoryBillingRepository())
       .overrideProvider(PaymentGateway)
       .useValue(new FakePaymentGateway())
-      .overrideProvider(NotificationService)
+      .overrideProvider(EnqueueNotificationUseCase)
       .useValue(notifications)
       .compile();
 
@@ -209,7 +209,7 @@ describe('Billing (integracao)', () => {
       .expect(201);
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.PAYMENT_LINK_READY,
         to: 'maria@example.com',
@@ -219,7 +219,7 @@ describe('Billing (integracao)', () => {
     );
     const [message] =
       (
-        notifications.enqueue.mock.calls as [
+        notifications.execute.mock.calls as [
           { type: NotificationType; text: string; html: string },
         ][]
       ).find(([input]) => input.type === NotificationType.PAYMENT_LINK_READY) ??

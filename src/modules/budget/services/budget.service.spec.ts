@@ -15,8 +15,8 @@ import { FindServiceUseCase } from '../../service-catalog/application/use-cases/
 import { PartController } from '../../stock/controllers/part.controller';
 import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
-import { NotificationType } from '../../notification/enums/notification-type.enum';
-import { NotificationService } from '../../notification/services/notification.service';
+import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import { BudgetRepository } from '../repositories/budget.repository';
 import { BudgetDecision } from '../dto/budget-webhook.dto';
 import { BudgetService } from './budget.service';
@@ -55,7 +55,7 @@ describe('BudgetService', () => {
   let serviceCatalogController: { execute: jest.Mock };
   let partController: { findById: jest.Mock };
   let clientRepository: { findById: jest.Mock };
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   let config: { get: jest.Mock };
 
   beforeEach(async () => {
@@ -83,7 +83,7 @@ describe('BudgetService', () => {
     serviceCatalogController = { execute: jest.fn() };
     partController = { findById: jest.fn() };
     clientRepository = { findById: jest.fn() };
-    notifications = { enqueue: jest.fn() };
+    notifications = { execute: jest.fn() };
     config = { get: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -100,7 +100,7 @@ describe('BudgetService', () => {
         },
         { provide: PartController, useValue: partController },
         { provide: ClientRepositoryPort, useValue: clientRepository },
-        { provide: NotificationService, useValue: notifications },
+        { provide: EnqueueNotificationUseCase, useValue: notifications },
         { provide: ConfigService, useValue: config },
       ],
     }).compile();
@@ -151,7 +151,7 @@ describe('BudgetService', () => {
     });
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).not.toHaveBeenCalled();
+    expect(notifications.execute).not.toHaveBeenCalled();
   });
 
   it('emails the budget with a personal approval link when it is sent', async () => {
@@ -171,7 +171,7 @@ describe('BudgetService', () => {
     const sent = await service.send(budget.getId());
     await new Promise((resolve) => setImmediate(resolve));
 
-    const [message] = notifications.enqueue.mock.calls[0] as [
+    const [message] = notifications.execute.mock.calls[0] as [
       { type: string; to: string; text: string },
     ];
     const token = /token=([A-Za-z0-9_-]{43})/.exec(message.text)?.[1];
@@ -483,7 +483,7 @@ describe('BudgetService', () => {
 
     await service.accept(budget.getId());
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         to: 'estoque@example.com',
@@ -494,7 +494,7 @@ describe('BudgetService', () => {
         html: expect.stringContaining('Brake pad'),
       }),
     );
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         text: expect.not.stringContaining('Brake replacement'),
         html: expect.not.stringContaining('Brake replacement'),
@@ -512,7 +512,7 @@ describe('BudgetService', () => {
     expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
       '4f3b2a10-7c5d-4e8f-9a1b-2c3d4e5f6a7b',
     );
-    expect(notifications.enqueue).not.toHaveBeenCalled();
+    expect(notifications.execute).not.toHaveBeenCalled();
   });
 
   it('queues a stock request with no items when an accepted budget has no parts', async () => {
@@ -523,7 +523,7 @@ describe('BudgetService', () => {
 
     await service.accept(budget.getId());
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         text: expect.stringContaining('Peças:'),
@@ -536,7 +536,7 @@ describe('BudgetService', () => {
     budget.sendToClient();
     repository.findById.mockResolvedValue(budget);
     config.get.mockReturnValue('estoque@example.com');
-    notifications.enqueue.mockRejectedValue(new Error('queue unavailable'));
+    notifications.execute.mockRejectedValue(new Error('queue unavailable'));
 
     await expect(service.accept(budget.getId())).resolves.toBe(budget);
     expect(serviceOrderController.awaitParts).toHaveBeenCalledWith(
@@ -661,7 +661,7 @@ describe('BudgetService', () => {
       });
 
       expect(serviceOrderController.awaitApproval).not.toHaveBeenCalled();
-      expect(notifications.enqueue).not.toHaveBeenCalled();
+      expect(notifications.execute).not.toHaveBeenCalled();
     });
 
     it.each(['CANCELLED', 'COMPLETED', 'DELIVERED'])(
@@ -1122,7 +1122,10 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
         { provide: FindServiceUseCase, useValue: serviceCatalogController },
         { provide: PartController, useValue: partController },
         { provide: ClientRepositoryPort, useValue: { findById: jest.fn() } },
-        { provide: NotificationService, useValue: { enqueue: jest.fn() } },
+        {
+          provide: EnqueueNotificationUseCase,
+          useValue: { execute: jest.fn() },
+        },
         { provide: ConfigService, useValue: { get: jest.fn() } },
       ],
     }).compile();

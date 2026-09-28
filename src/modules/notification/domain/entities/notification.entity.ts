@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 import { NotificationStatus } from '../enums/notification-status.enum';
 import { NotificationType } from '../enums/notification-type.enum';
 

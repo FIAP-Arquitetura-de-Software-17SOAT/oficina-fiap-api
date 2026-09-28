@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { isEmail } from 'class-validator';
 import * as nodemailer from 'nodemailer';
-import { EmailMessage, EmailSender } from './email-sender';
+import {
+  EmailMessage,
+  EmailSenderPort,
+} from '../../application/ports/email-sender.port';
 
 interface SmtpSettings {
   host: string;
@@ -14,7 +17,7 @@ interface SmtpSettings {
 }
 
 @Injectable()
-export class NodemailerEmailSender extends EmailSender {
+export class NodemailerEmailSender extends EmailSenderPort {
   constructor(private readonly config: ConfigService) {
     super();
   }

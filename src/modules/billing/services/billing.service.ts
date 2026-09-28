@@ -10,8 +10,8 @@ import { paymentLinkReadyEmail } from '../../../shared/notifications/email/notif
 import { BudgetStatus } from '../../budget/entities/budget.entity';
 import { BudgetService } from '../../budget/services/budget.service';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
-import { NotificationType } from '../../notification/enums/notification-type.enum';
-import { NotificationService } from '../../notification/services/notification.service';
+import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceOrder } from '../../service-order/entities/service-order.entity';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceOrderService } from '../../service-order/services/service-order.service';
@@ -54,7 +54,7 @@ export class BillingService {
     private readonly serviceOrderService: ServiceOrderService,
     private readonly paymentGateway: PaymentGateway,
     private readonly clientRepository: ClientRepositoryPort,
-    private readonly notifications: NotificationService,
+    private readonly notifications: EnqueueNotificationUseCase,
   ) {}
 
   async generateForServiceOrder(dto: GenerateBillingDto): Promise<Billing> {
@@ -163,7 +163,7 @@ export class BillingService {
 
       if (!client || !paymentLink) return;
 
-      await this.notifications.enqueue({
+      await this.notifications.execute({
         type: NotificationType.PAYMENT_LINK_READY,
         to: client.getEmail().getValue(),
         ...paymentLinkReadyEmail({

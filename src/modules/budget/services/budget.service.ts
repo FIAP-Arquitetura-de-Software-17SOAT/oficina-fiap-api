@@ -26,8 +26,8 @@ import { ServiceOrderStatus } from '../../service-order/enums/service-order-stat
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { PartController } from '../../stock/controllers/part.controller';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
-import { NotificationType } from '../../notification/enums/notification-type.enum';
-import { NotificationService } from '../../notification/services/notification.service';
+import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import {
   Budget,
   BudgetItemProps,
@@ -55,7 +55,7 @@ export class BudgetService {
     private readonly budgetRepository: BudgetRepository,
     private readonly serviceOrderController: ServiceOrderController,
     private readonly clientRepository: ClientRepositoryPort,
-    private readonly notifications: NotificationService,
+    private readonly notifications: EnqueueNotificationUseCase,
     private readonly config: ConfigService,
     private readonly findService: FindServiceUseCase,
     // forwardRef fecha o ciclo orçamento <-> estoque: o orçamento confere aqui a
@@ -547,7 +547,7 @@ export class BudgetService {
 
       const items = budget.getItems();
 
-      await this.notifications.enqueue({
+      await this.notifications.execute({
         type: NotificationType.BUDGET_READY,
         to: client.getEmail().getValue(),
         ...budgetReadyEmail({
@@ -596,7 +596,7 @@ export class BudgetService {
         .getItems()
         .filter((item) => item.getType() === BudgetItemType.PART);
 
-      await this.notifications.enqueue({
+      await this.notifications.execute({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         to: stockEmail,
         ...stockPartsRequestedEmail({
