@@ -6,12 +6,10 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Inject,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
-  forwardRef,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -48,13 +46,7 @@ import type { AuthenticatedUser } from '../../../shared/http/auth/current-user.d
 @ApiTags('budgets')
 @Controller('budgets')
 export class BudgetController {
-  // O orçamento passou a consultar a peça referenciada por cada item, e o
-  // despacho de peças já lia o orçamento aceito: orçamento e estoque agora se
-  // referenciam em ciclo, e o forwardRef é o que deixa o Nest fechá-lo.
-  constructor(
-    @Inject(forwardRef(() => BudgetService))
-    private readonly budgetService: BudgetService,
-  ) {}
+  constructor(private readonly budgetService: BudgetService) {}
 
   @Post()
   @ApiOperation({ summary: 'Gera um orçamento' })

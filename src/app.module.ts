@@ -13,6 +13,7 @@ import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { StockModule } from './modules/stock/stock.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { PartsDispatchModule } from './modules/parts-dispatch/parts-dispatch.module';
 import { PrismaModule } from './shared/database/prisma.module';
 import { JwtAuthGuard } from './shared/http/auth/jwt-auth.guard';
 import { RolesGuard } from './shared/http/auth/roles.guard';
@@ -59,6 +60,7 @@ import { RolesGuard } from './shared/http/auth/roles.guard';
     ServiceCatalogModule,
     ServiceOrderModule,
     VehicleModule,
+    PartsDispatchModule,
   ],
   controllers: [AppController],
   // Autenticação por padrão em toda a API: o PDF exige JWT nas rotas

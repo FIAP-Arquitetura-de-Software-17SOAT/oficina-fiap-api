@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Part, MeasurementUnit, PartType } from '../entities/part.entity';
 import { PartService } from '../services/part.service';
-import { PartsDispatchService } from '../services/parts-dispatch.service';
 import { StockMovementService } from '../services/stock-movement.service';
 import { PartController } from './part.controller';
 
@@ -27,7 +26,6 @@ describe('PartController', () => {
     delete: jest.Mock;
   };
   let stockMovementService: { increase: jest.Mock; decrease: jest.Mock };
-  let partsDispatchService: { dispatchForServiceOrder: jest.Mock };
 
   beforeEach(async () => {
     service = {
@@ -38,14 +36,12 @@ describe('PartController', () => {
       delete: jest.fn(),
     };
     stockMovementService = { increase: jest.fn(), decrease: jest.fn() };
-    partsDispatchService = { dispatchForServiceOrder: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PartController],
       providers: [
         { provide: PartService, useValue: service },
         { provide: StockMovementService, useValue: stockMovementService },
-        { provide: PartsDispatchService, useValue: partsDispatchService },
       ],
     }).compile();
 
