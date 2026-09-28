@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
@@ -48,7 +48,7 @@ describe('Budget approval link and webhook (e2e)', () => {
       .useValue(new InMemoryVehicleRepository())
       .overrideProvider(ServiceOrderRepositoryPort)
       .useValue(new InMemoryServiceOrderRepository())
-      .overrideProvider(BudgetRepository)
+      .overrideProvider(BudgetRepositoryPort)
       .useValue(new InMemoryBudgetRepository())
       .overrideProvider(EnqueueNotificationUseCase)
       .useValue(notifications)

@@ -1,4 +1,4 @@
-import { BudgetService } from '../../../budget/services/budget.service';
+import { ListBudgetsByServiceOrderUseCase } from '../../../budget/application/use-cases/list-budgets-by-service-order.use-case';
 import { RegisterShortageUseCase } from '../../../purchase-order/application/use-cases/register-shortage.use-case';
 import { RegisterPartsDispatchedUseCase } from '../../../service-order/application/use-cases/register-parts-dispatched.use-case';
 import { StockApplicationError } from '../../../stock/application/errors/stock-application.error';
@@ -26,14 +26,16 @@ const budget = (id: string, version: number, status: string) => ({
 describe('parts-dispatch adapters', () => {
   it('BudgetAdapter keeps only accepted budgets and their part items', async () => {
     const budgets = {
-      findByServiceOrderId: jest
+      execute: jest
         .fn()
         .mockResolvedValue([
           budget('b1', 1, 'ACCEPTED'),
           budget('b2', 2, 'REFUSED'),
         ]),
     };
-    const adapter = new BudgetAdapter(budgets as unknown as BudgetService);
+    const adapter = new BudgetAdapter(
+      budgets as unknown as ListBudgetsByServiceOrderUseCase,
+    );
 
     await expect(adapter.findAccepted('so-1')).resolves.toEqual([
       {
@@ -44,7 +46,7 @@ describe('parts-dispatch adapters', () => {
         ],
       },
     ]);
-    expect(budgets.findByServiceOrderId).toHaveBeenCalledWith('so-1');
+    expect(budgets.execute).toHaveBeenCalledWith('so-1');
   });
 
   describe('StockAdapter', () => {

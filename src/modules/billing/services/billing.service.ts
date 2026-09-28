@@ -7,8 +7,7 @@ import {
 } from '@nestjs/common';
 import { isUniqueViolation } from '../../../shared/database/prisma-errors';
 import { paymentLinkReadyEmail } from '../../../shared/notifications/email/notification-templates';
-import { BudgetStatus } from '../../budget/entities/budget.entity';
-import { BudgetService } from '../../budget/services/budget.service';
+import { FindAcceptedBudgetUseCase } from '../../budget/application/use-cases/find-accepted-budget.use-case';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
@@ -52,7 +51,7 @@ const DELIVERABLE_STATUSES = [
 export class BillingService {
   constructor(
     private readonly billingRepository: BillingRepository,
-    private readonly budgetService: BudgetService,
+    private readonly findAcceptedBudget: FindAcceptedBudgetUseCase,
     private readonly findServiceOrder: FindServiceOrderUseCase,
     private readonly awaitPaymentUseCase: AwaitPaymentUseCase,
     private readonly deliverServiceOrderUseCase: DeliverServiceOrderUseCase,
@@ -83,11 +82,8 @@ export class BillingService {
       );
     }
 
-    const budgets =
-      await this.budgetService.findByServiceOrderId(serviceOrderId);
-    const acceptedBudget = budgets
-      .filter((budget) => budget.getStatus() === BudgetStatus.ACCEPTED)
-      .sort((a, b) => b.getVersion() - a.getVersion())[0];
+    const acceptedBudget =
+      await this.findAcceptedBudget.execute(serviceOrderId);
 
     if (!acceptedBudget) {
       throw new ConflictException(

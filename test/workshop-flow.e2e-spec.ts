@@ -10,7 +10,7 @@ import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum'
 import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
 import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
 import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
@@ -77,7 +77,7 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepositoryPort)
         .useValue(parts)

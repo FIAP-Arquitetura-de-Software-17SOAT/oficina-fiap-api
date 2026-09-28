@@ -8,8 +8,8 @@ import {
   Budget,
   BudgetItemType,
   BudgetStatus,
-} from '../../budget/entities/budget.entity';
-import { BudgetService } from '../../budget/services/budget.service';
+} from '../../budget/domain/entities/budget.entity';
+import { FindAcceptedBudgetUseCase } from '../../budget/application/use-cases/find-accepted-budget.use-case';
 import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
@@ -59,7 +59,7 @@ const acceptedBudget = (version: number, total: number) =>
 
 describe('BillingService', () => {
   let repository: jest.Mocked<BillingRepository>;
-  let budgetService: jest.Mocked<BudgetService>;
+  let budgetService: { findByServiceOrderId: jest.Mock };
   let clientRepository: jest.Mocked<ClientRepositoryPort>;
   let notifications: jest.Mocked<EnqueueNotificationUseCase>;
   let serviceOrderService: {
@@ -81,9 +81,7 @@ describe('BillingService', () => {
       recordCheckoutSessionPayment: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<BillingRepository>;
-    budgetService = {
-      findByServiceOrderId: jest.fn(),
-    } as unknown as jest.Mocked<BudgetService>;
+    budgetService = { findByServiceOrderId: jest.fn() };
     clientRepository = {
       findById: jest.fn(),
     } as unknown as jest.Mocked<ClientRepositoryPort>;
@@ -102,7 +100,19 @@ describe('BillingService', () => {
     };
     service = new BillingService(
       repository,
-      budgetService,
+      {
+        // O caso de uso já devolve o aceito de maior versão.
+        execute: async (serviceOrderId: string) => {
+          const budgets = (await budgetService.findByServiceOrderId(
+            serviceOrderId,
+          )) as Budget[];
+          return (
+            budgets
+              .filter((b) => b.getStatus() === BudgetStatus.ACCEPTED)
+              .sort((a, b) => b.getVersion() - a.getVersion())[0] ?? null
+          );
+        },
+      } as unknown as FindAcceptedBudgetUseCase,
       {
         execute: serviceOrderService.findById,
       } as unknown as FindServiceOrderUseCase,
@@ -685,7 +695,7 @@ describe('BillingService payment returns', () => {
     };
     service = new BillingService(
       repository,
-      {} as unknown as jest.Mocked<BudgetService>,
+      {} as unknown as FindAcceptedBudgetUseCase,
       {
         execute: serviceOrderService.findById,
       } as unknown as FindServiceOrderUseCase,
