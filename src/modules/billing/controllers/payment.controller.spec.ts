@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Money } from '../../../shared/domain/value-objects/money.vo';
-import { ServiceOrder } from '../../service-order/entities/service-order.entity';
-import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
+import { ServiceOrder } from '../../service-order/domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../../service-order/domain/enums/service-order-status.enum';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { BillingService } from '../services/billing.service';

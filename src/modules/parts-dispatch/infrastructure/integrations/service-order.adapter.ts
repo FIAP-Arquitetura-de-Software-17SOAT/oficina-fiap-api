@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { ServiceOrderService } from '../../../service-order/services/service-order.service';
+import { RegisterPartsDispatchedUseCase } from '../../../service-order/application/use-cases/register-parts-dispatched.use-case';
 import { ServiceOrderDispatchPort } from '../../application/ports/service-order-dispatch.port';
 
 @Injectable()
 export class ServiceOrderAdapter implements ServiceOrderDispatchPort {
-  constructor(private readonly serviceOrders: ServiceOrderService) {}
+  constructor(
+    private readonly registerPartsDispatchedUseCase: RegisterPartsDispatchedUseCase,
+  ) {}
 
   async registerPartsDispatched(serviceOrderId: string): Promise<void> {
-    await this.serviceOrders.registerPartsDispatched(serviceOrderId);
+    await this.registerPartsDispatchedUseCase.execute(serviceOrderId);
   }
 }

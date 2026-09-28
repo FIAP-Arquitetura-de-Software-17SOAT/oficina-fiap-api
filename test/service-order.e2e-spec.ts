@@ -6,14 +6,14 @@ import { App } from 'supertest/types';
 import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
-import { ServiceOrder } from '../src/modules/service-order/entities/service-order.entity';
-import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
+import { ServiceOrder } from '../src/modules/service-order/domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../src/modules/service-order/domain/enums/service-order-status.enum';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { allowAuthenticated } from './allow-authenticated';
 import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
@@ -53,7 +53,7 @@ describe('ServiceOrder (integração)', () => {
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(serviceOrders)
         .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())

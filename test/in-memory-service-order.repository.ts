@@ -1,6 +1,8 @@
-import { ServiceOrder } from '../src/modules/service-order/entities/service-order.entity';
+import { ServiceOrder } from '../src/modules/service-order/domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../src/modules/service-order/domain/enums/service-order-status.enum';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 
-export class InMemoryServiceOrderRepository {
+export class InMemoryServiceOrderRepository implements ServiceOrderRepositoryPort {
   private readonly serviceOrders = new Map<string, ServiceOrder>();
 
   create(serviceOrder: ServiceOrder): Promise<ServiceOrder> {
@@ -13,7 +15,9 @@ export class InMemoryServiceOrderRepository {
     return Promise.resolve(this.serviceOrders.get(id) ?? null);
   }
 
-  findAllExcludingStatuses(statuses: string[]): Promise<ServiceOrder[]> {
+  findAllExcludingStatuses(
+    statuses: ServiceOrderStatus[],
+  ): Promise<ServiceOrder[]> {
     return Promise.resolve(
       Array.from(this.serviceOrders.values())
         .filter((order) => !statuses.includes(order.getStatus()))

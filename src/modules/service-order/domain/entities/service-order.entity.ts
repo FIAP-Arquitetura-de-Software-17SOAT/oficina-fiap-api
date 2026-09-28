@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { DomainException } from '../../../shared/domain/domain.exception';
-import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
+import { DomainException } from '../../../../shared/domain/domain.exception';
+import { Quantity } from '../../../../shared/domain/value-objects/quantity.vo';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
 
 /**

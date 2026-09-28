@@ -8,7 +8,7 @@ import { BudgetRepository } from '../src/modules/budget/repositories/budget.repo
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -53,7 +53,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
         .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
@@ -272,7 +272,7 @@ describe('Orçamento x estoque (integração)', () => {
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
         .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())

@@ -7,7 +7,7 @@ import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp, setupSwagger } from '../src/setup-app';
-import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
+import { ServiceOrderStatus } from '../src/modules/service-order/domain/enums/service-order-status.enum';
 import { AuthTestModule } from './auth-test.controller';
 import { allowAuthenticated } from './allow-authenticated';
 

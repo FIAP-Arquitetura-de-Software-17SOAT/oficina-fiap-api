@@ -10,7 +10,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { ServiceOrderStatus } from '../enums/service-order-status.enum';
+import { ServiceOrderStatus } from '../../../domain/enums/service-order-status.enum';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;

@@ -15,7 +15,7 @@ import { NotificationType } from '../src/modules/notification/domain/enums/notif
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PurchaseOrderRepositoryPort } from '../src/modules/purchase-order/application/ports/purchase-order-repository.port';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { StockMovementRepositoryPort } from '../src/modules/stock/application/ports/stock-movement-repository.port';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
@@ -75,7 +75,7 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
         .overrideProvider(BudgetRepository)
         .useValue(new InMemoryBudgetRepository())
