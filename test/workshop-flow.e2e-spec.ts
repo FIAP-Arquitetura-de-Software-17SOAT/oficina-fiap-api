@@ -14,7 +14,7 @@ import { BudgetRepository } from '../src/modules/budget/repositories/budget.repo
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { PurchaseOrderRepository } from '../src/modules/purchase-order/repositories/purchase-order.repository';
+import { PurchaseOrderRepositoryPort } from '../src/modules/purchase-order/application/ports/purchase-order-repository.port';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { StockMovementRepositoryPort } from '../src/modules/stock/application/ports/stock-movement-repository.port';
@@ -83,7 +83,7 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(parts)
         .overrideProvider(StockMovementRepositoryPort)
         .useValue(new InMemoryStockMovementRepository(parts))
-        .overrideProvider(PurchaseOrderRepository)
+        .overrideProvider(PurchaseOrderRepositoryPort)
         .useValue(new InMemoryPurchaseOrderRepository())
         .overrideProvider(BillingRepository)
         .useValue(new InMemoryBillingRepository())

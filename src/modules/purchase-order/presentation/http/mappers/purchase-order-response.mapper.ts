@@ -1,17 +1,17 @@
-import { PurchaseOrder } from '../entities/purchase-order.entity';
+import { PurchaseOrder } from '../../../domain/entities/purchase-order.entity';
 
-export class PurchaseOrderMapper {
+export class PurchaseOrderResponseMapper {
   static toResponseList(
     purchaseOrders: PurchaseOrder[],
     partNames: Map<string, string | null> = new Map(),
   ) {
     return purchaseOrders.map((purchaseOrder) =>
-      PurchaseOrderMapper.toResponse(purchaseOrder, partNames),
+      PurchaseOrderResponseMapper.toResponse(purchaseOrder, partNames),
     );
   }
 
   /**
-   * `partNames` chega resolvido do service porque a peça mora em outro módulo.
+   * `partNames` chega resolvido pela query de nomes porque a peça mora em outro módulo.
    * Ausente, o item sai só com o `partId` — é o que acontece quando a peça foi
    * removida do cadastro depois que o pedido foi emitido.
    */

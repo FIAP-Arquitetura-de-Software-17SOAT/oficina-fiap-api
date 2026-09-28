@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 
-import { Money } from '../../../shared/domain/value-objects/money.vo';
-import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
+import { Quantity } from '../../../../shared/domain/value-objects/quantity.vo';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 
 export interface PurchaseOrderItemProps {
   id?: string;

@@ -9,6 +9,7 @@ export const MIGRATED_MODULES = [
   'notification',
   'parts-dispatch',
   'stock',
+  'purchase-order',
 ] as const;
 
 export type MigratedModule = (typeof MIGRATED_MODULES)[number];

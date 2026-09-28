@@ -76,7 +76,7 @@ O `kind` e uma categoria de negocio, nao um status HTTP. O caso de uso diz o que
 | Stock           | migrado             | [Modulo Stock](clean-architecture/modulo-stock.md)      |
 | Service Order   | layout legado       | —                                                       |
 | Budget          | layout legado       | —                                                       |
-| Purchase Order  | layout legado       | —                                                       |
+| Purchase Order  | migrado             | [Modulo Purchase Order](clean-architecture/modulo-purchase-order.md) |
 | Billing         | layout legado       | —                                                       |
 | Notification    | migrado             | [Modulo Notification](clean-architecture/modulo-notification.md) |
 | Auth            | layout legado       | —                                                       |

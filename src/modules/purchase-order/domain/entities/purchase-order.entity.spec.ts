@@ -4,11 +4,11 @@ import { PurchaseOrderItem } from './purchase-order-item.entity';
 
 import { PurchaseOrderStatus } from '../enums/purchase-order-status.enum';
 
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
 
 import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
+import { Quantity } from '../../../../shared/domain/value-objects/quantity.vo';
 
 describe('PurchaseOrder', () => {
   const createOrder = (): PurchaseOrder => {
@@ -195,5 +195,15 @@ describe('PurchaseOrder', () => {
     expect(() => order.addItem(createItem())).toThrow();
 
     expect(order.getStatus()).toBe(PurchaseOrderStatus.DELIVERED);
+  });
+
+  it('should reject an order without supplier', () => {
+    expect(
+      () =>
+        new PurchaseOrder({
+          number: PurchaseOrderNumber.create('PC-2026-0042'),
+          supplier: '   ',
+        }),
+    ).toThrow('O fornecedor deve ser informado');
   });
 });

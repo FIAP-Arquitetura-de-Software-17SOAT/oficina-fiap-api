@@ -1,6 +1,7 @@
-import { PurchaseOrder } from '../src/modules/purchase-order/entities/purchase-order.entity';
+import { PurchaseOrder } from '../src/modules/purchase-order/domain/entities/purchase-order.entity';
+import { PurchaseOrderRepositoryPort } from '../src/modules/purchase-order/application/ports/purchase-order-repository.port';
 
-export class InMemoryPurchaseOrderRepository {
+export class InMemoryPurchaseOrderRepository implements PurchaseOrderRepositoryPort {
   private readonly orders = new Map<string, PurchaseOrder>();
 
   create(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {

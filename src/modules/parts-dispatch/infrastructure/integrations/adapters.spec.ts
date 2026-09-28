@@ -1,5 +1,5 @@
 import { BudgetService } from '../../../budget/services/budget.service';
-import { PurchaseOrderService } from '../../../purchase-order/services/purchase-order.service';
+import { RegisterShortageUseCase } from '../../../purchase-order/application/use-cases/register-shortage.use-case';
 import { ServiceOrderService } from '../../../service-order/services/service-order.service';
 import { StockApplicationError } from '../../../stock/application/errors/stock-application.error';
 import { DecreaseStockUseCase } from '../../../stock/application/use-cases/decrease-stock.use-case';
@@ -110,16 +110,16 @@ describe('parts-dispatch adapters', () => {
 
   it('PurchaseOrderAdapter opens the shortage purchase and returns its id', async () => {
     const purchaseOrders = {
-      registerShortage: jest.fn().mockResolvedValue({ getId: () => 'po-1' }),
+      execute: jest.fn().mockResolvedValue({ getId: () => 'po-1' }),
     };
     const adapter = new PurchaseOrderAdapter(
-      purchaseOrders as unknown as PurchaseOrderService,
+      purchaseOrders as unknown as RegisterShortageUseCase,
     );
 
     await expect(
       adapter.registerShortage([{ partId: 'part-1', quantity: 1 }]),
     ).resolves.toEqual({ id: 'po-1' });
-    expect(purchaseOrders.registerShortage).toHaveBeenCalledWith({
+    expect(purchaseOrders.execute).toHaveBeenCalledWith({
       items: [{ partId: 'part-1', quantity: 1 }],
     });
   });
