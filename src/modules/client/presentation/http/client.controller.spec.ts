@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Client } from '../../domain/entities/client.entity';
-import { User } from '../../../../shared/identity/entities/user.entity';
+import { User } from '../../../../shared/identity/domain/entities/user.entity';
 import { CreateClientUseCase } from '../../application/use-cases/create-client.use-case';
 import { FindClientUseCase } from '../../application/use-cases/find-client.use-case';
 import { ListClientsUseCase } from '../../application/use-cases/list-clients.use-case';

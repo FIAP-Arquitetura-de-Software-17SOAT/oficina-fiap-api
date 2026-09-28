@@ -4,7 +4,7 @@ import {
   isValidLoginEmail,
   isValidLoginPassword,
   normalizeLoginEmail,
-} from '../src/shared/identity/login-credentials';
+} from '../src/shared/identity/http/login-credentials';
 
 type SeedEnvironment = Record<string, string | undefined>;
 

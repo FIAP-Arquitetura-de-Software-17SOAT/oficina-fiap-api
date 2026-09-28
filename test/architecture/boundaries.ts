@@ -1,11 +1,15 @@
 import { Dirent, readFileSync, readdirSync } from 'node:fs';
+import { isBuiltin } from 'node:module';
 import { relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
 export const projectRoot = resolve(__dirname, '../..');
 const modulesRoot = resolve(projectRoot, 'src/modules');
-const sharedDomainRoot = resolve(projectRoot, 'src/shared/domain');
-const sharedApplicationRoot = resolve(projectRoot, 'src/shared/application');
+const sharedRoot = resolve(projectRoot, 'src/shared');
+const sharedDomainRoot = resolve(sharedRoot, 'domain');
+const sharedApplicationRoot = resolve(sharedRoot, 'application');
+/** `shared/identity` tem as mesmas camadas de um módulo e obedece à mesma regra. */
+const identityRoot = resolve(sharedRoot, 'identity');
 
 const configPath = resolve(projectRoot, 'tsconfig.json');
 const config = ts.readConfigFile(configPath, (file) => ts.sys.readFile(file));
@@ -74,24 +78,46 @@ export function resolveDependency(
   };
 }
 
-type Layer = 'domain' | 'application';
+type Layer = 'domain' | 'application' | 'outer';
 
 function layerOf(file: string, moduleRoot: string): Layer | undefined {
   if (within(file, resolve(moduleRoot, 'domain'))) return 'domain';
   if (within(file, resolve(moduleRoot, 'application'))) return 'application';
+  if (
+    within(file, resolve(moduleRoot, 'infrastructure')) ||
+    within(file, resolve(moduleRoot, 'presentation'))
+  )
+    return 'outer';
   return undefined;
+}
+
+/** Todos os módulos em `src/modules`; a partir da PR10 todos são migrados. */
+export function allModules(): string[] {
+  return readdirSync(modulesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
 }
 
 /**
  * Diretórios que um arquivo de `domain/` ou `application/` pode importar.
- * A regra é a mesma para todo módulo migrado:
- *   domain      -> próprio domain, shared/domain
+ * A regra é a mesma para todo módulo:
+ *   domain      -> próprio domain, shared/domain, shared/identity/domain
  *   application -> os de cima + próprio application + shared/application
+ *                  + shared/identity/application (só portas)
  */
 function allowedRoots(moduleRoot: string, layer: Layer): string[] {
-  const roots = [resolve(moduleRoot, 'domain'), sharedDomainRoot];
+  const roots = [
+    resolve(moduleRoot, 'domain'),
+    sharedDomainRoot,
+    resolve(identityRoot, 'domain'),
+  ];
   if (layer === 'application') {
-    roots.push(resolve(moduleRoot, 'application'), sharedApplicationRoot);
+    roots.push(
+      resolve(moduleRoot, 'application'),
+      sharedApplicationRoot,
+      resolve(identityRoot, 'application'),
+    );
   }
   return roots;
 }
@@ -120,6 +146,47 @@ function violationsFor(
 }
 
 /**
+ * `infrastructure/` e `presentation/` podem importar qualquer coisa do próprio
+ * módulo, de `shared`, de bibliotecas e do Prisma gerado. De **outro** módulo,
+ * só `domain/` e `application/`: adapter conversa com caso de uso e erro de
+ * aplicação, nunca com o repositório Prisma ou o controller do vizinho.
+ */
+function outerViolationsFor(
+  moduleRoot: string,
+  file: string,
+  source: string,
+): string[] {
+  const violations: string[] = [];
+  for (const specifier of dependencies(file, source)) {
+    if (specifier !== null && isBuiltin(specifier)) continue;
+    const dependency =
+      specifier === null ? undefined : resolveDependency(specifier, file);
+    if (!dependency) {
+      violations.push(
+        `${relative(projectRoot, file)} -> ${specifier ?? 'non-literal import'}`,
+      );
+      continue;
+    }
+    if (
+      dependency.external ||
+      dependency.target.endsWith('.spec.ts') ||
+      !within(dependency.target, modulesRoot) ||
+      within(dependency.target, moduleRoot)
+    )
+      continue;
+    const otherModule = dependency.target
+      .slice(modulesRoot.length + 1)
+      .split(sep)[0];
+    const publicRoots = ['domain', 'application'].map((layer) =>
+      resolve(modulesRoot, otherModule, layer),
+    );
+    if (!publicRoots.some((root) => within(dependency.target, root)))
+      violations.push(`${relative(projectRoot, file)} -> ${specifier}`);
+  }
+  return violations;
+}
+
+/**
  * Inspeciona um arquivo de `src/modules/<module>/{domain,application}` a
  * partir do seu código-fonte (o arquivo não precisa existir; serve para
  * testar o próprio verificador).
@@ -133,9 +200,10 @@ export function inspectDependencies(
   const layer = layerOf(file, moduleRoot);
   if (!layer) {
     throw new Error(
-      `${relative(projectRoot, file)} is not under ${moduleName}/domain or ${moduleName}/application`,
+      `${relative(projectRoot, file)} is not under a layer of ${moduleName}`,
     );
   }
+  if (layer === 'outer') return outerViolationsFor(moduleRoot, file, source);
   return violationsFor(file, source, allowedRoots(moduleRoot, layer));
 }
 
@@ -156,10 +224,10 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-/** Verifica `domain/` e `application/` de um módulo migrado. */
+/** Verifica as quatro camadas de um módulo. */
 export function checkModule(moduleName: string): string[] {
   const moduleRoot = resolve(modulesRoot, moduleName);
-  return ['domain', 'application']
+  return ['domain', 'application', 'infrastructure', 'presentation']
     .flatMap((layer) => sourceFiles(resolve(moduleRoot, layer)))
     .flatMap((file) =>
       inspectDependencies(moduleName, file, readFileSync(file, 'utf8')),
@@ -167,19 +235,26 @@ export function checkModule(moduleName: string): string[] {
 }
 
 /**
- * `shared/domain` e `shared/application` são verificados também: sem isso
- * eles virariam porta dos fundos para um framework entrar no núcleo.
+ * `shared/domain`, `shared/application` e o núcleo de `shared/identity` são
+ * verificados também: sem isso eles virariam porta dos fundos para um
+ * framework entrar no núcleo.
  */
 export function checkShared(): string[] {
+  const identityDomain = resolve(identityRoot, 'domain');
+  const identityApplication = resolve(identityRoot, 'application');
+  const check = (root: string, allowed: string[]) =>
+    sourceFiles(root).flatMap((file) =>
+      violationsFor(file, readFileSync(file, 'utf8'), allowed),
+    );
   return [
-    ...sourceFiles(sharedDomainRoot).flatMap((file) =>
-      violationsFor(file, readFileSync(file, 'utf8'), [sharedDomainRoot]),
-    ),
-    ...sourceFiles(sharedApplicationRoot).flatMap((file) =>
-      violationsFor(file, readFileSync(file, 'utf8'), [
-        sharedDomainRoot,
-        sharedApplicationRoot,
-      ]),
-    ),
+    ...check(sharedDomainRoot, [sharedDomainRoot]),
+    ...check(sharedApplicationRoot, [sharedDomainRoot, sharedApplicationRoot]),
+    ...check(identityDomain, [sharedDomainRoot, identityDomain]),
+    ...check(identityApplication, [
+      sharedDomainRoot,
+      sharedApplicationRoot,
+      identityDomain,
+      identityApplication,
+    ]),
   ];
 }

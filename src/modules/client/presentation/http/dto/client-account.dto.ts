@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsLoginPassword } from '../../../../../shared/identity/login-credentials';
+import { IsLoginPassword } from '../../../../../shared/identity/http/login-credentials';
 
 export class CreateClientAccountDto {
   @ApiProperty({
