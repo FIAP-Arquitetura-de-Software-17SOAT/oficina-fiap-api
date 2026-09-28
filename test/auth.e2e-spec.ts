@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -67,7 +68,7 @@ describe('Authentication and authorization (e2e)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
   });
 
   beforeEach(() => {

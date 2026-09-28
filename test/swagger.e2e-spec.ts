@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OpenAPIObject } from '@nestjs/swagger';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp, setupSwagger } from '../src/setup-app';
@@ -33,7 +34,7 @@ describe('Swagger', () => {
     ) as INestApplication<App>;
     setupSwagger(app);
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     document = (await request(http).get('/api/v1/docs-json').expect(200))
       .body as OpenAPIObject;

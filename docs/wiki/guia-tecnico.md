@@ -171,6 +171,10 @@ O vocabulario do projeto e o mapeamento entre termo de negocio e identificador n
 - **Nomeie pelo conceito, nao pelo formato.** `Document` aceita CPF e CNPJ; chamar a classe de `CpfCnpj` nomearia a validacao em vez do conceito.
 - Ao escrever texto: **Ordem de Servico** na primeira ocorrencia e **OS** nas seguintes; evitar "pedido" sozinho, que confunde OS com Pedido de Compra. Evento em participio (`Orcamento gerado`), comando em infinitivo (`Gerar orcamento`).
 
+### Testes e2e
+
+Toda suite em `test/*.e2e-spec.ts` obtem o server HTTP por `listenOnLoopback(app)` (`test/listen-on-loopback.ts`), e nao por `app.getHttpServer()` direto. O helper abre o server em `127.0.0.1` antes de entrega-lo ao `supertest`. Sem isso o `supertest` faz `listen(0)` em `::` e, no macOS, pode receber uma porta efemera ja ocupada em `127.0.0.1` por outro processo (VS Code, Postman, OrbStack); a requisicao cai no processo errado e o teste falha de forma intermitente com 404 vazio, 401, `ECONNRESET` ou timeout. Ao criar uma suite nova, use o helper.
+
 ## Decisoes de modelagem
 
 Onde o modelo conceitual do Event Storming e o codigo nao se sobrepoem, esta e a leitura adotada.

@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
@@ -9,6 +10,7 @@ import { allowAuthenticated } from './allow-authenticated';
 
 describe('Purchase order security hardening (e2e)', () => {
   let app: INestApplication<App>;
+  let http: App;
   const validUuid = '550e8400-e29b-41d4-a716-446655440000';
 
   beforeAll(async () => {
@@ -24,6 +26,7 @@ describe('Purchase order security hardening (e2e)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
+    http = await listenOnLoopback(app);
   });
 
   afterAll(async () => {
@@ -39,9 +42,7 @@ describe('Purchase order security hardening (e2e)', () => {
   ])(
     'rejects non-UUID route params before persistence: %s %s',
     async (method, path) => {
-      const response = request(app.getHttpServer())[
-        method.toLowerCase() as 'get'
-      ](path);
+      const response = request(http)[method.toLowerCase() as 'get'](path);
 
       if (method === 'POST') {
         response.send({
@@ -56,7 +57,7 @@ describe('Purchase order security hardening (e2e)', () => {
   );
 
   it('rejects a non-UUID purchase-order item id independently', async () => {
-    await request(app.getHttpServer())
+    await request(http)
       .delete(`/api/v1/purchase-orders/${validUuid}/items/itemId`)
       .expect(400);
   });
