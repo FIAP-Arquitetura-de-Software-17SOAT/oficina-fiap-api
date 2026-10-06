@@ -1,21 +1,26 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Service } from '../entities/service.entity';
-import { ServiceRepository } from '../repositories/service.repository';
-import { ServiceCatalogService } from './service-catalog.service';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
+import { Service } from '../../domain/entities/service.entity';
+import { ServiceCatalogApplicationError } from '../errors/service-catalog-application.error';
+import { ServiceRepositoryPort } from '../ports/service-repository.port';
+import { CreateServiceUseCase } from './create-service.use-case';
+import { DeleteServiceUseCase } from './delete-service.use-case';
+import { FindServiceUseCase } from './find-service.use-case';
+import { ListServicesUseCase } from './list-services.use-case';
+import { UpdateServiceUseCase } from './update-service.use-case';
 
 const makeService = (name = 'Troca de óleo', price = 149.9) =>
   Service.create({ name, price: Money.fromDecimal(price) });
 
-describe('ServiceCatalogService', () => {
-  let catalog: ServiceCatalogService;
-  let repository: {
-    create: jest.Mock;
-    findAll: jest.Mock;
-    findById: jest.Mock;
-    findByName: jest.Mock;
-    update: jest.Mock;
-    delete: jest.Mock;
+type MockedRepository = { [K in keyof ServiceRepositoryPort]: jest.Mock };
+
+describe('Service catalog use cases without Nest', () => {
+  let repository: MockedRepository;
+  let catalog: {
+    create: CreateServiceUseCase['execute'];
+    findById: FindServiceUseCase['execute'];
+    findAll: ListServicesUseCase['execute'];
+    update: UpdateServiceUseCase['execute'];
+    delete: DeleteServiceUseCase['execute'];
   };
 
   beforeEach(() => {
@@ -27,10 +32,13 @@ describe('ServiceCatalogService', () => {
       update: jest.fn((service: Service) => Promise.resolve(service)),
       delete: jest.fn().mockResolvedValue(undefined),
     };
-
-    catalog = new ServiceCatalogService(
-      repository as unknown as ServiceRepository,
-    );
+    catalog = {
+      create: (i) => new CreateServiceUseCase(repository).execute(i),
+      findById: (id) => new FindServiceUseCase(repository).execute(id),
+      findAll: () => new ListServicesUseCase(repository).execute(),
+      update: (id, i) => new UpdateServiceUseCase(repository).execute(id, i),
+      delete: (id) => new DeleteServiceUseCase(repository).execute(id),
+    };
   });
 
   describe('create', () => {
@@ -46,12 +54,16 @@ describe('ServiceCatalogService', () => {
       expect(repository.create).toHaveBeenCalledTimes(1);
     });
 
-    it('recusa nome já usado', async () => {
+    it('recusa nome já usado com a mensagem de negócio', async () => {
       repository.findByName.mockResolvedValue(makeService());
 
       await expect(
         catalog.create({ name: 'Troca de óleo', price: 149.9 }),
-      ).rejects.toBeInstanceOf(ConflictException);
+      ).rejects.toMatchObject({
+        code: 'SERVICE_NAME_IN_USE',
+        kind: 'CONFLICT',
+        message: 'Já existe um serviço com esse nome',
+      });
       expect(repository.create).not.toHaveBeenCalled();
     });
 
@@ -70,12 +82,14 @@ describe('ServiceCatalogService', () => {
       await expect(catalog.findById(service.getId())).resolves.toBe(service);
     });
 
-    it('404 quando não existe', async () => {
+    it('SERVICE_NOT_FOUND quando não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(catalog.findById('missing')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(catalog.findById('missing')).rejects.toMatchObject({
+        code: 'SERVICE_NOT_FOUND',
+        kind: 'NOT_FOUND',
+        message: 'Serviço não encontrado',
+      });
     });
   });
 
@@ -130,16 +144,16 @@ describe('ServiceCatalogService', () => {
 
       await expect(
         catalog.update(service.getId(), { name: 'Alinhamento' }),
-      ).rejects.toBeInstanceOf(ConflictException);
+      ).rejects.toThrow(ServiceCatalogApplicationError);
       expect(repository.update).not.toHaveBeenCalled();
     });
 
-    it('404 quando o serviço não existe', async () => {
+    it('SERVICE_NOT_FOUND quando o serviço não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
       await expect(
         catalog.update('missing', { price: 10 }),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      ).rejects.toMatchObject({ code: 'SERVICE_NOT_FOUND' });
     });
   });
 
@@ -153,12 +167,12 @@ describe('ServiceCatalogService', () => {
       expect(repository.delete).toHaveBeenCalledWith(service.getId());
     });
 
-    it('404 quando o serviço não existe', async () => {
+    it('SERVICE_NOT_FOUND quando o serviço não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(catalog.delete('missing')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(catalog.delete('missing')).rejects.toMatchObject({
+        code: 'SERVICE_NOT_FOUND',
+      });
       expect(repository.delete).not.toHaveBeenCalled();
     });
   });

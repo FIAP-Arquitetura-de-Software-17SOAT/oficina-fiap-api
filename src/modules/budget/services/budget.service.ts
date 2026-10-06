@@ -23,7 +23,7 @@ import {
 } from '../dto/budget-webhook.dto';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
-import { ServiceController } from '../../service-catalog/controllers/service.controller';
+import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { PartController } from '../../stock/controllers/part.controller';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
@@ -57,7 +57,7 @@ export class BudgetService {
     private readonly clientRepository: ClientRepositoryPort,
     private readonly notifications: NotificationService,
     private readonly config: ConfigService,
-    private readonly serviceCatalogController: ServiceController,
+    private readonly findService: FindServiceUseCase,
     // forwardRef fecha o ciclo orçamento <-> estoque: o orçamento confere aqui a
     // peça que o item referencia, e o despacho de peças lê o orçamento aceito.
     @Inject(forwardRef(() => PartController))
@@ -478,7 +478,7 @@ export class BudgetService {
       items,
       (item) => item.serviceId,
     )) {
-      await this.serviceCatalogController.findById(serviceId);
+      await this.findService.execute(serviceId);
     }
   }
 

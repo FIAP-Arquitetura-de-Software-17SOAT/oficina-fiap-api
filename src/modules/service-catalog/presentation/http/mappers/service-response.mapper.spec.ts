@@ -1,8 +1,8 @@
-import { Service } from '../entities/service.entity';
-import { ServiceMapper } from './service.mapper';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../../../shared/domain/value-objects/money.vo';
+import { Service } from '../../../domain/entities/service.entity';
+import { ServiceResponseMapper } from './service-response.mapper';
 
-describe('ServiceMapper', () => {
+describe('ServiceResponseMapper', () => {
   it('devolve o preço em decimal, e não o Money', () => {
     const service = Service.create({
       name: 'Troca de óleo',
@@ -10,7 +10,7 @@ describe('ServiceMapper', () => {
       price: Money.fromDecimal(149.9),
     });
 
-    const response = ServiceMapper.toResponse(service);
+    const response = ServiceResponseMapper.toResponse(service);
 
     expect(response).toEqual({
       id: service.getId(),
@@ -28,7 +28,7 @@ describe('ServiceMapper', () => {
       price: Money.fromDecimal(80),
     });
 
-    expect(ServiceMapper.toResponse(service).description).toBeNull();
+    expect(ServiceResponseMapper.toResponse(service).description).toBeNull();
   });
 
   it('mapeia listas', () => {
@@ -37,9 +37,8 @@ describe('ServiceMapper', () => {
       Service.create({ name: 'B', price: Money.fromDecimal(20) }),
     ];
 
-    expect(ServiceMapper.toResponseList(services).map((s) => s.name)).toEqual([
-      'A',
-      'B',
-    ]);
+    expect(
+      ServiceResponseMapper.toResponseList(services).map((s) => s.name),
+    ).toEqual(['A', 'B']);
   });
 });

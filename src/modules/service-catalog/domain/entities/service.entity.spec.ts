@@ -1,6 +1,6 @@
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 import { Service } from './service.entity';
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
 
 describe('Service (entidade)', () => {
   it('cria o serviço normalizando nome e descrição e guardando o preço em centavos', () => {

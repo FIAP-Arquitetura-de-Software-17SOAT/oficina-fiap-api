@@ -5,7 +5,8 @@ import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
-import { ServiceController } from '../../service-catalog/controllers/service.controller';
+import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
+import { ServiceCatalogApplicationError } from '../../service-catalog/application/errors/service-catalog-application.error';
 import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
@@ -43,12 +44,12 @@ describe('ServiceOrderService', () => {
   let repository: MockedRepository;
   let clientRepository: MockedClientRepository;
   let findVehicle: { execute: jest.Mock };
-  let serviceCatalog: { findById: jest.Mock };
+  let serviceCatalog: { execute: jest.Mock };
   let partCatalog: { findById: jest.Mock };
   let notifications: { enqueue: jest.Mock };
 
   beforeEach(async () => {
-    serviceCatalog = { findById: jest.fn().mockResolvedValue({}) };
+    serviceCatalog = { execute: jest.fn().mockResolvedValue({}) };
     partCatalog = { findById: jest.fn().mockResolvedValue({}) };
     notifications = { enqueue: jest.fn().mockResolvedValue(undefined) };
     repository = {
@@ -82,7 +83,7 @@ describe('ServiceOrderService', () => {
         { provide: ServiceOrderRepository, useValue: repository },
         { provide: ClientRepositoryPort, useValue: clientRepository },
         { provide: FindVehicleUseCase, useValue: findVehicle },
-        { provide: ServiceController, useValue: serviceCatalog },
+        { provide: FindServiceUseCase, useValue: serviceCatalog },
         { provide: PART_CATALOG, useValue: partCatalog },
         { provide: NotificationService, useValue: notifications },
       ],
@@ -120,7 +121,7 @@ describe('ServiceOrderService', () => {
         parts: [{ partId: 'part-1', quantity: 4 }],
       });
 
-      expect(serviceCatalog.findById).toHaveBeenCalledWith('svc-1');
+      expect(serviceCatalog.execute).toHaveBeenCalledWith('svc-1');
       expect(partCatalog.findById).toHaveBeenCalledWith('part-1');
       expect(result.getRequestedServices()).toEqual([
         { serviceId: 'svc-1', quantity: 1 },
@@ -132,13 +133,13 @@ describe('ServiceOrderService', () => {
 
     it('não grava a OS quando um serviço pedido não existe', async () => {
       clientRepository.findById.mockResolvedValue(makeClient());
-      serviceCatalog.findById.mockRejectedValue(
-        new NotFoundException('Serviço não encontrado'),
+      serviceCatalog.execute.mockRejectedValue(
+        new ServiceCatalogApplicationError('SERVICE_NOT_FOUND'),
       );
 
       await expect(
         service.openServiceOrder({ ...dto, services: [{ serviceId: 'x' }] }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ServiceCatalogApplicationError);
       expect(repository.create).not.toHaveBeenCalled();
     });
 

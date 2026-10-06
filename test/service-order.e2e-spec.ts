@@ -15,7 +15,7 @@ import { ServiceOrder } from '../src/modules/service-order/entities/service-orde
 import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { allowAuthenticated } from './allow-authenticated';
-import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
+import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
 import { PartRepository } from '../src/modules/stock/repositories/part.repository';
 import { InMemoryPartRepository } from './in-memory-part.repository';
 import { InMemoryServiceRepository } from './in-memory-service.repository';
@@ -54,7 +54,7 @@ describe('ServiceOrder (integração)', () => {
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(serviceOrders)
-        .overrideProvider(ServiceRepository)
+        .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
         .overrideProvider(PartRepository)
         .useValue(parts),

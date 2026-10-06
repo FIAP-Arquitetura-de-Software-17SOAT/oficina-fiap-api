@@ -11,7 +11,7 @@ import {
   BudgetStatus,
 } from '../entities/budget.entity';
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
-import { ServiceController } from '../../service-catalog/controllers/service.controller';
+import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { PartController } from '../../stock/controllers/part.controller';
 import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
@@ -52,7 +52,7 @@ describe('BudgetService', () => {
     cancel: jest.Mock;
     findById: jest.Mock;
   };
-  let serviceCatalogController: { findById: jest.Mock };
+  let serviceCatalogController: { execute: jest.Mock };
   let partController: { findById: jest.Mock };
   let clientRepository: { findById: jest.Mock };
   let notifications: { enqueue: jest.Mock };
@@ -80,7 +80,7 @@ describe('BudgetService', () => {
         status: 'IN_DIAGNOSIS',
       }),
     };
-    serviceCatalogController = { findById: jest.fn() };
+    serviceCatalogController = { execute: jest.fn() };
     partController = { findById: jest.fn() };
     clientRepository = { findById: jest.fn() };
     notifications = { enqueue: jest.fn() };
@@ -95,7 +95,7 @@ describe('BudgetService', () => {
           useValue: serviceOrderController,
         },
         {
-          provide: ServiceController,
+          provide: FindServiceUseCase,
           useValue: serviceCatalogController,
         },
         { provide: PartController, useValue: partController },
@@ -984,7 +984,7 @@ describe('BudgetService', () => {
 });
 
 describe('BudgetService — referência ao catálogo de serviços', () => {
-  it('valida o serviço pelo controller do catálogo antes de criar', async () => {
+  it('valida o serviço pelo caso de uso do catálogo antes de criar', async () => {
     const { service, serviceCatalogController } = await makeSubject();
 
     await service.create({
@@ -1000,7 +1000,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       ],
     });
 
-    expect(serviceCatalogController.findById).toHaveBeenCalledWith('catalog-1');
+    expect(serviceCatalogController.execute).toHaveBeenCalledWith('catalog-1');
   });
 
   it('consulta cada serviço uma única vez, mesmo repetido', async () => {
@@ -1026,7 +1026,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       ],
     });
 
-    expect(serviceCatalogController.findById).toHaveBeenCalledTimes(1);
+    expect(serviceCatalogController.execute).toHaveBeenCalledTimes(1);
   });
 
   it('não consulta o catálogo quando nenhum item referencia serviço', async () => {
@@ -1044,13 +1044,13 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       ],
     });
 
-    expect(serviceCatalogController.findById).not.toHaveBeenCalled();
+    expect(serviceCatalogController.execute).not.toHaveBeenCalled();
   });
 
   it('propaga o 404 do catálogo quando o serviço não existe', async () => {
     const { service, serviceCatalogController, repository } =
       await makeSubject();
-    serviceCatalogController.findById.mockRejectedValue(
+    serviceCatalogController.execute.mockRejectedValue(
       new NotFoundException('Service not found'),
     );
 
@@ -1086,7 +1086,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       unitPrice: 80,
     });
 
-    expect(serviceCatalogController.findById).toHaveBeenCalledWith('catalog-1');
+    expect(serviceCatalogController.execute).toHaveBeenCalledWith('catalog-1');
   });
 
   async function makeSubject() {
@@ -1100,7 +1100,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
       updateGenerated: jest.fn((budget: Budget) => Promise.resolve(budget)),
       findLastVersionByServiceOrderId: jest.fn().mockResolvedValue(0),
     };
-    const serviceCatalogController = { findById: jest.fn() };
+    const serviceCatalogController = { execute: jest.fn() };
     const partController = { findById: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -1119,7 +1119,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
             }),
           },
         },
-        { provide: ServiceController, useValue: serviceCatalogController },
+        { provide: FindServiceUseCase, useValue: serviceCatalogController },
         { provide: PartController, useValue: partController },
         { provide: ClientRepositoryPort, useValue: { findById: jest.fn() } },
         { provide: NotificationService, useValue: { enqueue: jest.fn() } },

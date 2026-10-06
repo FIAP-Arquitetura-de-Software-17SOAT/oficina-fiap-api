@@ -70,7 +70,7 @@ O `kind` e uma categoria de negocio, nao um status HTTP. O caso de uso diz o que
 | --------------- | ------------------- | ------------------------------------------------------- |
 | Client          | migrado             | [Modulo Client](clean-architecture/modulo-client.md)    |
 | Vehicle         | migrado             | [Modulo Vehicle](clean-architecture/modulo-vehicle.md)  |
-| Service Catalog | layout legado       | —                                                       |
+| Service Catalog | migrado             | [Modulo Service Catalog](clean-architecture/modulo-service-catalog.md) |
 | Stock           | layout legado       | —                                                       |
 | Service Order   | layout legado       | —                                                       |
 | Budget          | layout legado       | —                                                       |
