@@ -7,9 +7,9 @@ import { AppModule } from '../src/app.module';
 import {
   Budget,
   BudgetItemType,
-} from '../src/modules/budget/entities/budget.entity';
+} from '../src/modules/budget/domain/entities/budget.entity';
 import { Money } from '../src/shared/domain/value-objects/money.vo';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
 import { NotificationRepositoryPort } from '../src/modules/notification/application/ports/notification-repository.port';
@@ -117,7 +117,7 @@ describe('Budget (e2e)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepositoryPort)
         .useValue(parts)
@@ -517,7 +517,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
     )
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(BudgetRepository)
+      .overrideProvider(BudgetRepositoryPort)
       .useValue(new InMemoryBudgetRepository())
       .overrideProvider(PartRepositoryPort)
       .useValue(new InMemoryPartRepository())

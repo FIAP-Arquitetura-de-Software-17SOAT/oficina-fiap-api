@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
@@ -45,7 +45,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepositoryPort)
         .useValue(parts)
@@ -264,7 +264,7 @@ describe('Orçamento x estoque (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepositoryPort)
         .useValue(parts)

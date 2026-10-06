@@ -1,9 +1,10 @@
 import {
   Budget,
   BudgetStatus,
-} from '../src/modules/budget/entities/budget.entity';
+} from '../src/modules/budget/domain/entities/budget.entity';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 
-export class InMemoryBudgetRepository {
+export class InMemoryBudgetRepository implements BudgetRepositoryPort {
   private readonly budgets = new Map<string, Budget>();
 
   create(budget: Budget): Promise<Budget> {

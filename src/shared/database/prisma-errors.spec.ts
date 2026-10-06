@@ -51,6 +51,19 @@ describe('prisma-errors', () => {
       ).toEqual(['client_email_key']);
     });
 
+    it('lê as colunas do driver adapter quando não há target', () => {
+      expect(
+        uniqueViolationFields({
+          code: 'P2002',
+          meta: {
+            driverAdapterError: {
+              cause: { constraint: { fields: ['serviceOrderId', 'version'] } },
+            },
+          },
+        }),
+      ).toEqual(['serviceOrderId', 'version']);
+    });
+
     it('descarta entradas do array que não são string', () => {
       expect(
         uniqueViolationFields({

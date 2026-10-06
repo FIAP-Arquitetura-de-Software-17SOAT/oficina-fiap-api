@@ -1,21 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { ListBudgetsByServiceOrderUseCase } from '../../../budget/application/use-cases/list-budgets-by-service-order.use-case';
 import {
   BudgetItemType,
   BudgetStatus,
-} from '../../../budget/entities/budget.entity';
-import { BudgetService } from '../../../budget/services/budget.service';
+} from '../../../budget/domain/entities/budget.entity';
 import {
   AcceptedBudget,
   AcceptedBudgetsPort,
 } from '../../application/ports/accepted-budgets.port';
 
-/** Fala com o módulo de orçamento (ainda legado) e devolve só o que a porta pede. */
+/** Fala com o módulo de orçamento e devolve só o que a porta pede. */
 @Injectable()
 export class BudgetAdapter implements AcceptedBudgetsPort {
-  constructor(private readonly budgets: BudgetService) {}
+  constructor(
+    private readonly listBudgetsByServiceOrder: ListBudgetsByServiceOrderUseCase,
+  ) {}
 
   async findAccepted(serviceOrderId: string): Promise<AcceptedBudget[]> {
-    const budgets = await this.budgets.findByServiceOrderId(serviceOrderId);
+    const budgets =
+      await this.listBudgetsByServiceOrder.execute(serviceOrderId);
 
     return budgets
       .filter((budget) => budget.getStatus() === BudgetStatus.ACCEPTED)

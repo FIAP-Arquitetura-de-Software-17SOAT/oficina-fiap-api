@@ -7,7 +7,11 @@
 
 interface PrismaKnownError {
   code?: string;
-  meta?: { target?: unknown };
+  meta?: {
+    target?: unknown;
+    /** Forma do erro quando o Prisma roda com driver adapter (pg). */
+    driverAdapterError?: { cause?: { constraint?: { fields?: unknown } } };
+  };
 }
 
 function asKnownError(error: unknown): PrismaKnownError | null {
@@ -29,7 +33,9 @@ export function isForeignKeyViolation(error: unknown): boolean {
  * duplicou em tabelas com mais de uma constraint única.
  */
 export function uniqueViolationFields(error: unknown): string[] {
-  const target = asKnownError(error)?.meta?.target;
+  const meta = asKnownError(error)?.meta;
+  const target =
+    meta?.target ?? meta?.driverAdapterError?.cause?.constraint?.fields;
 
   if (Array.isArray(target)) {
     return target.filter((field): field is string => typeof field === 'string');
