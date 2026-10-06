@@ -1,4 +1,4 @@
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 import { Plate } from './plate.vo';
 
 describe('Plate', () => {

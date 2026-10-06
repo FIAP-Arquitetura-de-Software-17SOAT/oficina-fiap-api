@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Vehicle } from '../entities/vehicle.entity';
-import { VehicleService } from '../services/vehicle.service';
+import { Vehicle } from '../../domain/entities/vehicle.entity';
+import { CreateVehicleUseCase } from '../../application/use-cases/create-vehicle.use-case';
+import { FindVehicleUseCase } from '../../application/use-cases/find-vehicle.use-case';
+import { ListVehiclesUseCase } from '../../application/use-cases/list-vehicles.use-case';
+import { UpdateVehicleUseCase } from '../../application/use-cases/update-vehicle.use-case';
+import { DeleteVehicleUseCase } from '../../application/use-cases/delete-vehicle.use-case';
 import { VehicleController } from './vehicle.controller';
 
 const CLIENT_ID = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
@@ -35,7 +39,28 @@ describe('VehicleController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [VehicleController],
-      providers: [{ provide: VehicleService, useValue: service }],
+      providers: [
+        {
+          provide: CreateVehicleUseCase,
+          useValue: { execute: service.create },
+        },
+        {
+          provide: FindVehicleUseCase,
+          useValue: { execute: service.findById },
+        },
+        {
+          provide: ListVehiclesUseCase,
+          useValue: { execute: service.findAll },
+        },
+        {
+          provide: UpdateVehicleUseCase,
+          useValue: { execute: service.update },
+        },
+        {
+          provide: DeleteVehicleUseCase,
+          useValue: { execute: service.delete },
+        },
+      ],
     }).compile();
 
     controller = module.get<VehicleController>(VehicleController);

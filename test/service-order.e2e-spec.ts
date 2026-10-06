@@ -10,7 +10,7 @@ import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { ServiceOrder } from '../src/modules/service-order/entities/service-order.entity';
 import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
@@ -50,7 +50,7 @@ describe('ServiceOrder (integração)', () => {
         .useValue({})
         .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(serviceOrders)

@@ -1,4 +1,4 @@
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 import { ModelYear } from './model-year.vo';
 
 const anoAtual = new Date().getFullYear();

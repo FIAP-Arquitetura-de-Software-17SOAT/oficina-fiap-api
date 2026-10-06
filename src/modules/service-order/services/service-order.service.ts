@@ -10,7 +10,7 @@ import { ClientRepositoryPort } from '../../client/application/ports/client-repo
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
-import { VehicleController } from '../../vehicle/controllers/vehicle.controller';
+import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import {
   AssignMechanicDto,
   CancelServiceOrderDto,
@@ -34,7 +34,7 @@ export class ServiceOrderService {
   constructor(
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly clientRepository: ClientRepositoryPort,
-    private readonly vehicleController: VehicleController,
+    private readonly findVehicle: FindVehicleUseCase,
     private readonly serviceCatalogController: ServiceController,
     @Inject(PART_CATALOG)
     private readonly partCatalog: PartCatalog,
@@ -50,9 +50,9 @@ export class ServiceOrderService {
 
     // O veículo precisa existir e ser do cliente da OS. Sem isso dá para abrir
     // ordem de serviço do cliente A com o carro do cliente B.
-    const vehicle = await this.vehicleController.findById(dto.vehicleId);
+    const vehicle = await this.findVehicle.execute(dto.vehicleId);
 
-    if (vehicle.clientId !== dto.clientId) {
+    if (vehicle.getClientId() !== dto.clientId) {
       throw new BadRequestException(
         'Vehicle does not belong to the informed client',
       );

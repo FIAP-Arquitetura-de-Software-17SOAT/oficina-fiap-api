@@ -1,10 +1,13 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { DomainException } from '../../../shared/domain/domain.exception';
-import { FindClientUseCase } from '../../client/application/use-cases/find-client.use-case';
-import { Vehicle } from '../entities/vehicle.entity';
-import { VehicleRepository } from '../repositories/vehicle.repository';
-import { VehicleService } from './vehicle.service';
+import { DomainException } from '../../../../shared/domain/domain.exception';
+import { Vehicle } from '../../domain/entities/vehicle.entity';
+import { VehicleApplicationError } from '../errors/vehicle-application.error';
+import { ClientLookupPort } from '../ports/client-lookup.port';
+import { VehicleRepositoryPort } from '../ports/vehicle-repository.port';
+import { CreateVehicleUseCase } from './create-vehicle.use-case';
+import { DeleteVehicleUseCase } from './delete-vehicle.use-case';
+import { FindVehicleUseCase } from './find-vehicle.use-case';
+import { ListVehiclesUseCase } from './list-vehicles.use-case';
+import { UpdateVehicleUseCase } from './update-vehicle.use-case';
 
 const CLIENT_ID = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
@@ -17,12 +20,21 @@ const makeVehicle = (plate = 'ABC1D23') =>
     year: 2022,
   });
 
-describe('VehicleService', () => {
-  let service: VehicleService;
-  let repository: { [K in keyof VehicleRepository]: jest.Mock };
-  let findClient: { execute: jest.Mock };
+type MockedRepository = { [K in keyof VehicleRepositoryPort]: jest.Mock };
+type MockedClients = { [K in keyof ClientLookupPort]: jest.Mock };
 
-  const dto = {
+describe('Vehicle use cases without Nest', () => {
+  let repository: MockedRepository;
+  let clients: MockedClients;
+  let service: {
+    create: CreateVehicleUseCase['execute'];
+    findById: FindVehicleUseCase['execute'];
+    findAll: ListVehiclesUseCase['execute'];
+    update: UpdateVehicleUseCase['execute'];
+    delete: DeleteVehicleUseCase['execute'];
+  };
+
+  const input = {
     clientId: CLIENT_ID,
     plate: 'abc-1d23',
     brand: 'Fiat',
@@ -30,7 +42,7 @@ describe('VehicleService', () => {
     year: 2022,
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -39,64 +51,66 @@ describe('VehicleService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    findClient = { execute: jest.fn() };
+    clients = { exists: jest.fn().mockResolvedValue(true) };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        VehicleService,
-        { provide: VehicleRepository, useValue: repository },
-        { provide: FindClientUseCase, useValue: findClient },
-      ],
-    }).compile();
-
-    service = module.get<VehicleService>(VehicleService);
+    service = {
+      create: (i) => new CreateVehicleUseCase(repository, clients).execute(i),
+      findById: (id) => new FindVehicleUseCase(repository).execute(id),
+      findAll: (clientId) =>
+        new ListVehiclesUseCase(repository, clients).execute(clientId),
+      update: (id, i) => new UpdateVehicleUseCase(repository).execute(id, i),
+      delete: (id) => new DeleteVehicleUseCase(repository).execute(id),
+    };
   });
 
   describe('create', () => {
     it('persiste o veículo quando cliente existe e placa está livre', async () => {
-      findClient.execute.mockResolvedValue({});
       repository.findByPlate.mockResolvedValue(null);
       repository.create.mockImplementation((v: Vehicle) => v);
 
-      const created = await service.create(dto);
+      const created = await service.create(input);
 
       expect(created.getPlate().getValue()).toBe('ABC1D23');
       expect(repository.create).toHaveBeenCalledTimes(1);
     });
 
     it('consulta a placa já normalizada, sem máscara', async () => {
-      findClient.execute.mockResolvedValue({});
       repository.findByPlate.mockResolvedValue(null);
       repository.create.mockImplementation((v: Vehicle) => v);
 
-      await service.create(dto);
+      await service.create(input);
 
       expect(repository.findByPlate).toHaveBeenCalledWith('ABC1D23');
     });
 
     it('recusa quando o cliente não existe, sem gravar veículo órfão', async () => {
-      findClient.execute.mockRejectedValue(
-        new NotFoundException('Client not found'),
-      );
+      clients.exists.mockResolvedValue(false);
 
-      await expect(service.create(dto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(input)).rejects.toMatchObject({
+        code: 'CLIENT_NOT_FOUND',
+        kind: 'NOT_FOUND',
+        message: 'Client not found',
+      });
+      expect(repository.findByPlate).not.toHaveBeenCalled();
       expect(repository.create).not.toHaveBeenCalled();
     });
 
     it('recusa placa já cadastrada', async () => {
-      findClient.execute.mockResolvedValue({});
       repository.findByPlate.mockResolvedValue(makeVehicle());
 
-      await expect(service.create(dto)).rejects.toThrow(ConflictException);
+      await expect(service.create(input)).rejects.toMatchObject({
+        code: 'VEHICLE_ALREADY_EXISTS',
+        kind: 'CONFLICT',
+      });
       expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it('recusa placa inválida antes de tocar no banco', async () => {
+    it('recusa placa inválida antes de tocar em qualquer porta', async () => {
       await expect(
-        service.create({ ...dto, plate: 'ABCD123' }),
+        service.create({ ...input, plate: 'ABCD123' }),
       ).rejects.toThrow(DomainException);
 
-      expect(findClient.execute).not.toHaveBeenCalled();
+      expect(clients.exists).not.toHaveBeenCalled();
       expect(repository.findByPlate).not.toHaveBeenCalled();
     });
   });
@@ -109,12 +123,13 @@ describe('VehicleService', () => {
       await expect(service.findById(vehicle.getId())).resolves.toBe(vehicle);
     });
 
-    it('lança NotFound quando não existe', async () => {
+    it('lança VEHICLE_NOT_FOUND quando não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('inexistente')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findById('inexistente')).rejects.toMatchObject({
+        code: 'VEHICLE_NOT_FOUND',
+        message: 'Vehicle not found',
+      });
     });
   });
 
@@ -124,27 +139,24 @@ describe('VehicleService', () => {
       repository.findAll.mockResolvedValue(vehicles);
 
       await expect(service.findAll()).resolves.toBe(vehicles);
-      expect(findClient.execute).not.toHaveBeenCalled();
+      expect(clients.exists).not.toHaveBeenCalled();
       expect(repository.findAll).toHaveBeenCalledWith(undefined);
     });
 
     it('filtra por cliente e valida que ele existe', async () => {
-      findClient.execute.mockResolvedValue({});
       repository.findAll.mockResolvedValue([]);
 
       await service.findAll(CLIENT_ID);
 
-      expect(findClient.execute).toHaveBeenCalledWith(CLIENT_ID);
+      expect(clients.exists).toHaveBeenCalledWith(CLIENT_ID);
       expect(repository.findAll).toHaveBeenCalledWith(CLIENT_ID);
     });
 
-    it('lança NotFound ao filtrar por cliente inexistente', async () => {
-      findClient.execute.mockRejectedValue(
-        new NotFoundException('Client not found'),
-      );
+    it('lança CLIENT_NOT_FOUND ao filtrar por cliente inexistente', async () => {
+      clients.exists.mockResolvedValue(false);
 
       await expect(service.findAll(CLIENT_ID)).rejects.toThrow(
-        NotFoundException,
+        VehicleApplicationError,
       );
       expect(repository.findAll).not.toHaveBeenCalled();
     });
@@ -191,12 +203,12 @@ describe('VehicleService', () => {
       expect(updated.getYear().getValue()).toBe(1900);
     });
 
-    it('lança NotFound quando o veículo não existe', async () => {
+    it('lança VEHICLE_NOT_FOUND quando o veículo não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
       await expect(
         service.update('inexistente', { brand: 'X' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(VehicleApplicationError);
     });
 
     it('propaga erro de domínio em ano inválido', async () => {
@@ -219,11 +231,11 @@ describe('VehicleService', () => {
       expect(repository.delete).toHaveBeenCalledWith(vehicle.getId());
     });
 
-    it('lança NotFound e não remove quando não existe', async () => {
+    it('lança VEHICLE_NOT_FOUND e não remove quando não existe', async () => {
       repository.findById.mockResolvedValue(null);
 
       await expect(service.delete('inexistente')).rejects.toThrow(
-        NotFoundException,
+        VehicleApplicationError,
       );
       expect(repository.delete).not.toHaveBeenCalled();
     });

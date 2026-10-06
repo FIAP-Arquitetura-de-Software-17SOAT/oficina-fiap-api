@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
@@ -34,7 +34,7 @@ describe('Vehicle (integração)', () => {
         .useValue({})
         .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository()),
     ).compile();
 

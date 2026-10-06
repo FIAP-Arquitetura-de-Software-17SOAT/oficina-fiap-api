@@ -28,11 +28,15 @@ import {
   ListVehicleQueryDto,
   UpdateVehicleDto,
   VehicleResponseDto,
-} from '../dto/vehicle.dto';
-import { VehicleMapper } from '../mappers/vehicle.mapper';
-import { VehicleService } from '../services/vehicle.service';
-import { Role } from '../../../../generated/prisma/enums';
-import { Roles } from '../../../shared/http/auth/roles.decorator';
+} from './dto/vehicle.dto';
+import { VehicleResponseMapper } from './mappers/vehicle-response.mapper';
+import { CreateVehicleUseCase } from '../../application/use-cases/create-vehicle.use-case';
+import { FindVehicleUseCase } from '../../application/use-cases/find-vehicle.use-case';
+import { ListVehiclesUseCase } from '../../application/use-cases/list-vehicles.use-case';
+import { UpdateVehicleUseCase } from '../../application/use-cases/update-vehicle.use-case';
+import { DeleteVehicleUseCase } from '../../application/use-cases/delete-vehicle.use-case';
+import { Role } from '../../../../../generated/prisma/enums';
+import { Roles } from '../../../../shared/http/auth/roles.decorator';
 
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
@@ -40,7 +44,13 @@ import { Roles } from '../../../shared/http/auth/roles.decorator';
 @ApiTags('vehicles')
 @Controller('vehicles')
 export class VehicleController {
-  constructor(private readonly vehicleService: VehicleService) {}
+  constructor(
+    private readonly createVehicle: CreateVehicleUseCase,
+    private readonly findVehicle: FindVehicleUseCase,
+    private readonly listVehicles: ListVehiclesUseCase,
+    private readonly updateVehicle: UpdateVehicleUseCase,
+    private readonly deleteVehicle: DeleteVehicleUseCase,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Cadastra um veículo' })
@@ -49,7 +59,9 @@ export class VehicleController {
   @ApiNotFoundResponse({ description: 'Client not found' })
   @ApiConflictResponse({ description: 'Vehicle already exists' })
   async create(@Body() dto: CreateVehicleDto): Promise<VehicleResponseDto> {
-    return VehicleMapper.toResponse(await this.vehicleService.create(dto));
+    return VehicleResponseMapper.toResponse(
+      await this.createVehicle.execute(dto),
+    );
   }
 
   @Get()
@@ -59,8 +71,8 @@ export class VehicleController {
   async findAll(
     @Query() query: ListVehicleQueryDto,
   ): Promise<VehicleResponseDto[]> {
-    return VehicleMapper.toResponseList(
-      await this.vehicleService.findAll(query.clientId),
+    return VehicleResponseMapper.toResponseList(
+      await this.listVehicles.execute(query.clientId),
     );
   }
 
@@ -71,7 +83,7 @@ export class VehicleController {
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<VehicleResponseDto> {
-    return VehicleMapper.toResponse(await this.vehicleService.findById(id));
+    return VehicleResponseMapper.toResponse(await this.findVehicle.execute(id));
   }
 
   @Patch(':id')
@@ -83,7 +95,9 @@ export class VehicleController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateVehicleDto,
   ): Promise<VehicleResponseDto> {
-    return VehicleMapper.toResponse(await this.vehicleService.update(id, dto));
+    return VehicleResponseMapper.toResponse(
+      await this.updateVehicle.execute(id, dto),
+    );
   }
 
   @Delete(':id')
@@ -92,6 +106,6 @@ export class VehicleController {
   @ApiNoContentResponse({ description: 'Veículo removido' })
   @ApiNotFoundResponse({ description: 'Vehicle not found' })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.vehicleService.delete(id);
+    await this.deleteVehicle.execute(id);
   }
 }

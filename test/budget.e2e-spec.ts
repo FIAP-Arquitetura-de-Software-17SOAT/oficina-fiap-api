@@ -14,7 +14,7 @@ import { NotificationType } from '../src/modules/notification/enums/notification
 import { NotificationRepository } from '../src/modules/notification/repositories/notification.repository';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PartRepository } from '../src/modules/stock/repositories/part.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
@@ -122,7 +122,7 @@ describe('Budget (e2e)', () => {
         .useValue(parts)
         .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(new InMemoryServiceOrderRepository())
@@ -522,7 +522,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
       .useValue(new InMemoryPartRepository())
       .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
-      .overrideProvider(VehicleRepository)
+      .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
       .overrideProvider(ServiceOrderRepository)
       .useValue(new InMemoryServiceOrderRepository())

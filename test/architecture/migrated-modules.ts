@@ -2,6 +2,6 @@
  * Módulos que já seguem Clean Architecture e por isso passam pelo teste de
  * fronteira de imports. Cada PR de migração acrescenta o seu módulo aqui.
  */
-export const MIGRATED_MODULES = ['client'] as const;
+export const MIGRATED_MODULES = ['client', 'vehicle'] as const;
 
 export type MigratedModule = (typeof MIGRATED_MODULES)[number];

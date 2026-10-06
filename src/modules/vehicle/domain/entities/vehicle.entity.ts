@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 import { ModelYear } from '../value-objects/model-year.vo';
 import { Plate } from '../value-objects/plate.vo';
 

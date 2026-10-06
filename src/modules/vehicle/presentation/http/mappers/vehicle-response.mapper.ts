@@ -1,12 +1,12 @@
 import { VehicleResponseDto } from '../dto/vehicle.dto';
-import { Vehicle } from '../entities/vehicle.entity';
+import { Vehicle } from '../../../domain/entities/vehicle.entity';
 
 /**
  * Desembrulha os Value Objects na fronteira HTTP. Sem esse passo a entidade
  * serializaria `{ "plate": { "value": "..." } }` e o contrato do Swagger
  * deixaria de bater com a resposta real.
  */
-export class VehicleMapper {
+export class VehicleResponseMapper {
   static toResponse(vehicle: Vehicle): VehicleResponseDto {
     return {
       id: vehicle.getId(),
@@ -21,6 +21,6 @@ export class VehicleMapper {
   }
 
   static toResponseList(vehicles: Vehicle[]): VehicleResponseDto[] {
-    return vehicles.map((vehicle) => VehicleMapper.toResponse(vehicle));
+    return vehicles.map((vehicle) => VehicleResponseMapper.toResponse(vehicle));
   }
 }

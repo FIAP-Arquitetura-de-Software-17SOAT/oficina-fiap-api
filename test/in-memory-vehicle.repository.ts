@@ -1,10 +1,11 @@
-import { Vehicle } from '../src/modules/vehicle/entities/vehicle.entity';
+import { Vehicle } from '../src/modules/vehicle/domain/entities/vehicle.entity';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 
 /**
  * Substitui o Prisma nos testes de integração do módulo de veículos.
  * Ver `in-memory-client.repository.ts` para o racional.
  */
-export class InMemoryVehicleRepository {
+export class InMemoryVehicleRepository implements VehicleRepositoryPort {
   private readonly vehicles = new Map<string, Vehicle>();
 
   create(vehicle: Vehicle): Promise<Vehicle> {

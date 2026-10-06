@@ -1,7 +1,7 @@
-import { ConflictException } from '@nestjs/common';
-import { PrismaService } from '../../../shared/database/prisma.service';
-import { Vehicle } from '../entities/vehicle.entity';
-import { VehicleRepository } from './vehicle.repository';
+import { PrismaService } from '../../../../shared/database/prisma.service';
+import { VehicleApplicationError } from '../../application/errors/vehicle-application.error';
+import { Vehicle } from '../../domain/entities/vehicle.entity';
+import { PrismaVehicleRepository } from './prisma-vehicle.repository';
 
 const CLIENT_ID = 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
 
@@ -25,8 +25,8 @@ const makeVehicle = (plate = 'abc-1d23') =>
     year: 2022,
   });
 
-describe('VehicleRepository', () => {
-  let repository: VehicleRepository;
+describe('PrismaVehicleRepository', () => {
+  let repository: PrismaVehicleRepository;
   let prisma: {
     vehicle: {
       create: jest.Mock;
@@ -48,7 +48,9 @@ describe('VehicleRepository', () => {
       },
     };
 
-    repository = new VehicleRepository(prisma as unknown as PrismaService);
+    repository = new PrismaVehicleRepository(
+      prisma as unknown as PrismaService,
+    );
   });
 
   it('desembrulha os Value Objects ao gravar', async () => {
@@ -72,8 +74,12 @@ describe('VehicleRepository', () => {
       meta: { target: ['plate'] },
     });
 
-    await expect(repository.create(makeVehicle())).rejects.toThrow(
-      ConflictException,
+    await expect(repository.create(makeVehicle())).rejects.toMatchObject({
+      code: 'VEHICLE_ALREADY_EXISTS',
+      kind: 'CONFLICT',
+    });
+    await expect(repository.create(makeVehicle())).rejects.toBeInstanceOf(
+      VehicleApplicationError,
     );
   });
 

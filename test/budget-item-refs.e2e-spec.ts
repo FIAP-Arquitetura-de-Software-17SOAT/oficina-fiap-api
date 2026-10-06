@@ -8,7 +8,7 @@ import { ClientRepositoryPort } from '../src/modules/client/application/ports/cl
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PartRepository } from '../src/modules/stock/repositories/part.repository';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
@@ -50,7 +50,7 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
         .useValue(parts)
         .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(new InMemoryServiceOrderRepository())
@@ -269,7 +269,7 @@ describe('Orçamento x estoque (integração)', () => {
         .useValue(parts)
         .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(new InMemoryServiceOrderRepository())
