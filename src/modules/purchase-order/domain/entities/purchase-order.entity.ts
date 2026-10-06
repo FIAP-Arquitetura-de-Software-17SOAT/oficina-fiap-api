@@ -6,9 +6,9 @@ import { PurchaseOrderStatus } from '../enums/purchase-order-status.enum';
 
 import { PurchaseOrderNumber } from '../value-objects/purchase-order-number.vo';
 
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
 
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 
 export interface PurchaseOrderProps {
   id?: string;

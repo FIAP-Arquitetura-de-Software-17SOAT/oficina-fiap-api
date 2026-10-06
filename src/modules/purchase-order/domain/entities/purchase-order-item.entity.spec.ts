@@ -1,8 +1,8 @@
 import { PurchaseOrderItem } from './purchase-order-item.entity';
 
-import { Money } from '../../../shared/domain/value-objects/money.vo';
+import { Money } from '../../../../shared/domain/value-objects/money.vo';
 
-import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
+import { Quantity } from '../../../../shared/domain/value-objects/quantity.vo';
 
 describe('PurchaseOrderItem', () => {
   it('should create a purchase order item', () => {
