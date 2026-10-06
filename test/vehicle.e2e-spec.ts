@@ -2,9 +2,10 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
@@ -32,9 +33,9 @@ describe('Vehicle (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository()),
     ).compile();
 
@@ -42,7 +43,7 @@ describe('Vehicle (integração)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     const { body } = await request(http)
       .post('/api/v1/clients')

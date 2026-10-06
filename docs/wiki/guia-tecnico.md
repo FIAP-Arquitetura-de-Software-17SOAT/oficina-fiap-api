@@ -138,6 +138,8 @@ O projeto e um monolito NestJS organizado por modulos de dominio. Cada modulo se
 | `mappers/`       | Conversao entre dominio, persistencia e API |
 | `dto/`           | Validacao e contrato Swagger                |
 
+> A migracao dos modulos para Clean Architecture (Fase 2) esta documentada em [migracao-clean-architecture.md](migracao-clean-architecture.md). O modulo `client` ja segue o layout novo; os demais continuam no layout acima ate serem migrados.
+
 Sao sete os agregados de negocio implementados: **Cliente**, **Veiculo**, **Ordem de Servico**, **Orcamento**, **Peca**, **Pedido de Compra** e **Cobranca**. Autenticacao e notificacao sao modulos transversais.
 
 > **Estoque e o contexto, nao o agregado.** O agregado operacional e a **Peca** (`Part`) e a **Movimentacao de estoque** (`StockMovement`) e o registro da entrada ou da saida. Por isso o recurso HTTP e `/api/v1/parts`, enquanto a pasta do modulo continua `src/modules/stock`: ela representa o contexto Estoque e Compras, que abriga os dois.
@@ -168,6 +170,10 @@ O vocabulario do projeto e o mapeamento entre termo de negocio e identificador n
 - **Cliente e `Client`.** `Customer` nao e sinonimo aceito, nem em metodo nem em exemplo de Swagger.
 - **Nomeie pelo conceito, nao pelo formato.** `Document` aceita CPF e CNPJ; chamar a classe de `CpfCnpj` nomearia a validacao em vez do conceito.
 - Ao escrever texto: **Ordem de Servico** na primeira ocorrencia e **OS** nas seguintes; evitar "pedido" sozinho, que confunde OS com Pedido de Compra. Evento em participio (`Orcamento gerado`), comando em infinitivo (`Gerar orcamento`).
+
+### Testes e2e
+
+Toda suite em `test/*.e2e-spec.ts` obtem o server HTTP por `listenOnLoopback(app)` (`test/listen-on-loopback.ts`), e nao por `app.getHttpServer()` direto. O helper abre o server em `127.0.0.1` antes de entrega-lo ao `supertest`. Sem isso o `supertest` faz `listen(0)` em `::` e, no macOS, pode receber uma porta efemera ja ocupada em `127.0.0.1` por outro processo (VS Code, Postman, OrbStack); a requisicao cai no processo errado e o teste falha de forma intermitente com 404 vazio, 401, `ECONNRESET` ou timeout. Ao criar uma suite nova, use o helper.
 
 ## Decisoes de modelagem
 

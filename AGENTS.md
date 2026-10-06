@@ -7,7 +7,7 @@ and Swagger.
 
 ## Workflow
 
-- Prefer following existing module patterns under `src/modules/client`.
+- Prefer following the Clean Architecture pattern under `src/modules/client`.
 - For implementation plans in `docs/superpowers/plans`, use
   `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
 - Follow TDD when a plan asks for failing tests first.
@@ -29,21 +29,45 @@ and Swagger.
 This project follows a modular NestJS architecture organized by business
 capability.
 
-Each domain module should keep this shape:
+Every module under `src/modules` follows Clean Architecture (the `client`
+module was the reference during the migration):
 
-- `entities/`: domain model, invariants, state transitions, and value behavior.
-- `dto/`: request and response contracts, validation, and Swagger metadata.
-- `mappers/`: conversions between domain, persistence records, and API
-  responses.
-- `repositories/`: Prisma persistence access.
-- `services/`: application use cases and orchestration.
-- `controllers/`: HTTP routing only.
-- `<feature>.module.ts`: Nest module wiring.
+- `domain/entities/`, `domain/value-objects/`, `domain/enums/`: business rules,
+  without Nest, HTTP, Prisma, or application dependencies.
+- `application/use-cases/`: pure use cases exposing `execute`, with typed
+  inputs/results in `application/contracts/`. Code shared by several use cases
+  of the same module lives in `application/services/`.
+- `application/ports/`: framework-independent persistence and integration
+  contracts; application depends on these, never concrete adapters. A module
+  never imports another module's `application/`: it declares a narrow port and
+  an adapter in `infrastructure/integrations/` calls the other module's
+  exported use case.
+- `application/errors/`: `<Module>ApplicationError extends ApplicationError`
+  (`src/shared/application`) with typed codes and a semantic `kind`; the single
+  global `ApplicationExceptionFilter` (`src/shared/http/filters`) maps `kind` to
+  the HTTP status. Modules never define their own HTTP filter.
+- `infrastructure/persistence/`: Prisma repository and persistence mapper.
+- `infrastructure/<integrations|notifications|payment|jwt|...>/`: adapters for
+  the ports (other modules' use cases, e-mail templates, Stripe, JWT).
+- `presentation/http/`: controllers, DTOs and response mappers.
+- `<feature>.module.ts`: Nest composition through providers and factories; a
+  module exports only use cases.
+
+`src/shared/identity` (users, refresh sessions, password hashing) has the same
+layers and exposes only ports through `IdentityModule`.
+
+Use cases are tested through direct instantiation with fake ports. Keep DTO
+validation/Swagger at the HTTP boundary. Preserve the existing API contracts.
+`src/architecture.spec.ts` (with `test/architecture/`) enforces the import
+boundaries for every module under `src/modules` (domain and application
+framework-free; infrastructure and presentation reach other modules only
+through their `domain/` and `application/`), checks `shared/`, and requires
+the module graph to be acyclic without `forwardRef`.
 
 Controllers should stay thin. They handle routing concerns and delegate to
-services.
+use cases.
 
-Services should coordinate use cases, load aggregates through repositories,
+Use cases coordinate operations, load aggregates through repository ports,
 call domain behavior, and persist changes.
 
 Entities should own business rules. State transitions, invariants, immutable

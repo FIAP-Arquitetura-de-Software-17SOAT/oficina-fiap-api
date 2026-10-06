@@ -1,14 +1,31 @@
 import { Module } from '@nestjs/common';
-import { ServiceController } from './controllers/service.controller';
-import { ServiceRepository } from './repositories/service.repository';
-import { ServiceCatalogService } from './services/service-catalog.service';
+import { ServiceController } from './presentation/http/service.controller';
+import { ServiceRepositoryPort } from './application/ports/service-repository.port';
+import { CreateServiceUseCase } from './application/use-cases/create-service.use-case';
+import { FindServiceUseCase } from './application/use-cases/find-service.use-case';
+import { ListServicesUseCase } from './application/use-cases/list-services.use-case';
+import { UpdateServiceUseCase } from './application/use-cases/update-service.use-case';
+import { DeleteServiceUseCase } from './application/use-cases/delete-service.use-case';
+import { PrismaServiceRepository } from './infrastructure/persistence/prisma-service.repository';
 
 @Module({
-  // O controller também entra em providers/exports porque é ele a porta de
-  // entrada do agregado para os outros módulos, conforme a convenção do
-  // projeto — nunca o service nem o repositório.
   controllers: [ServiceController],
-  providers: [ServiceController, ServiceCatalogService, ServiceRepository],
-  exports: [ServiceController, ServiceCatalogService, ServiceRepository],
+  providers: [
+    { provide: ServiceRepositoryPort, useClass: PrismaServiceRepository },
+    ...[
+      CreateServiceUseCase,
+      FindServiceUseCase,
+      ListServicesUseCase,
+      UpdateServiceUseCase,
+      DeleteServiceUseCase,
+    ].map((useCase) => ({
+      provide: useCase,
+      useFactory: (services: ServiceRepositoryPort) => new useCase(services),
+      inject: [ServiceRepositoryPort],
+    })),
+  ],
+  // Só o caso de uso que os outros módulos precisam: conferir que um serviço
+  // do catálogo existe antes de referenciá-lo numa OS ou num orçamento.
+  exports: [FindServiceUseCase],
 })
 export class ServiceCatalogModule {}

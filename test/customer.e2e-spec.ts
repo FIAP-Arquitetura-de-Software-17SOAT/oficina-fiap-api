@@ -3,22 +3,22 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
-import { User } from '../src/shared/identity/entities/user.entity';
-import { RefreshSessionRepository } from '../src/shared/identity/repositories/refresh-session.repository';
-import { UserRepository } from '../src/shared/identity/repositories/user.repository';
-import { PasswordHashService } from '../src/shared/identity/services/password-hash.service';
+import { User } from '../src/shared/identity/domain/entities/user.entity';
+import { RefreshSessionRepositoryPort } from '../src/shared/identity/application/ports/refresh-session-repository.port';
+import { UserRepositoryPort } from '../src/shared/identity/application/ports/user-repository.port';
+import { BcryptPasswordHasher } from '../src/shared/identity/infrastructure/security/bcrypt-password-hasher';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import {
-  InMemoryIdentityPrisma,
   InMemoryRefreshSessionRepository,
   InMemoryUserRepository,
 } from './in-memory-identity.repository';
@@ -44,7 +44,7 @@ describe('CUSTOMER (e2e)', () => {
   let joaoOrderId: string;
 
   beforeEach(async () => {
-    const passwordHash = new PasswordHashService();
+    const passwordHash = new BcryptPasswordHasher();
     const users = new InMemoryUserRepository();
     const sessions = new InMemoryRefreshSessionRepository();
     users.reset([
@@ -59,28 +59,28 @@ describe('CUSTOMER (e2e)', () => {
       imports: [AppModule],
     })
       .overrideProvider(PrismaService)
-      .useValue(new InMemoryIdentityPrisma(sessions.sessions))
-      .overrideProvider(UserRepository)
+      .useValue({})
+      .overrideProvider(UserRepositoryPort)
       .useValue(users)
-      .overrideProvider(RefreshSessionRepository)
+      .overrideProvider(RefreshSessionRepositoryPort)
       .useValue(sessions)
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
-      .overrideProvider(VehicleRepository)
+      .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
-      .overrideProvider(ServiceOrderRepository)
+      .overrideProvider(ServiceOrderRepositoryPort)
       .useValue(new InMemoryServiceOrderRepository())
-      .overrideProvider(BudgetRepository)
+      .overrideProvider(BudgetRepositoryPort)
       .useValue(new InMemoryBudgetRepository())
-      .overrideProvider(NotificationService)
-      .useValue({ enqueue: jest.fn() })
+      .overrideProvider(EnqueueNotificationUseCase)
+      .useValue({ execute: jest.fn() })
       .compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     adminToken = await login(ADMIN_EMAIL, PASSWORD);
 

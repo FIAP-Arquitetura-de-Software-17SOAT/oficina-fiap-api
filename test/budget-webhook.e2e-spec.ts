@@ -2,13 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { allowAuthenticated } from './allow-authenticated';
@@ -28,28 +29,28 @@ const WEBHOOK = '/api/v1/budgets/webhooks/decision';
 describe('Budget approval link and webhook (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   let serviceOrderId: string;
   let budgetId: string;
   let token: string;
   let approvalUrl: string;
 
   beforeEach(async () => {
-    notifications = { enqueue: jest.fn() };
+    notifications = { execute: jest.fn() };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({ imports: [AppModule] }),
     )
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
-      .overrideProvider(VehicleRepository)
+      .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
-      .overrideProvider(ServiceOrderRepository)
+      .overrideProvider(ServiceOrderRepositoryPort)
       .useValue(new InMemoryServiceOrderRepository())
-      .overrideProvider(BudgetRepository)
+      .overrideProvider(BudgetRepositoryPort)
       .useValue(new InMemoryBudgetRepository())
-      .overrideProvider(NotificationService)
+      .overrideProvider(EnqueueNotificationUseCase)
       .useValue(notifications)
       .compile();
 
@@ -57,7 +58,7 @@ describe('Budget approval link and webhook (e2e)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     await sendBudget();
   });
@@ -122,7 +123,7 @@ describe('Budget approval link and webhook (e2e)', () => {
 
     const [email] =
       (
-        notifications.enqueue.mock.calls as [
+        notifications.execute.mock.calls as [
           { type: NotificationType; to: string; text: string },
         ][]
       ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];

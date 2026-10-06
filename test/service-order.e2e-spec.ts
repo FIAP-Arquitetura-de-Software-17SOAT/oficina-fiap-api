@@ -3,20 +3,21 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
-import { ServiceOrder } from '../src/modules/service-order/entities/service-order.entity';
-import { ServiceOrderStatus } from '../src/modules/service-order/enums/service-order-status.enum';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
+import { ServiceOrder } from '../src/modules/service-order/domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../src/modules/service-order/domain/enums/service-order-status.enum';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { allowAuthenticated } from './allow-authenticated';
-import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
+import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { InMemoryPartRepository } from './in-memory-part.repository';
 import { InMemoryServiceRepository } from './in-memory-service.repository';
 
@@ -48,15 +49,15 @@ describe('ServiceOrder (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(serviceOrders)
-        .overrideProvider(ServiceRepository)
+        .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts),
     ).compile();
 
@@ -64,7 +65,7 @@ describe('ServiceOrder (integração)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
   });
 
   afterEach(async () => {

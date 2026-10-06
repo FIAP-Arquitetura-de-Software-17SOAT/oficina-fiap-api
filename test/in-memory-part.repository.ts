@@ -2,15 +2,15 @@ import {
   MeasurementUnit,
   Part,
   PartType,
-} from '../src/modules/stock/entities/part.entity';
+} from '../src/modules/stock/domain/entities/part.entity';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 
-export class InMemoryPartRepository {
+export class InMemoryPartRepository implements PartRepositoryPort {
   private readonly parts = new Map<string, Part>();
 
   /**
-   * Semeia uma peça sem passar pelo HTTP. `POST /parts` tem guard próprio de
-   * controller, que o `allowAuthenticated` não alcança, e quem só precisa de um
-   * `partId` válido para orçar não deveria ter que autenticar para isso.
+   * Semeia uma peça sem passar pelo HTTP: quem só precisa de um `partId`
+   * válido para orçar não deveria ter que montar o cadastro inteiro.
    */
   seed(overrides: Partial<Parameters<typeof Part.create>[0]> = {}): Part {
     const part = Part.create({

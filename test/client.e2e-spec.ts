@@ -2,8 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryClientRepository } from './in-memory-client.repository';
@@ -30,7 +31,7 @@ describe('Client (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository()),
     ).compile();
 
@@ -38,7 +39,7 @@ describe('Client (integração)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
   });
 
   afterEach(async () => {

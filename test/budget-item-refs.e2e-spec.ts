@@ -2,14 +2,15 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ServiceRepository } from '../src/modules/service-catalog/repositories/service.repository';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
+import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
@@ -44,27 +45,27 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts)
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(ServiceRepository)
+        .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
-        .overrideProvider(NotificationService)
-        .useValue({ enqueue: jest.fn() }),
+        .overrideProvider(EnqueueNotificationUseCase)
+        .useValue({ execute: jest.fn() }),
     ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     serviceOrderId = await openServiceOrderInDiagnosis();
     catalogServiceId = await createCatalogService();
@@ -263,27 +264,27 @@ describe('Orçamento x estoque (integração)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts)
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(ServiceRepository)
+        .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
-        .overrideProvider(NotificationService)
-        .useValue({ enqueue: jest.fn() }),
+        .overrideProvider(EnqueueNotificationUseCase)
+        .useValue({ execute: jest.fn() }),
     ).compile();
 
     app = configureApp(
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     const client = await request(http)
       .post('/api/v1/clients')

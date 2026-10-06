@@ -2,20 +2,21 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import {
   Budget,
   BudgetItemType,
-} from '../src/modules/budget/entities/budget.entity';
+} from '../src/modules/budget/domain/entities/budget.entity';
 import { Money } from '../src/shared/domain/value-objects/money.vo';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationRepository } from '../src/modules/notification/repositories/notification.repository';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { NotificationRepositoryPort } from '../src/modules/notification/application/ports/notification-repository.port';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
@@ -25,7 +26,7 @@ import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { InMemoryNotificationRepository } from './in-memory-notification.repository';
 import { InMemoryPartRepository } from './in-memory-part.repository';
 import { allowAuthenticated } from './allow-authenticated';
-import { EmailSender } from '../src/shared/notifications/email/email-sender';
+import { EmailSenderPort } from '../src/modules/notification/application/ports/email-sender.port';
 
 describe('InMemoryBudgetRepository', () => {
   it('does not share mutable budget instances with persisted state', async () => {
@@ -92,7 +93,7 @@ describe('InMemoryBudgetRepository', () => {
 describe('Budget (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   // Aceitar ou recusar um orcamento mexe na ordem de servico, entao o cenario
   // minimo agora inclui cliente, veiculo e uma OS aguardando aprovacao.
   let serviceOrderId: string;
@@ -106,7 +107,7 @@ describe('Budget (e2e)', () => {
     notifications = {
       // A rejeição simula a falha de entrega/filas sem permitir que ela altere
       // a resposta HTTP da criação do orçamento.
-      enqueue: jest
+      execute: jest
         .fn()
         .mockRejectedValue(new Error('notification unavailable')),
     };
@@ -116,17 +117,17 @@ describe('Budget (e2e)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts)
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(NotificationService)
+        .overrideProvider(EnqueueNotificationUseCase)
         .useValue(notifications),
     ).compile();
 
@@ -134,7 +135,7 @@ describe('Budget (e2e)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     serviceOrderId = await openServiceOrderAwaitingApproval();
     partId = parts.seed().getId();
@@ -222,7 +223,7 @@ describe('Budget (e2e)', () => {
 
     // A OS já avisou o cliente da mudança de status; o que não pode sair
     // ainda é o email do orçamento, cujo link só vale depois do envio.
-    expect(notifications.enqueue).not.toHaveBeenCalledWith(
+    expect(notifications.execute).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: NotificationType.BUDGET_READY }),
     );
   });
@@ -232,7 +233,7 @@ describe('Budget (e2e)', () => {
     await request(http).post(`/api/v1/budgets/${id}/send`).expect(200);
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.BUDGET_READY,
         to: 'maria@example.com',
@@ -244,7 +245,7 @@ describe('Budget (e2e)', () => {
 
     const [message] =
       (
-        notifications.enqueue.mock.calls as [
+        notifications.execute.mock.calls as [
           { type: NotificationType; text: string; html: string },
         ][]
       ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];
@@ -516,19 +517,19 @@ describe('Budget notification delivery resilience (e2e)', () => {
     )
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(BudgetRepository)
+      .overrideProvider(BudgetRepositoryPort)
       .useValue(new InMemoryBudgetRepository())
-      .overrideProvider(PartRepository)
+      .overrideProvider(PartRepositoryPort)
       .useValue(new InMemoryPartRepository())
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
-      .overrideProvider(VehicleRepository)
+      .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
-      .overrideProvider(ServiceOrderRepository)
+      .overrideProvider(ServiceOrderRepositoryPort)
       .useValue(new InMemoryServiceOrderRepository())
-      .overrideProvider(NotificationRepository)
+      .overrideProvider(NotificationRepositoryPort)
       .useValue(new InMemoryNotificationRepository())
-      .overrideProvider(EmailSender)
+      .overrideProvider(EmailSenderPort)
       .useValue(emailSender)
       .compile();
 
@@ -536,7 +537,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     const client = await request(http)
       .post('/api/v1/clients')

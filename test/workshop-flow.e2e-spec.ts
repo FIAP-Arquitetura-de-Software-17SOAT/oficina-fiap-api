@@ -4,20 +4,21 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
-import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
-import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
-import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
-import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
-import { PurchaseOrderRepository } from '../src/modules/purchase-order/repositories/purchase-order.repository';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
-import { StockMovementRepository } from '../src/modules/stock/repositories/stock-movement.repository';
-import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
+import { PaymentMethod } from '../src/modules/billing/domain/enums/payment-method.enum';
+import { FakePaymentGateway } from '../src/modules/billing/infrastructure/payment/fake-payment.gateway';
+import { PaymentGatewayPort } from '../src/modules/billing/application/ports/payment-gateway.port';
+import { BillingRepositoryPort } from '../src/modules/billing/application/ports/billing-repository.port';
+import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
+import { PurchaseOrderRepositoryPort } from '../src/modules/purchase-order/application/ports/purchase-order-repository.port';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
+import { StockMovementRepositoryPort } from '../src/modules/stock/application/ports/stock-movement-repository.port';
+import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBillingRepository } from './in-memory-billing.repository';
@@ -43,14 +44,14 @@ describe('Fluxo da oficina (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
   const jwt = new JwtService();
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   let config: { get: jest.Mock };
 
   let token: string;
 
   beforeEach(async () => {
     const parts = new InMemoryPartRepository();
-    notifications = { enqueue: jest.fn() };
+    notifications = { execute: jest.fn() };
     config = {
       get: jest.fn(
         (key: string) =>
@@ -70,25 +71,25 @@ describe('Fluxo da oficina (e2e)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
-        .overrideProvider(VehicleRepository)
+        .overrideProvider(VehicleRepositoryPort)
         .useValue(new InMemoryVehicleRepository())
-        .overrideProvider(ServiceOrderRepository)
+        .overrideProvider(ServiceOrderRepositoryPort)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(BudgetRepository)
+        .overrideProvider(BudgetRepositoryPort)
         .useValue(new InMemoryBudgetRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts)
-        .overrideProvider(StockMovementRepository)
+        .overrideProvider(StockMovementRepositoryPort)
         .useValue(new InMemoryStockMovementRepository(parts))
-        .overrideProvider(PurchaseOrderRepository)
+        .overrideProvider(PurchaseOrderRepositoryPort)
         .useValue(new InMemoryPurchaseOrderRepository())
-        .overrideProvider(BillingRepository)
+        .overrideProvider(BillingRepositoryPort)
         .useValue(new InMemoryBillingRepository())
-        .overrideProvider(PaymentGateway)
+        .overrideProvider(PaymentGatewayPort)
         .useValue(new FakePaymentGateway())
-        .overrideProvider(NotificationService)
+        .overrideProvider(EnqueueNotificationUseCase)
         .useValue(notifications)
         .overrideProvider(ConfigService)
         .useValue(config),
@@ -98,7 +99,7 @@ describe('Fluxo da oficina (e2e)', () => {
       moduleFixture.createNestApplication({ rawBody: true }),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     token = await jwt.signAsync(
       { sub: 'flow-user', role: 'ADMIN', type: 'access', jti: 'flow-jti' },
@@ -280,7 +281,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .patch(`/api/v1/service-orders/${serviceOrderId}/complete`)
       .expect(200);
 
-    notifications.enqueue.mockClear();
+    notifications.execute.mockClear();
 
     const billing = await request(http)
       .post('/api/v1/billings')
@@ -297,7 +298,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
     // Política: link de pagamento disponibilizado -> notificar cliente.
     await new Promise<void>((resolve) => setImmediate(resolve));
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.PAYMENT_LINK_READY,
         to: 'maria@example.com',
@@ -311,7 +312,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .expect(409);
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway = app.get(PaymentGatewayPort) as FakePaymentGateway;
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,
@@ -367,20 +368,20 @@ describe('Fluxo da oficina (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/send`)
       .expect(200);
-    notifications.enqueue.mockClear();
+    notifications.execute.mockClear();
 
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/accept`)
       .expect(200);
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         to: 'estoque@example.com',
         text: expect.stringContaining('Filtro de óleo'),
       }),
     );
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         text: expect.not.stringContaining('Troca do filtro'),
       }),
