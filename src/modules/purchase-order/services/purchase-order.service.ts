@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PartController } from '../../stock/controllers/part.controller';
 
@@ -27,12 +22,10 @@ import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 @Injectable()
 export class PurchaseOrderService {
-  // O estoque e alcancado pelo controller dele, nunca pelo service: e a porta de
-  // entrada do agregado. forwardRef porque a relacao e mutua - o estoque abre o
-  // pedido quando falta peca, e o pedido devolve a peca quando e entregue.
+  // O estoque e alcancado pelo controller dele (convencao da Fase 1; a porta
+  // propria vem na migracao deste modulo).
   constructor(
     private readonly repository: PurchaseOrderRepository,
-    @Inject(forwardRef(() => PartController))
     private readonly partController: PartController,
   ) {}
 

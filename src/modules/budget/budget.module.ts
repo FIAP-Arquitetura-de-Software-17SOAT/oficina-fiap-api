@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../shared/database/prisma.module';
 import { ClientModule } from '../client/client.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -11,21 +11,20 @@ import { BudgetRepository } from './repositories/budget.repository';
 import { BudgetService } from './services/budget.service';
 
 @Module({
-  // O aceite e a recusa do orçamento movem a ordem de serviço; a OS nunca
-  // consulta o orçamento de volta, então não há ciclo aqui.
-  //
-  // Com o estoque há: o orçamento confere a peça que o item referencia e o
-  // despacho de peças lê o orçamento aceito — daí o forwardRef dos dois lados.
+  // O aceite e a recusa do orçamento movem a ordem de serviço; o estoque só é
+  // consultado para conferir a peça que um item referencia. Quem lê o
+  // orçamento aceito para despachar peças é o módulo parts-dispatch, que
+  // importa este e não é importado por ele.
   imports: [
     PrismaModule,
     ServiceOrderModule,
     ServiceCatalogModule,
     ClientModule,
     NotificationModule,
-    forwardRef(() => StockModule),
+    StockModule,
   ],
   controllers: [BudgetController, BudgetWebhookController],
-  providers: [BudgetService, BudgetRepository, BudgetController],
-  exports: [BudgetService, BudgetController],
+  providers: [BudgetService, BudgetRepository],
+  exports: [BudgetService],
 })
 export class BudgetModule {}

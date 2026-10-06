@@ -186,7 +186,7 @@ export class ServiceOrderController {
 
   /**
    * Sem rota HTTP de propósito. A OS só entra em execução pelas mãos do
-   * estoque, depois de as peças serem atendidas — ver PartsDispatchService.
+   * estoque, depois de as peças serem atendidas — ver o módulo parts-dispatch.
    */
   async registerPartsDispatched(id: string): Promise<ServiceOrderResponseDto> {
     return ServiceOrderMapper.toResponse(

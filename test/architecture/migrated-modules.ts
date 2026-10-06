@@ -6,6 +6,8 @@ export const MIGRATED_MODULES = [
   'client',
   'vehicle',
   'service-catalog',
+  'notification',
+  'parts-dispatch',
 ] as const;
 
 export type MigratedModule = (typeof MIGRATED_MODULES)[number];

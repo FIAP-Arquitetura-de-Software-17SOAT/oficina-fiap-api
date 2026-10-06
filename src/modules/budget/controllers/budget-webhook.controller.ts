@@ -6,11 +6,9 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
-  Inject,
   Post,
   Query,
   Res,
-  forwardRef,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -46,10 +44,7 @@ import {
 @Public()
 @Controller('budgets/webhooks')
 export class BudgetWebhookController {
-  constructor(
-    @Inject(forwardRef(() => BudgetService))
-    private readonly budgetService: BudgetService,
-  ) {}
+  constructor(private readonly budgetService: BudgetService) {}
 
   @Get('decision')
   @ApiOperation({

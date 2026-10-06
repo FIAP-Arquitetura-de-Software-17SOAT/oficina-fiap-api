@@ -1,10 +1,8 @@
 import {
   ConflictException,
   GoneException,
-  Inject,
   Injectable,
   NotFoundException,
-  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { isEmail } from 'class-validator';
@@ -58,9 +56,6 @@ export class BudgetService {
     private readonly notifications: EnqueueNotificationUseCase,
     private readonly config: ConfigService,
     private readonly findService: FindServiceUseCase,
-    // forwardRef fecha o ciclo orçamento <-> estoque: o orçamento confere aqui a
-    // peça que o item referencia, e o despacho de peças lê o orçamento aceito.
-    @Inject(forwardRef(() => PartController))
     private readonly partController: PartController,
   ) {}
 

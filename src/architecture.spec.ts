@@ -85,18 +85,13 @@ describe('Clean Architecture boundaries', () => {
 });
 
 describe('Module graph', () => {
-  // Estado herdado da Fase 1: um único ciclo entre os quatro módulos ligados
-  // pelo despacho de peças. A PR do módulo parts-dispatch zera esta lista.
-  const knownCycle = ['budget', 'purchase-order', 'service-order', 'stock'];
-
-  it('has no cycles besides the known parts-dispatch cluster', () => {
-    expect(moduleCycles()).toEqual([knownCycle]);
+  // A extração do despacho de peças para o módulo parts-dispatch desfez o
+  // único ciclo da Fase 1. Daqui em diante o grafo é acíclico.
+  it('has no cycles between modules', () => {
+    expect(moduleCycles()).toEqual([]);
   });
 
-  it('only uses forwardRef inside the known cycle', () => {
-    for (const file of forwardRefUsages()) {
-      const moduleName = file.split('/')[2];
-      expect(knownCycle).toContain(moduleName);
-    }
+  it('never needs forwardRef', () => {
+    expect(forwardRefUsages()).toEqual([]);
   });
 });
