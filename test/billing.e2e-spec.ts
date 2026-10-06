@@ -5,11 +5,11 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
-import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
-import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
-import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
-import { BillingService } from '../src/modules/billing/services/billing.service';
+import { PaymentMethod } from '../src/modules/billing/domain/enums/payment-method.enum';
+import { FakePaymentGateway } from '../src/modules/billing/infrastructure/payment/fake-payment.gateway';
+import { PaymentGatewayPort } from '../src/modules/billing/application/ports/payment-gateway.port';
+import { BillingRepositoryPort } from '../src/modules/billing/application/ports/billing-repository.port';
+import { RenewPaymentLinkUseCase } from '../src/modules/billing/application/use-cases/renew-payment-link.use-case';
 import { BudgetRepositoryPort } from '../src/modules/budget/application/ports/budget-repository.port';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
@@ -49,9 +49,9 @@ describe('Billing (integracao)', () => {
       .useValue(new InMemoryServiceOrderRepository())
       .overrideProvider(BudgetRepositoryPort)
       .useValue(new InMemoryBudgetRepository())
-      .overrideProvider(BillingRepository)
+      .overrideProvider(BillingRepositoryPort)
       .useValue(new InMemoryBillingRepository())
-      .overrideProvider(PaymentGateway)
+      .overrideProvider(PaymentGatewayPort)
       .useValue(new FakePaymentGateway())
       .overrideProvider(EnqueueNotificationUseCase)
       .useValue(notifications)
@@ -250,7 +250,7 @@ describe('Billing (integracao)', () => {
       .send({ serviceOrderId })
       .expect(201);
 
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway: FakePaymentGateway = app.get(PaymentGatewayPort);
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,
@@ -295,15 +295,15 @@ describe('Billing (integracao)', () => {
     const originalSessionId = billing.body.gatewayTransactionId as string;
 
     const renewed = await app
-      .get(BillingService)
-      .renewPaymentLink(
+      .get(RenewPaymentLinkUseCase)
+      .execute(
         billing.body.id as string,
         new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       );
 
     expect(renewed.getGatewayTransactionId()).not.toBe(originalSessionId);
 
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway: FakePaymentGateway = app.get(PaymentGatewayPort);
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: originalSessionId,
@@ -340,7 +340,7 @@ describe('Billing (integracao)', () => {
       .patch(`/api/v1/service-orders/${serviceOrderId}/deliver`)
       .expect(404);
 
-    const gateway = app.get(PaymentGateway) as FakePaymentGateway;
+    const gateway: FakePaymentGateway = app.get(PaymentGatewayPort);
     gateway.queueWebhookResult({
       type: 'payment_confirmed',
       gatewayTransactionId: billing.body.gatewayTransactionId,
@@ -373,7 +373,7 @@ describe('Billing (integracao)', () => {
       .send({ serviceOrderId })
       .expect(201);
 
-    const gateway: FakePaymentGateway = app.get(PaymentGateway);
+    const gateway: FakePaymentGateway = app.get(PaymentGatewayPort);
     gateway.markSessionPaid({
       status: 'paid',
       gatewayTransactionId: billing.body.gatewayTransactionId as string,
@@ -440,7 +440,7 @@ describe('Billing (integracao)', () => {
     });
 
     // O cliente volta pelo link e paga: a OS sai da cobrança em aberto.
-    const gateway: FakePaymentGateway = app.get(PaymentGateway);
+    const gateway: FakePaymentGateway = app.get(PaymentGatewayPort);
     gateway.markSessionPaid({
       status: 'paid',
       gatewayTransactionId: billing.body.gatewayTransactionId as string,

@@ -1,7 +1,8 @@
-import { Billing } from '../src/modules/billing/entities/billing.entity';
-import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
+import { BillingRepositoryPort } from '../src/modules/billing/application/ports/billing-repository.port';
+import { Billing } from '../src/modules/billing/domain/entities/billing.entity';
+import { PaymentMethod } from '../src/modules/billing/domain/enums/payment-method.enum';
 
-export class InMemoryBillingRepository {
+export class InMemoryBillingRepository implements BillingRepositoryPort {
   private readonly billings = new Map<string, Billing>();
   private readonly checkoutSessionBillingIds = new Map<string, string>();
   private readonly checkoutSessionPayments = new Map<

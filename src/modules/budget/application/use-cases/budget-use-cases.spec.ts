@@ -5,7 +5,10 @@ import {
   BudgetStatus,
 } from '../../domain/entities/budget.entity';
 import { ApprovalToken } from '../../domain/value-objects/approval-token.vo';
-import { BudgetDecision } from '../contracts/budget.input';
+import {
+  BudgetDecision,
+  CreateBudgetItemInput,
+} from '../contracts/budget.input';
 import { BudgetApplicationError } from '../errors/budget-application.error';
 import {
   BudgetNotifierPort,
@@ -227,10 +230,13 @@ describe('budget use cases', () => {
     );
   });
 
-  const createBudget = (items = [partItem, serviceItem]) =>
-    create.execute({ serviceOrderId: SERVICE_ORDER_ID, items });
+  const createBudget = (
+    items: CreateBudgetItemInput[] = [partItem, serviceItem],
+  ) => create.execute({ serviceOrderId: SERVICE_ORDER_ID, items });
 
-  const sentBudget = async (items = [partItem, serviceItem]) => {
+  const sentBudget = async (
+    items: CreateBudgetItemInput[] = [partItem, serviceItem],
+  ) => {
     const budget = await createBudget(items);
     const sent = await send.execute(budget.getId());
     return { sent, token: notifier.budgetReady.mock.calls[0][0].approvalToken };
@@ -363,7 +369,14 @@ describe('budget use cases', () => {
     });
 
     it('skips the catalogs when no item references them', async () => {
-      await createBudget([{ ...serviceItem, serviceId: undefined }]);
+      await createBudget([
+        {
+          description: 'Oil change',
+          type: BudgetItemType.SERVICE,
+          quantity: 1,
+          unitPrice: 149.9,
+        },
+      ]);
 
       expect(services.exists).not.toHaveBeenCalled();
       expect(parts.exists).not.toHaveBeenCalled();

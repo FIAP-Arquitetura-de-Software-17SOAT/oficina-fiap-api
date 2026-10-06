@@ -12,6 +12,7 @@ export const MIGRATED_MODULES = [
   'purchase-order',
   'service-order',
   'budget',
+  'billing',
 ] as const;
 
 export type MigratedModule = (typeof MIGRATED_MODULES)[number];
