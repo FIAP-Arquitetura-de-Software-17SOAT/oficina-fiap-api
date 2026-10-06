@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsOptional } from 'class-validator';
-import { NotificationStatus } from '../enums/notification-status.enum';
-import { NotificationType } from '../enums/notification-type.enum';
+import { NotificationStatus } from '../../../domain/enums/notification-status.enum';
+import { NotificationType } from '../../../domain/enums/notification-type.enum';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;

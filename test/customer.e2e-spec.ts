@@ -6,7 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -72,8 +72,8 @@ describe('CUSTOMER (e2e)', () => {
       .useValue(new InMemoryServiceOrderRepository())
       .overrideProvider(BudgetRepository)
       .useValue(new InMemoryBudgetRepository())
-      .overrideProvider(NotificationService)
-      .useValue({ enqueue: jest.fn() })
+      .overrideProvider(EnqueueNotificationUseCase)
+      .useValue({ execute: jest.fn() })
       .compile();
 
     app = configureApp(

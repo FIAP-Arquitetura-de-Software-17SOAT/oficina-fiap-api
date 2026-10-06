@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { EmailMessage } from './email-sender';
+import { EmailMessage } from '../../application/ports/email-sender.port';
 import { NodemailerEmailSender } from './nodemailer-email-sender';
 
 const mockSendMail = jest.fn().mockResolvedValue(undefined);
@@ -54,18 +54,18 @@ describe('NodemailerEmailSender', () => {
         asked === key ? undefined : settings[asked],
       );
 
-      await expect(new NodemailerEmailSender(config).send(message)).rejects.toThrow(
-        `${key} is required`,
-      );
+      await expect(
+        new NodemailerEmailSender(config).send(message),
+      ).rejects.toThrow(`${key} is required`);
     },
   );
 
   it('rejects invalid SMTP_PORT and SMTP_SECURE values', async () => {
     (config.get as jest.Mock).mockReturnValue('invalid');
 
-    await expect(new NodemailerEmailSender(config).send(message)).rejects.toThrow(
-      'SMTP_PORT must be a valid port',
-    );
+    await expect(
+      new NodemailerEmailSender(config).send(message),
+    ).rejects.toThrow('SMTP_PORT must be a valid port');
   });
 
   it('rejects an SMTP_SECURE value other than true or false', async () => {
@@ -73,9 +73,9 @@ describe('NodemailerEmailSender', () => {
       key === 'SMTP_SECURE' ? 'yes' : settings[key],
     );
 
-    await expect(new NodemailerEmailSender(config).send(message)).rejects.toThrow(
-      'SMTP_SECURE must be either true or false',
-    );
+    await expect(
+      new NodemailerEmailSender(config).send(message),
+    ).rejects.toThrow('SMTP_SECURE must be either true or false');
   });
 
   it('rejects SMTP_PORT outside the valid port range', async () => {
@@ -83,9 +83,9 @@ describe('NodemailerEmailSender', () => {
       key === 'SMTP_PORT' ? '65536' : settings[key],
     );
 
-    await expect(new NodemailerEmailSender(config).send(message)).rejects.toThrow(
-      'SMTP_PORT must be a valid port',
-    );
+    await expect(
+      new NodemailerEmailSender(config).send(message),
+    ).rejects.toThrow('SMTP_PORT must be a valid port');
   });
 
   it('rejects an invalid MAIL_FROM email address', async () => {
@@ -93,21 +93,24 @@ describe('NodemailerEmailSender', () => {
       key === 'MAIL_FROM' ? 'Oficina <not-an-email>' : settings[key],
     );
 
-    await expect(new NodemailerEmailSender(config).send(message)).rejects.toThrow(
-      'MAIL_FROM must be a valid email address',
-    );
+    await expect(
+      new NodemailerEmailSender(config).send(message),
+    ).rejects.toThrow('MAIL_FROM must be a valid email address');
   });
 
-  it.each([['SMTP_USER', 'user'], ['SMTP_PASSWORD', 'password']])(
+  it.each([
+    ['SMTP_USER', 'user'],
+    ['SMTP_PASSWORD', 'password'],
+  ])(
     'rejects incomplete SMTP credentials when only %s is provided',
     async (key, value) => {
       (config.get as jest.Mock).mockImplementation((asked: string) =>
         asked === key ? value : settings[asked],
       );
 
-      await expect(new NodemailerEmailSender(config).send(message)).rejects.toThrow(
-        'SMTP_USER and SMTP_PASSWORD must both be provided',
-      );
+      await expect(
+        new NodemailerEmailSender(config).send(message),
+      ).rejects.toThrow('SMTP_USER and SMTP_PASSWORD must both be provided');
     },
   );
 

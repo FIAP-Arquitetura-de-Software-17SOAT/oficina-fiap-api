@@ -5,8 +5,8 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
@@ -28,14 +28,14 @@ const WEBHOOK = '/api/v1/budgets/webhooks/decision';
 describe('Budget approval link and webhook (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   let serviceOrderId: string;
   let budgetId: string;
   let token: string;
   let approvalUrl: string;
 
   beforeEach(async () => {
-    notifications = { enqueue: jest.fn() };
+    notifications = { execute: jest.fn() };
     const moduleFixture: TestingModule = await allowAuthenticated(
       Test.createTestingModule({ imports: [AppModule] }),
     )
@@ -49,7 +49,7 @@ describe('Budget approval link and webhook (e2e)', () => {
       .useValue(new InMemoryServiceOrderRepository())
       .overrideProvider(BudgetRepository)
       .useValue(new InMemoryBudgetRepository())
-      .overrideProvider(NotificationService)
+      .overrideProvider(EnqueueNotificationUseCase)
       .useValue(notifications)
       .compile();
 
@@ -122,7 +122,7 @@ describe('Budget approval link and webhook (e2e)', () => {
 
     const [email] =
       (
-        notifications.enqueue.mock.calls as [
+        notifications.execute.mock.calls as [
           { type: NotificationType; to: string; text: string },
         ][]
       ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];

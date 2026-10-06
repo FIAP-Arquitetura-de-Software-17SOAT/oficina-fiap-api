@@ -1,4 +1,9 @@
-import { EmailMessage } from './email-sender';
+/** Conteúdo de um e-mail; o destinatário é decidido por quem envia. */
+export interface EmailContent {
+  subject: string;
+  text: string;
+  html: string;
+}
 
 interface BudgetItemEmailData {
   description: string;
@@ -47,7 +52,7 @@ export function budgetReadyEmail(input: {
   /** Link pessoal do cliente: abre a página que confirma a decisão. */
   approvalUrl: string;
   approvalExpiresAt: Date;
-}): Pick<EmailMessage, 'subject' | 'text' | 'html'> {
+}): EmailContent {
   const textItems = input.items.map(
     (item) =>
       `- ${item.description} | Quantidade: ${quantity.format(item.quantity)} | Valor unitário: ${currency.format(item.unitPrice)} | Subtotal: ${currency.format(item.subtotal)}`,
@@ -86,7 +91,7 @@ export function budgetReadyEmail(input: {
 export function stockPartsRequestedEmail(input: {
   serviceOrderId: string;
   parts: StockPartEmailData[];
-}): Pick<EmailMessage, 'subject' | 'text' | 'html'> {
+}): EmailContent {
   const textParts = input.parts.map(
     (part) =>
       `- ${part.description} | Quantidade: ${quantity.format(part.quantity)}`,
@@ -117,7 +122,7 @@ export function paymentLinkReadyEmail(input: {
   serviceOrderId: string;
   total: number;
   paymentLink: string;
-}): Pick<EmailMessage, 'subject' | 'text' | 'html'> {
+}): EmailContent {
   const total = currency.format(input.total);
 
   return {
@@ -152,7 +157,7 @@ export function serviceOrderStatusChangedEmail(input: {
   serviceOrderId: string;
   status: string;
   cancellationReason?: string | null;
-}): Pick<EmailMessage, 'subject' | 'text' | 'html'> {
+}): EmailContent {
   const label = SERVICE_ORDER_STATUS_LABELS[input.status] ?? input.status;
   const reason = input.cancellationReason
     ? `Motivo: ${input.cancellationReason}`

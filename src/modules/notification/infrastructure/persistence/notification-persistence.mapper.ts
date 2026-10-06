@@ -1,7 +1,6 @@
-import { NotificationResponseDto } from '../dto/notification.dto';
-import { Notification } from '../entities/notification.entity';
-import { NotificationStatus } from '../enums/notification-status.enum';
-import { NotificationType } from '../enums/notification-type.enum';
+import { Notification } from '../../domain/entities/notification.entity';
+import { NotificationStatus } from '../../domain/enums/notification-status.enum';
+import { NotificationType } from '../../domain/enums/notification-type.enum';
 
 export type NotificationRecord = {
   id: string;
@@ -18,7 +17,7 @@ export type NotificationRecord = {
   updatedAt: Date;
 };
 
-export class NotificationMapper {
+export class NotificationPersistenceMapper {
   static toPersistence(notification: Notification) {
     return {
       id: notification.getId(),
@@ -50,26 +49,5 @@ export class NotificationMapper {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });
-  }
-
-  static toResponse(notification: Notification): NotificationResponseDto {
-    return {
-      id: notification.getId(),
-      type: notification.getType(),
-      status: notification.getStatus(),
-      to: notification.getTo(),
-      subject: notification.getSubject(),
-      text: notification.getText(),
-      html: notification.getHtml(),
-      attempts: notification.getAttempts(),
-      lastError: notification.getLastError(),
-      sentAt: notification.getSentAt(),
-      createdAt: notification.getCreatedAt(),
-      updatedAt: notification.getUpdatedAt(),
-    };
-  }
-
-  static toResponseList(notifications: Notification[]): NotificationResponseDto[] {
-    return notifications.map((notification) => NotificationMapper.toResponse(notification));
   }
 }

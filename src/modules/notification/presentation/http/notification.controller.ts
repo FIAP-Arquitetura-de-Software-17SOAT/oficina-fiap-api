@@ -17,14 +17,15 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Role } from '../../../../generated/prisma/enums';
-import { Roles } from '../../../shared/http/auth/roles.decorator';
+import { Role } from '../../../../../generated/prisma/enums';
+import { Roles } from '../../../../shared/http/auth/roles.decorator';
 import {
   FindNotificationsQueryDto,
   NotificationResponseDto,
-} from '../dto/notification.dto';
-import { NotificationMapper } from '../mappers/notification.mapper';
-import { NotificationService } from '../services/notification.service';
+} from './dto/notification.dto';
+import { NotificationResponseMapper } from './mappers/notification-response.mapper';
+import { ListNotificationsUseCase } from '../../application/use-cases/list-notifications.use-case';
+import { RetryNotificationUseCase } from '../../application/use-cases/retry-notification.use-case';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -32,7 +33,10 @@ import { NotificationService } from '../services/notification.service';
 @Roles(Role.ADMIN)
 @Controller('notifications')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly listNotifications: ListNotificationsUseCase,
+    private readonly retryNotification: RetryNotificationUseCase,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Lista as notificações de envio' })
@@ -40,8 +44,8 @@ export class NotificationController {
   async findAll(
     @Query() query: FindNotificationsQueryDto,
   ): Promise<NotificationResponseDto[]> {
-    return NotificationMapper.toResponseList(
-      await this.notificationService.findAll(query),
+    return NotificationResponseMapper.toResponseList(
+      await this.listNotifications.execute(query),
     );
   }
 
@@ -56,8 +60,8 @@ export class NotificationController {
   async retry(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<NotificationResponseDto> {
-    return NotificationMapper.toResponse(
-      await this.notificationService.retry(id),
+    return NotificationResponseMapper.toResponse(
+      await this.retryNotification.execute(id),
     );
   }
 }

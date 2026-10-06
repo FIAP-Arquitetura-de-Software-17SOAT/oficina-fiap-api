@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { serviceOrderStatusChangedEmail } from '../../../shared/notifications/email/notification-templates';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
-import { NotificationType } from '../../notification/enums/notification-type.enum';
-import { NotificationService } from '../../notification/services/notification.service';
+import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import {
@@ -38,7 +38,7 @@ export class ServiceOrderService {
     private readonly findService: FindServiceUseCase,
     @Inject(PART_CATALOG)
     private readonly partCatalog: PartCatalog,
-    private readonly notifications: NotificationService,
+    private readonly notifications: EnqueueNotificationUseCase,
   ) {}
 
   async openServiceOrder(dto: OpenServiceOrderDto): Promise<ServiceOrder> {
@@ -241,7 +241,7 @@ export class ServiceOrderService {
   /**
    * Toda mudança de status avisa o cliente por email — a "atualização de status
    * via email" do enunciado. O aviso sai depois de gravar e não é aguardado:
-   * falha de email nunca desfaz a transição, e o NotificationService guarda a
+   * falha de email nunca desfaz a transição, e o módulo de notificação guarda a
    * falha para reenvio.
    */
   private async persistStatusChange(
@@ -269,7 +269,7 @@ export class ServiceOrderService {
       );
       if (!client) return;
 
-      await this.notifications.enqueue({
+      await this.notifications.execute({
         type: NotificationType.SERVICE_ORDER_STATUS_CHANGED,
         to: client.getEmail().getValue(),
         ...serviceOrderStatusChangedEmail({

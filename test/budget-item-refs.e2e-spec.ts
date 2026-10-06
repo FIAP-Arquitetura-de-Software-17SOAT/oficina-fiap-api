@@ -5,7 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceRepositoryPort } from '../src/modules/service-catalog/application/ports/service-repository.port';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
@@ -56,8 +56,8 @@ describe('Orçamento x catálogo de serviços (integração)', () => {
         .useValue(new InMemoryServiceOrderRepository())
         .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
-        .overrideProvider(NotificationService)
-        .useValue({ enqueue: jest.fn() }),
+        .overrideProvider(EnqueueNotificationUseCase)
+        .useValue({ execute: jest.fn() }),
     ).compile();
 
     app = configureApp(
@@ -275,8 +275,8 @@ describe('Orçamento x estoque (integração)', () => {
         .useValue(new InMemoryServiceOrderRepository())
         .overrideProvider(ServiceRepositoryPort)
         .useValue(new InMemoryServiceRepository())
-        .overrideProvider(NotificationService)
-        .useValue({ enqueue: jest.fn() }),
+        .overrideProvider(EnqueueNotificationUseCase)
+        .useValue({ execute: jest.fn() }),
     ).compile();
 
     app = configureApp(

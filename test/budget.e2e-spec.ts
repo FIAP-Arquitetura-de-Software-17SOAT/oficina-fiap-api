@@ -10,9 +10,9 @@ import {
 import { Money } from '../src/shared/domain/value-objects/money.vo';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationRepository } from '../src/modules/notification/repositories/notification.repository';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { NotificationRepositoryPort } from '../src/modules/notification/application/ports/notification-repository.port';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PartRepository } from '../src/modules/stock/repositories/part.repository';
@@ -25,7 +25,7 @@ import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { InMemoryNotificationRepository } from './in-memory-notification.repository';
 import { InMemoryPartRepository } from './in-memory-part.repository';
 import { allowAuthenticated } from './allow-authenticated';
-import { EmailSender } from '../src/shared/notifications/email/email-sender';
+import { EmailSenderPort } from '../src/modules/notification/application/ports/email-sender.port';
 
 describe('InMemoryBudgetRepository', () => {
   it('does not share mutable budget instances with persisted state', async () => {
@@ -92,7 +92,7 @@ describe('InMemoryBudgetRepository', () => {
 describe('Budget (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   // Aceitar ou recusar um orcamento mexe na ordem de servico, entao o cenario
   // minimo agora inclui cliente, veiculo e uma OS aguardando aprovacao.
   let serviceOrderId: string;
@@ -106,7 +106,7 @@ describe('Budget (e2e)', () => {
     notifications = {
       // A rejeição simula a falha de entrega/filas sem permitir que ela altere
       // a resposta HTTP da criação do orçamento.
-      enqueue: jest
+      execute: jest
         .fn()
         .mockRejectedValue(new Error('notification unavailable')),
     };
@@ -126,7 +126,7 @@ describe('Budget (e2e)', () => {
         .useValue(new InMemoryVehicleRepository())
         .overrideProvider(ServiceOrderRepository)
         .useValue(new InMemoryServiceOrderRepository())
-        .overrideProvider(NotificationService)
+        .overrideProvider(EnqueueNotificationUseCase)
         .useValue(notifications),
     ).compile();
 
@@ -222,7 +222,7 @@ describe('Budget (e2e)', () => {
 
     // A OS já avisou o cliente da mudança de status; o que não pode sair
     // ainda é o email do orçamento, cujo link só vale depois do envio.
-    expect(notifications.enqueue).not.toHaveBeenCalledWith(
+    expect(notifications.execute).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: NotificationType.BUDGET_READY }),
     );
   });
@@ -232,7 +232,7 @@ describe('Budget (e2e)', () => {
     await request(http).post(`/api/v1/budgets/${id}/send`).expect(200);
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.BUDGET_READY,
         to: 'maria@example.com',
@@ -244,7 +244,7 @@ describe('Budget (e2e)', () => {
 
     const [message] =
       (
-        notifications.enqueue.mock.calls as [
+        notifications.execute.mock.calls as [
           { type: NotificationType; text: string; html: string },
         ][]
       ).find(([input]) => input.type === NotificationType.BUDGET_READY) ?? [];
@@ -526,9 +526,9 @@ describe('Budget notification delivery resilience (e2e)', () => {
       .useValue(new InMemoryVehicleRepository())
       .overrideProvider(ServiceOrderRepository)
       .useValue(new InMemoryServiceOrderRepository())
-      .overrideProvider(NotificationRepository)
+      .overrideProvider(NotificationRepositoryPort)
       .useValue(new InMemoryNotificationRepository())
-      .overrideProvider(EmailSender)
+      .overrideProvider(EmailSenderPort)
       .useValue(emailSender)
       .compile();
 

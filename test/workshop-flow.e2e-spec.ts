@@ -10,8 +10,8 @@ import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment
 import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway';
 import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
-import { NotificationService } from '../src/modules/notification/services/notification.service';
+import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PurchaseOrderRepository } from '../src/modules/purchase-order/repositories/purchase-order.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -43,14 +43,14 @@ describe('Fluxo da oficina (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
   const jwt = new JwtService();
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
   let config: { get: jest.Mock };
 
   let token: string;
 
   beforeEach(async () => {
     const parts = new InMemoryPartRepository();
-    notifications = { enqueue: jest.fn() };
+    notifications = { execute: jest.fn() };
     config = {
       get: jest.fn(
         (key: string) =>
@@ -88,7 +88,7 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(new InMemoryBillingRepository())
         .overrideProvider(PaymentGateway)
         .useValue(new FakePaymentGateway())
-        .overrideProvider(NotificationService)
+        .overrideProvider(EnqueueNotificationUseCase)
         .useValue(notifications)
         .overrideProvider(ConfigService)
         .useValue(config),
@@ -280,7 +280,7 @@ describe('Fluxo da oficina (e2e)', () => {
       .patch(`/api/v1/service-orders/${serviceOrderId}/complete`)
       .expect(200);
 
-    notifications.enqueue.mockClear();
+    notifications.execute.mockClear();
 
     const billing = await request(http)
       .post('/api/v1/billings')
@@ -297,7 +297,7 @@ describe('Fluxo da oficina (e2e)', () => {
 
     // Política: link de pagamento disponibilizado -> notificar cliente.
     await new Promise<void>((resolve) => setImmediate(resolve));
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.PAYMENT_LINK_READY,
         to: 'maria@example.com',
@@ -367,20 +367,20 @@ describe('Fluxo da oficina (e2e)', () => {
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/send`)
       .expect(200);
-    notifications.enqueue.mockClear();
+    notifications.execute.mockClear();
 
     await request(http)
       .post(`/api/v1/budgets/${budget.body.id}/accept`)
       .expect(200);
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.STOCK_PARTS_REQUESTED,
         to: 'estoque@example.com',
         text: expect.stringContaining('Filtro de óleo'),
       }),
     );
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         text: expect.not.stringContaining('Troca do filtro'),
       }),

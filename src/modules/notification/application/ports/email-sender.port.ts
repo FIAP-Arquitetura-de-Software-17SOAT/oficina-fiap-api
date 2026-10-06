@@ -5,6 +5,6 @@ export interface EmailMessage {
   html: string;
 }
 
-export abstract class EmailSender {
+export abstract class EmailSenderPort {
   abstract send(message: EmailMessage): Promise<void>;
 }

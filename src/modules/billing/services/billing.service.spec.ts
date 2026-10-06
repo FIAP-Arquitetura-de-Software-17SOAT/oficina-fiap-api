@@ -12,8 +12,8 @@ import {
 import { BudgetService } from '../../budget/services/budget.service';
 import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
-import { NotificationType } from '../../notification/enums/notification-type.enum';
-import { NotificationService } from '../../notification/services/notification.service';
+import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import { ServiceOrder } from '../../service-order/entities/service-order.entity';
 import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
 import { ServiceOrderService } from '../../service-order/services/service-order.service';
@@ -59,7 +59,7 @@ describe('BillingService', () => {
   let repository: jest.Mocked<BillingRepository>;
   let budgetService: jest.Mocked<BudgetService>;
   let clientRepository: jest.Mocked<ClientRepositoryPort>;
-  let notifications: jest.Mocked<NotificationService>;
+  let notifications: jest.Mocked<EnqueueNotificationUseCase>;
   let serviceOrderService: jest.Mocked<ServiceOrderService>;
   let paymentGateway: jest.Mocked<PaymentGateway>;
   let service: BillingService;
@@ -82,8 +82,8 @@ describe('BillingService', () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<ClientRepositoryPort>;
     notifications = {
-      enqueue: jest.fn(),
-    } as unknown as jest.Mocked<NotificationService>;
+      execute: jest.fn(),
+    } as unknown as jest.Mocked<EnqueueNotificationUseCase>;
     serviceOrderService = {
       findById: jest.fn(),
       deliver: jest.fn(),
@@ -181,7 +181,7 @@ describe('BillingService', () => {
     await service.generateForServiceOrder({ serviceOrderId });
     await new Promise<void>((resolve) => setImmediate(resolve));
 
-    expect(notifications.enqueue).toHaveBeenCalledWith(
+    expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.PAYMENT_LINK_READY,
         to: client.getEmail().getValue(),
@@ -189,7 +189,7 @@ describe('BillingService', () => {
         html: expect.stringContaining(paymentLink),
       }),
     );
-    const message = notifications.enqueue.mock.calls[0][0];
+    const message = notifications.execute.mock.calls[0][0];
     expect(message.text).toContain('R$ 150,00');
     expect(message.html).toContain('R$ 150,00');
   });
@@ -671,7 +671,7 @@ describe('BillingService payment returns', () => {
       serviceOrderService,
       paymentGateway,
       {} as unknown as jest.Mocked<ClientRepositoryPort>,
-      {} as unknown as jest.Mocked<NotificationService>,
+      {} as unknown as jest.Mocked<EnqueueNotificationUseCase>,
     );
   });
 

@@ -3,8 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
 import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
-import { NotificationType } from '../../notification/enums/notification-type.enum';
-import { NotificationService } from '../../notification/services/notification.service';
+import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
+import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { ServiceCatalogApplicationError } from '../../service-catalog/application/errors/service-catalog-application.error';
 import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
@@ -46,12 +46,12 @@ describe('ServiceOrderService', () => {
   let findVehicle: { execute: jest.Mock };
   let serviceCatalog: { execute: jest.Mock };
   let partCatalog: { findById: jest.Mock };
-  let notifications: { enqueue: jest.Mock };
+  let notifications: { execute: jest.Mock };
 
   beforeEach(async () => {
     serviceCatalog = { execute: jest.fn().mockResolvedValue({}) };
     partCatalog = { findById: jest.fn().mockResolvedValue({}) };
-    notifications = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    notifications = { execute: jest.fn().mockResolvedValue(undefined) };
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -85,7 +85,7 @@ describe('ServiceOrderService', () => {
         { provide: FindVehicleUseCase, useValue: findVehicle },
         { provide: FindServiceUseCase, useValue: serviceCatalog },
         { provide: PART_CATALOG, useValue: partCatalog },
-        { provide: NotificationService, useValue: notifications },
+        { provide: EnqueueNotificationUseCase, useValue: notifications },
       ],
     }).compile();
 
@@ -453,7 +453,7 @@ describe('ServiceOrderService', () => {
       expect(clientRepository.findById).toHaveBeenCalledWith(
         serviceOrder.getClientId(),
       );
-      expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect(notifications.execute).toHaveBeenCalledWith(
         expect.objectContaining({
           type: NotificationType.SERVICE_ORDER_STATUS_CHANGED,
           to: 'maria@example.com',
@@ -482,7 +482,7 @@ describe('ServiceOrderService', () => {
       }
       await flush();
 
-      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+      expect(notifications.execute).toHaveBeenCalledTimes(1);
     });
 
     it('não avisa em AWAITING_APPROVAL: o email do orçamento já cobre essa etapa', async () => {
@@ -492,7 +492,7 @@ describe('ServiceOrderService', () => {
       await service.awaitApproval(serviceOrder.getId());
       await flush();
 
-      expect(notifications.enqueue).not.toHaveBeenCalled();
+      expect(notifications.execute).not.toHaveBeenCalled();
     });
 
     it('falha ao montar o aviso não desfaz a mudança de status', async () => {
@@ -506,7 +506,7 @@ describe('ServiceOrderService', () => {
       await flush();
 
       expect(result.getStatus()).toBe(ServiceOrderStatus.CANCELLED);
-      expect(notifications.enqueue).not.toHaveBeenCalled();
+      expect(notifications.execute).not.toHaveBeenCalled();
     });
   });
 });
