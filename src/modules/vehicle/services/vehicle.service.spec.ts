@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DomainException } from '../../../shared/domain/domain.exception';
-import { ClientService } from '../../client/services/client.service';
+import { FindClientUseCase } from '../../client/application/use-cases/find-client.use-case';
 import { Vehicle } from '../entities/vehicle.entity';
 import { VehicleRepository } from '../repositories/vehicle.repository';
 import { VehicleService } from './vehicle.service';
@@ -20,7 +20,7 @@ const makeVehicle = (plate = 'ABC1D23') =>
 describe('VehicleService', () => {
   let service: VehicleService;
   let repository: { [K in keyof VehicleRepository]: jest.Mock };
-  let clientService: { findById: jest.Mock };
+  let findClient: { execute: jest.Mock };
 
   const dto = {
     clientId: CLIENT_ID,
@@ -39,13 +39,13 @@ describe('VehicleService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    clientService = { findById: jest.fn() };
+    findClient = { execute: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VehicleService,
         { provide: VehicleRepository, useValue: repository },
-        { provide: ClientService, useValue: clientService },
+        { provide: FindClientUseCase, useValue: findClient },
       ],
     }).compile();
 
@@ -54,7 +54,7 @@ describe('VehicleService', () => {
 
   describe('create', () => {
     it('persiste o veículo quando cliente existe e placa está livre', async () => {
-      clientService.findById.mockResolvedValue({});
+      findClient.execute.mockResolvedValue({});
       repository.findByPlate.mockResolvedValue(null);
       repository.create.mockImplementation((v: Vehicle) => v);
 
@@ -65,7 +65,7 @@ describe('VehicleService', () => {
     });
 
     it('consulta a placa já normalizada, sem máscara', async () => {
-      clientService.findById.mockResolvedValue({});
+      findClient.execute.mockResolvedValue({});
       repository.findByPlate.mockResolvedValue(null);
       repository.create.mockImplementation((v: Vehicle) => v);
 
@@ -75,7 +75,7 @@ describe('VehicleService', () => {
     });
 
     it('recusa quando o cliente não existe, sem gravar veículo órfão', async () => {
-      clientService.findById.mockRejectedValue(
+      findClient.execute.mockRejectedValue(
         new NotFoundException('Client not found'),
       );
 
@@ -84,7 +84,7 @@ describe('VehicleService', () => {
     });
 
     it('recusa placa já cadastrada', async () => {
-      clientService.findById.mockResolvedValue({});
+      findClient.execute.mockResolvedValue({});
       repository.findByPlate.mockResolvedValue(makeVehicle());
 
       await expect(service.create(dto)).rejects.toThrow(ConflictException);
@@ -96,7 +96,7 @@ describe('VehicleService', () => {
         service.create({ ...dto, plate: 'ABCD123' }),
       ).rejects.toThrow(DomainException);
 
-      expect(clientService.findById).not.toHaveBeenCalled();
+      expect(findClient.execute).not.toHaveBeenCalled();
       expect(repository.findByPlate).not.toHaveBeenCalled();
     });
   });
@@ -124,22 +124,22 @@ describe('VehicleService', () => {
       repository.findAll.mockResolvedValue(vehicles);
 
       await expect(service.findAll()).resolves.toBe(vehicles);
-      expect(clientService.findById).not.toHaveBeenCalled();
+      expect(findClient.execute).not.toHaveBeenCalled();
       expect(repository.findAll).toHaveBeenCalledWith(undefined);
     });
 
     it('filtra por cliente e valida que ele existe', async () => {
-      clientService.findById.mockResolvedValue({});
+      findClient.execute.mockResolvedValue({});
       repository.findAll.mockResolvedValue([]);
 
       await service.findAll(CLIENT_ID);
 
-      expect(clientService.findById).toHaveBeenCalledWith(CLIENT_ID);
+      expect(findClient.execute).toHaveBeenCalledWith(CLIENT_ID);
       expect(repository.findAll).toHaveBeenCalledWith(CLIENT_ID);
     });
 
     it('lança NotFound ao filtrar por cliente inexistente', async () => {
-      clientService.findById.mockRejectedValue(
+      findClient.execute.mockRejectedValue(
         new NotFoundException('Client not found'),
       );
 

@@ -7,7 +7,7 @@ and Swagger.
 
 ## Workflow
 
-- Prefer following existing module patterns under `src/modules/client`.
+- Prefer following the Clean Architecture pattern under `src/modules/client`.
 - For implementation plans in `docs/superpowers/plans`, use
   `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
 - Follow TDD when a plan asks for failing tests first.
@@ -29,7 +29,26 @@ and Swagger.
 This project follows a modular NestJS architecture organized by business
 capability.
 
-Each domain module should keep this shape:
+The `client` module is the reference for the Clean Architecture migration:
+
+- `domain/entities/` and `domain/value-objects/`: business rules, without Nest,
+  HTTP, Prisma, or application dependencies.
+- `application/use-cases/`: pure use cases exposing `execute`, with typed
+  inputs/results in `application/contracts/`.
+- `application/ports/`: framework-independent persistence and integration
+  contracts; application depends on these, never concrete adapters.
+- `application/errors/`: pure errors translated at the HTTP boundary.
+- `infrastructure/persistence/`: Prisma repository and persistence mapper.
+- `infrastructure/identity/`: adapter to the existing identity subsystem.
+- `presentation/http/`: controllers, DTOs, response mappers, and error filters.
+- `<feature>.module.ts`: Nest composition through providers and factories.
+
+Use cases are tested through direct instantiation with fake ports. Keep DTO
+validation/Swagger at the HTTP boundary. Preserve the existing API contracts.
+Run the client architecture boundary test with the unit suite.
+
+Other modules still use the following legacy layout; migrate them only when
+the active plan requests it:
 
 - `entities/`: domain model, invariants, state transitions, and value behavior.
 - `dto/`: request and response contracts, validation, and Swagger metadata.
@@ -43,8 +62,8 @@ Each domain module should keep this shape:
 Controllers should stay thin. They handle routing concerns and delegate to
 services.
 
-Services should coordinate use cases, load aggregates through repositories,
-call domain behavior, and persist changes.
+Use cases (or services in legacy modules) coordinate operations, load
+aggregates through repositories, call domain behavior, and persist changes.
 
 Entities should own business rules. State transitions, invariants, immutable
 fields, and derived values belong in the domain model, not in controllers,

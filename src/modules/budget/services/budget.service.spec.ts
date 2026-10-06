@@ -13,8 +13,8 @@ import {
 import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
 import { PartController } from '../../stock/controllers/part.controller';
-import { Client } from '../../client/entities/client.entity';
-import { ClientRepository } from '../../client/repositories/client.repository';
+import { Client } from '../../client/domain/entities/client.entity';
+import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { BudgetRepository } from '../repositories/budget.repository';
@@ -99,7 +99,7 @@ describe('BudgetService', () => {
           useValue: serviceCatalogController,
         },
         { provide: PartController, useValue: partController },
-        { provide: ClientRepository, useValue: clientRepository },
+        { provide: ClientRepositoryPort, useValue: clientRepository },
         { provide: NotificationService, useValue: notifications },
         { provide: ConfigService, useValue: config },
       ],
@@ -1121,7 +1121,7 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
         },
         { provide: ServiceController, useValue: serviceCatalogController },
         { provide: PartController, useValue: partController },
-        { provide: ClientRepository, useValue: { findById: jest.fn() } },
+        { provide: ClientRepositoryPort, useValue: { findById: jest.fn() } },
         { provide: NotificationService, useValue: { enqueue: jest.fn() } },
         { provide: ConfigService, useValue: { get: jest.fn() } },
       ],

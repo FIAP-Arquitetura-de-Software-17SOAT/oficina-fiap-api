@@ -10,7 +10,7 @@ import { PaymentGateway } from '../src/modules/billing/gateways/payment-gateway'
 import { BillingRepository } from '../src/modules/billing/repositories/billing.repository';
 import { BillingService } from '../src/modules/billing/services/billing.service';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -40,7 +40,7 @@ describe('Billing (integracao)', () => {
     )
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepository)
       .useValue(new InMemoryVehicleRepository())

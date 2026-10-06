@@ -12,7 +12,7 @@ import { BillingRepository } from '../src/modules/billing/repositories/billing.r
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PurchaseOrderRepository } from '../src/modules/purchase-order/repositories/purchase-order.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { PartRepository } from '../src/modules/stock/repositories/part.repository';
@@ -70,7 +70,7 @@ describe('Fluxo da oficina (e2e)', () => {
       })
         .overrideProvider(PrismaService)
         .useValue({})
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())

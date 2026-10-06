@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { RefreshSessionRepository } from '../src/shared/identity/repositories/refresh-session.repository';
 import { UserRepository } from '../src/shared/identity/repositories/user.repository';
@@ -59,7 +59,7 @@ describe('Authentication and authorization (e2e)', () => {
       .useValue(users)
       .overrideProvider(RefreshSessionRepository)
       .useValue(sessions)
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
       .compile();
 

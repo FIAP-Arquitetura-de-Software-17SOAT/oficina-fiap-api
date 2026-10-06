@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -41,7 +41,7 @@ describe('Budget approval link and webhook (e2e)', () => {
     )
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepository)
       .useValue(new InMemoryVehicleRepository())

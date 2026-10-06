@@ -9,7 +9,7 @@ import {
 } from '../src/modules/budget/entities/budget.entity';
 import { Money } from '../src/shared/domain/value-objects/money.vo';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/enums/notification-type.enum';
 import { NotificationRepository } from '../src/modules/notification/repositories/notification.repository';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
@@ -120,7 +120,7 @@ describe('Budget (e2e)', () => {
         .useValue(new InMemoryBudgetRepository())
         .overrideProvider(PartRepository)
         .useValue(parts)
-        .overrideProvider(ClientRepository)
+        .overrideProvider(ClientRepositoryPort)
         .useValue(new InMemoryClientRepository())
         .overrideProvider(VehicleRepository)
         .useValue(new InMemoryVehicleRepository())
@@ -520,7 +520,7 @@ describe('Budget notification delivery resilience (e2e)', () => {
       .useValue(new InMemoryBudgetRepository())
       .overrideProvider(PartRepository)
       .useValue(new InMemoryPartRepository())
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepository)
       .useValue(new InMemoryVehicleRepository())

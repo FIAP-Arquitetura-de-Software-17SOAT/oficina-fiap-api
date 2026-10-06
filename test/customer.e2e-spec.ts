@@ -5,7 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
-import { ClientRepository } from '../src/modules/client/repositories/client.repository';
+import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationService } from '../src/modules/notification/services/notification.service';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
 import { VehicleRepository } from '../src/modules/vehicle/repositories/vehicle.repository';
@@ -64,7 +64,7 @@ describe('CUSTOMER (e2e)', () => {
       .useValue(users)
       .overrideProvider(RefreshSessionRepository)
       .useValue(sessions)
-      .overrideProvider(ClientRepository)
+      .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepository)
       .useValue(new InMemoryVehicleRepository())

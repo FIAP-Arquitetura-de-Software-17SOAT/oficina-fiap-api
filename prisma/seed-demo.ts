@@ -1,4 +1,4 @@
-import { Document } from '../src/modules/client/value-objects/document.vo';
+import { Document } from '../src/modules/client/domain/value-objects/document.vo';
 
 type SeedEnvironment = Record<string, string | undefined>;
 

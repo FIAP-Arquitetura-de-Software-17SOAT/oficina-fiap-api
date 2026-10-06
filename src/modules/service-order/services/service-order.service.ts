@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { serviceOrderStatusChangedEmail } from '../../../shared/notifications/email/notification-templates';
-import { ClientRepository } from '../../client/repositories/client.repository';
+import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
 import { NotificationService } from '../../notification/services/notification.service';
 import { ServiceController } from '../../service-catalog/controllers/service.controller';
@@ -33,7 +33,7 @@ export class ServiceOrderService {
 
   constructor(
     private readonly serviceOrderRepository: ServiceOrderRepository,
-    private readonly clientRepository: ClientRepository,
+    private readonly clientRepository: ClientRepositoryPort,
     private readonly vehicleController: VehicleController,
     private readonly serviceCatalogController: ServiceController,
     @Inject(PART_CATALOG)
