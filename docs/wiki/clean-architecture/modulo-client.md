@@ -28,11 +28,9 @@ src/modules/client/
     identity/client-identity.adapter.ts
   presentation/http/
     client.controller.ts
-    client-application-exception.filter.ts
     dto/client.dto.ts
     dto/client-account.dto.ts
     mappers/client-response.mapper.ts
-  client-architecture.spec.ts
   client.module.ts
 ```
 
@@ -46,8 +44,8 @@ src/modules/client/
 | `repositories/client.repository.ts`: classe concreta injetada no service, traduzia `P2002` em `ConflictException` | `application/ports/client-repository.port.ts` e o contrato; `infrastructure/persistence/prisma-client.repository.ts` implementa e traduz `P2002`/FK em `ClientApplicationError` |
 | `mappers/client.mapper.ts` misturava persistencia e resposta HTTP                                                  | `infrastructure/persistence/client-persistence.mapper.ts` e `presentation/http/mappers/client-response.mapper.ts`                          |
 | `controllers/client.controller.ts` injetava dois services                                                          | `presentation/http/client.controller.ts` injeta os seis casos de uso                                                                      |
-| Status HTTP decidido no service e no repository                                                                    | `presentation/http/client-application-exception.filter.ts`: `CLIENT_NOT_FOUND` vira 404, os demais codigos viram 409, mesmo envelope de antes |
-| —                                                                                                                  | `client-architecture.spec.ts` + `test/client-architecture-check.ts`: teste de fronteira de imports                                        |
+| Status HTTP decidido no service e no repository                                                                    | `ClientApplicationError` estende `ApplicationError` com `kind` por codigo (`CLIENT_NOT_FOUND` e `NOT_FOUND`, os demais `CONFLICT`); o filtro global de `src/shared/http/filters` traduz em 404 ou 409 com o mesmo envelope de antes |
+| —                                                                                                                  | `client` listado em `test/architecture/migrated-modules.ts`, coberto pelo teste de fronteira `src/architecture.spec.ts`                   |
 
 Contratos HTTP, mensagens publicas, schema e migrations nao mudaram.
 
@@ -103,5 +101,5 @@ exports: [FindClientUseCase, ClientRepositoryPort],
 ## Testes
 
 - Casos de uso: `application/use-cases/*.spec.ts`, instanciados com `InMemoryClientRepository` e fakes da porta de identidade, sem Nest.
-- Fronteira de imports: `client-architecture.spec.ts`, roda com `npm test`. Cobre `import type`, reexport, `require`, `import()` e aliases do `tsconfig`.
+- Fronteira de imports: `src/architecture.spec.ts`, roda com `npm test`. Cobre `import type`, reexport, `require`, `import()` e aliases do `tsconfig`.
 - HTTP: `test/client.e2e-spec.ts` e `test/customer.e2e-spec.ts` continuam validando contrato, Swagger e autenticacao.

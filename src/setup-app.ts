@@ -2,7 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NextFunction, Request, Response } from 'express';
 import { DomainExceptionFilter } from './shared/http/filters/domain-exception.filter';
-import { ClientApplicationExceptionFilter } from './modules/client/presentation/http/client-application-exception.filter';
+import { ApplicationExceptionFilter } from './shared/http/filters/application-exception.filter';
 
 export const API_PREFIX = 'api/v1';
 
@@ -35,7 +35,7 @@ export function configureApp(app: INestApplication): INestApplication {
 
   app.useGlobalFilters(
     new DomainExceptionFilter(),
-    new ClientApplicationExceptionFilter(),
+    new ApplicationExceptionFilter(),
   );
 
   return app;

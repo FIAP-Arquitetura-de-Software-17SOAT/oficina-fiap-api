@@ -40,7 +40,29 @@ As setas sao imports de codigo, nao a ordem de uma requisicao.
 | `presentation/http/`          | Controller, DTOs, mapper de resposta e filtro de erro                     |
 | `<feature>.module.ts`         | Composicao Nest: liga cada porta a sua implementacao                      |
 
-Subpastas so existem quando tem responsabilidade concreta. Casos de uso sao testados com `new UseCase(fakePort)`, sem `Test.createTestingModule`. Um teste de fronteira por modulo resolve todos os imports de `domain/` e `application/` e falha se algum apontar para fora do permitido.
+Subpastas so existem quando tem responsabilidade concreta. Casos de uso sao testados com `new UseCase(fakePort)`, sem `Test.createTestingModule`.
+
+## Base compartilhada da migracao
+
+Tres pecas valem para todos os modulos e moram fora deles:
+
+| Onde | O que |
+| --- | --- |
+| `src/shared/application/application.error.ts` | `ApplicationError`, base abstrata com `code`, `kind` (`NOT_FOUND`, `CONFLICT`, `GONE`, `INVALID`, `UNAUTHORIZED`, `FORBIDDEN`) e mensagem. Cada modulo tem a sua subclasse, por exemplo `ClientApplicationError`, com os proprios codigos. |
+| `src/shared/http/filters/application-exception.filter.ts` | Unico filtro HTTP para erros de aplicacao. Traduz `kind` em status e mantem o envelope `{ statusCode, message, error }`. Nenhum modulo registra filtro proprio. |
+| `src/architecture.spec.ts` + `test/architecture/` | Teste de fronteira: para cada modulo em `migrated-modules.ts`, resolve todo import de `domain/` e `application/` (inclusive `import type`, `require`, `import()` e aliases) e falha se apontar para Nest, Prisma, outro modulo, `presentation/` ou `infrastructure/`. Tambem monta o grafo entre `*.module.ts` e acusa ciclos e uso de `forwardRef`. |
+
+O `kind` e uma categoria de negocio, nao um status HTTP. O caso de uso diz o que aconteceu; quem decide 404, 409 ou 410 e o filtro na borda. Isso permite que outro modulo, ou um adapter, reaja ao erro pelo `code` sem conhecer HTTP.
+
+### Regra de imports por camada
+
+| Camada | Pode importar |
+| --- | --- |
+| `domain/` | o proprio `domain/`, `src/shared/domain` |
+| `application/` | o de cima, o proprio `application/`, `src/shared/application`, `node:crypto` |
+| `infrastructure/` e `presentation/` | qualquer coisa, inclusive casos de uso exportados por outros modulos |
+
+`application/` nunca importa outro modulo, nem o `application/` dele. Quando um caso de uso precisa de outro modulo, declara uma porta em `application/ports/` e o adapter em `infrastructure/integrations/` faz a ligacao.
 
 ## Modulos
 
@@ -57,4 +79,4 @@ Subpastas so existem quando tem responsabilidade concreta. Casos de uso sao test
 | Notification    | layout legado       | —                                                       |
 | Auth            | layout legado       | —                                                       |
 
-Durante a transicao, um modulo migrado expoe casos de uso e portas; os modulos legados que dependem dele injetam esses tipos, nunca a implementacao Prisma. Contratos HTTP, schema e migrations nao mudam na migracao.
+Durante a transicao, um modulo migrado exporta so casos de uso; os modulos legados que dependem dele injetam esses casos de uso diretamente, nunca a implementacao Prisma nem o controller. Um modulo migrado que depende de um legado declara uma porta e o adapter chama o service legado, trocado pelo caso de uso quando o fornecedor migrar. Contratos HTTP, schema e migrations nao mudam na migracao.
