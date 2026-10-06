@@ -1,7 +1,5 @@
-import {
-  EmailContent,
-  escapeHtml,
-} from '../../../../shared/notifications/email/notification-templates';
+import { EmailContent } from '../../../../shared/infrastructure/email/email-content';
+import { escapeHtml } from '../../../../shared/infrastructure/html/escape-html';
 
 const currency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',

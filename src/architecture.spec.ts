@@ -1,11 +1,11 @@
 import { resolve } from 'node:path';
 import {
+  allModules,
   checkModule,
   checkShared,
   inspectDependencies,
   projectRoot,
 } from '../test/architecture/boundaries';
-import { MIGRATED_MODULES } from '../test/architecture/migrated-modules';
 import {
   forwardRefUsages,
   moduleCycles,
@@ -19,15 +19,35 @@ const domainFile = resolve(
   projectRoot,
   'src/modules/client/domain/entities/example.ts',
 );
+const adapterFile = resolve(
+  projectRoot,
+  'src/modules/client/infrastructure/integrations/example.ts',
+);
 
 describe('Clean Architecture boundaries', () => {
-  describe.each(MIGRATED_MODULES)('%s module', (moduleName) => {
-    it('keeps domain and application independent of infrastructure and frameworks', () => {
+  it('covers every module under src/modules', () => {
+    expect(allModules()).toEqual([
+      'auth',
+      'billing',
+      'budget',
+      'client',
+      'notification',
+      'parts-dispatch',
+      'purchase-order',
+      'service-catalog',
+      'service-order',
+      'stock',
+      'vehicle',
+    ]);
+  });
+
+  describe.each(allModules())('%s module', (moduleName) => {
+    it('keeps domain and application independent of infrastructure and frameworks, and talks to other modules only through their domain and application', () => {
       expect(checkModule(moduleName)).toEqual([]);
     });
   });
 
-  it('keeps shared/domain and shared/application framework-free', () => {
+  it('keeps shared/domain, shared/application and shared/identity core framework-free', () => {
     expect(checkShared()).toEqual([]);
   });
 
@@ -41,7 +61,8 @@ describe('Clean Architecture boundaries', () => {
       "type Controller = import('../../presentation/http/client.controller').ClientController;",
       "import Controller = require('../../presentation/http/client.controller');",
       "import { ClientController } from 'src/modules/client/presentation/http/client.controller';",
-      "import { normalizeLoginEmail } from '../../../../shared/identity/login-credentials';",
+      "import { normalizeLoginEmail } from '../../../../shared/identity/http/login-credentials';",
+      "import { PrismaUserRepository } from '../../../../shared/identity/infrastructure/persistence/prisma-user.repository';",
       "import { Vehicle } from '../../../vehicle/entities/vehicle.entity';",
       'const moduleName = getModuleName(); import(moduleName);',
     ])('detects a forbidden dependency in %s', (source) => {
@@ -72,14 +93,45 @@ describe('Clean Architecture boundaries', () => {
       );
     });
 
-    it('rejects files outside domain and application', () => {
+    it('lets an adapter reach another module only through domain and application', () => {
+      const allowed = [
+        "import { Injectable } from '@nestjs/common';",
+        "import { FindVehicleUseCase } from '../../../vehicle/application/use-cases/find-vehicle.use-case';",
+        "import { Vehicle } from '../../../vehicle/domain/entities/vehicle.entity';",
+        "import { Role } from '../../../../../generated/prisma/enums';",
+        "import { ClientRepositoryPort } from '../../application/ports/client-repository.port';",
+        "import { randomUUID } from 'node:crypto';",
+        "import { UserRepositoryPort } from '../../../../shared/identity/application/ports/user-repository.port';",
+      ].join('\n');
+      expect(inspectDependencies('client', adapterFile, allowed)).toEqual([]);
+
+      expect(
+        inspectDependencies(
+          'client',
+          adapterFile,
+          "import { PrismaVehicleRepository } from '../../../vehicle/infrastructure/persistence/prisma-vehicle.repository';",
+        ),
+      ).toHaveLength(1);
+      expect(
+        inspectDependencies(
+          'client',
+          adapterFile,
+          "import { VehicleController } from '../../../vehicle/presentation/http/vehicle.controller';",
+        ),
+      ).toHaveLength(1);
+      expect(
+        inspectDependencies('client', adapterFile, 'import(somewhere);'),
+      ).toHaveLength(1);
+    });
+
+    it('rejects files outside the module layers', () => {
       expect(() =>
         inspectDependencies(
           'client',
           resolve(projectRoot, 'src/modules/client/client.module.ts'),
           '',
         ),
-      ).toThrow(/not under client\/domain or client\/application/);
+      ).toThrow(/not under a layer of client/);
     });
   });
 });

@@ -11,15 +11,14 @@ import { EnqueueNotificationUseCase } from '../src/modules/notification/applicat
 import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
-import { User } from '../src/shared/identity/entities/user.entity';
-import { RefreshSessionRepository } from '../src/shared/identity/repositories/refresh-session.repository';
-import { UserRepository } from '../src/shared/identity/repositories/user.repository';
-import { PasswordHashService } from '../src/shared/identity/services/password-hash.service';
+import { User } from '../src/shared/identity/domain/entities/user.entity';
+import { RefreshSessionRepositoryPort } from '../src/shared/identity/application/ports/refresh-session-repository.port';
+import { UserRepositoryPort } from '../src/shared/identity/application/ports/user-repository.port';
+import { BcryptPasswordHasher } from '../src/shared/identity/infrastructure/security/bcrypt-password-hasher';
 import { configureApp } from '../src/setup-app';
 import { InMemoryBudgetRepository } from './in-memory-budget.repository';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import {
-  InMemoryIdentityPrisma,
   InMemoryRefreshSessionRepository,
   InMemoryUserRepository,
 } from './in-memory-identity.repository';
@@ -45,7 +44,7 @@ describe('CUSTOMER (e2e)', () => {
   let joaoOrderId: string;
 
   beforeEach(async () => {
-    const passwordHash = new PasswordHashService();
+    const passwordHash = new BcryptPasswordHasher();
     const users = new InMemoryUserRepository();
     const sessions = new InMemoryRefreshSessionRepository();
     users.reset([
@@ -60,10 +59,10 @@ describe('CUSTOMER (e2e)', () => {
       imports: [AppModule],
     })
       .overrideProvider(PrismaService)
-      .useValue(new InMemoryIdentityPrisma(sessions.sessions))
-      .overrideProvider(UserRepository)
+      .useValue({})
+      .overrideProvider(UserRepositoryPort)
       .useValue(users)
-      .overrideProvider(RefreshSessionRepository)
+      .overrideProvider(RefreshSessionRepositoryPort)
       .useValue(sessions)
       .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())

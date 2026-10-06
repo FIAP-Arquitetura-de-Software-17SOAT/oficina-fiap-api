@@ -1,6 +1,6 @@
-import { User } from '../../../../shared/identity/entities/user.entity';
-import { UserRepository } from '../../../../shared/identity/repositories/user.repository';
-import { PasswordHashService } from '../../../../shared/identity/services/password-hash.service';
+import { PasswordHasherPort } from '../../../../shared/identity/application/ports/password-hasher.port';
+import { UserRepositoryPort } from '../../../../shared/identity/application/ports/user-repository.port';
+import { User } from '../../../../shared/identity/domain/entities/user.entity';
 import { ClientIdentityAdapter } from './client-identity.adapter';
 
 describe('ClientIdentityAdapter', () => {
@@ -23,8 +23,8 @@ describe('ClientIdentityAdapter', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     adapter = new ClientIdentityAdapter(
-      users as unknown as UserRepository,
-      hash as unknown as PasswordHashService,
+      users as unknown as UserRepositoryPort,
+      hash as unknown as PasswordHasherPort,
     );
   });
 

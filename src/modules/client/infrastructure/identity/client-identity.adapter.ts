@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { User } from '../../../../shared/identity/entities/user.entity';
-import { UserRepository } from '../../../../shared/identity/repositories/user.repository';
-import { PasswordHashService } from '../../../../shared/identity/services/password-hash.service';
+import { PasswordHasherPort } from '../../../../shared/identity/application/ports/password-hasher.port';
+import { UserRepositoryPort } from '../../../../shared/identity/application/ports/user-repository.port';
+import { User } from '../../../../shared/identity/domain/entities/user.entity';
 import { ClientAccountResult } from '../../application/contracts/client-account.result';
 import {
   ClientIdentityPort,
@@ -11,8 +11,8 @@ import {
 @Injectable()
 export class ClientIdentityAdapter implements ClientIdentityPort {
   constructor(
-    private readonly users: UserRepository,
-    private readonly passwords: PasswordHashService,
+    private readonly users: UserRepositoryPort,
+    private readonly passwords: PasswordHasherPort,
   ) {}
 
   async findByClientId(clientId: string): Promise<{ id: string } | null> {

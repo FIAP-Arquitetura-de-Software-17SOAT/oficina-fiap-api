@@ -7,15 +7,14 @@ import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
-import { RefreshSessionRepository } from '../src/shared/identity/repositories/refresh-session.repository';
-import { UserRepository } from '../src/shared/identity/repositories/user.repository';
-import { PasswordHashService } from '../src/shared/identity/services/password-hash.service';
-import { User } from '../src/shared/identity/entities/user.entity';
+import { RefreshSessionRepositoryPort } from '../src/shared/identity/application/ports/refresh-session-repository.port';
+import { UserRepositoryPort } from '../src/shared/identity/application/ports/user-repository.port';
+import { BcryptPasswordHasher } from '../src/shared/identity/infrastructure/security/bcrypt-password-hasher';
+import { User } from '../src/shared/identity/domain/entities/user.entity';
 import { configureApp } from '../src/setup-app';
 import { AuthTestModule } from './auth-test.controller';
 import { InMemoryClientRepository } from './in-memory-client.repository';
 import {
-  InMemoryIdentityPrisma,
   InMemoryRefreshSessionRepository,
   InMemoryUserRepository,
 } from './in-memory-identity.repository';
@@ -40,7 +39,7 @@ describe('Authentication and authorization (e2e)', () => {
   const jwt = new JwtService();
 
   beforeAll(async () => {
-    const passwordHash = new PasswordHashService();
+    const passwordHash = new BcryptPasswordHasher();
     admin = User.restore(ADMIN_ID, {
       email: ADMIN_EMAIL,
       passwordHash: await passwordHash.hash(PASSWORD),
@@ -55,10 +54,10 @@ describe('Authentication and authorization (e2e)', () => {
       imports: [AppModule, AuthTestModule],
     })
       .overrideProvider(PrismaService)
-      .useValue(new InMemoryIdentityPrisma(sessions.sessions))
-      .overrideProvider(UserRepository)
+      .useValue({})
+      .overrideProvider(UserRepositoryPort)
       .useValue(users)
-      .overrideProvider(RefreshSessionRepository)
+      .overrideProvider(RefreshSessionRepositoryPort)
       .useValue(sessions)
       .overrideProvider(ClientRepositoryPort)
       .useValue(new InMemoryClientRepository())

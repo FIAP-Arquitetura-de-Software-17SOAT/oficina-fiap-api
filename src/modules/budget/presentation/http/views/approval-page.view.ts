@@ -1,4 +1,4 @@
-import { escapeHtml } from '../../../../../shared/notifications/email/notification-templates';
+import { escapeHtml } from '../../../../../shared/infrastructure/html/escape-html';
 import { Budget, BudgetStatus } from '../../../domain/entities/budget.entity';
 
 const currency = new Intl.NumberFormat('pt-BR', {

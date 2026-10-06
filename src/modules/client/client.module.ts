@@ -38,6 +38,6 @@ import { ClientIdentityAdapter } from './infrastructure/identity/client-identity
       inject: [ClientRepositoryPort, ClientIdentityPort],
     },
   ],
-  exports: [FindClientUseCase, ClientRepositoryPort],
+  exports: [FindClientUseCase],
 })
 export class ClientModule {}

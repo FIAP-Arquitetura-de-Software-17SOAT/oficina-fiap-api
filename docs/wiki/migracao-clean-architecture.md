@@ -1,6 +1,6 @@
 # Migracao para Clean Architecture
 
-Na Fase 1 o projeto foi organizado em camadas dentro de cada modulo (`controllers/`, `services/`, `repositories/`, `entities/`), como descrito no [guia tecnico](guia-tecnico.md#arquitetura). Na Fase 2 os modulos estao sendo migrados, um de cada vez, para Clean Architecture. Esta pagina explica a regra comum a todos e aponta para a pagina de cada modulo migrado.
+Na Fase 1 o projeto foi organizado em camadas dentro de cada modulo (`controllers/`, `services/`, `repositories/`, `entities/`), como descrito no [guia tecnico](guia-tecnico.md#arquitetura). Na Fase 2 os modulos foram migrados, um de cada vez, para Clean Architecture; desde a PR10 todos seguem o mesmo layout. Esta pagina explica a regra comum a todos e aponta para a pagina de cada modulo.
 
 ## A regra que importa: direcao das dependencias
 
@@ -51,7 +51,7 @@ Tres pecas valem para todos os modulos e moram fora deles:
 | `src/shared/application/application.error.ts` | `ApplicationError`, base abstrata com `code`, `kind` (`NOT_FOUND`, `CONFLICT`, `GONE`, `INVALID`, `UNAUTHORIZED`, `FORBIDDEN`) e mensagem. Cada modulo tem a sua subclasse, por exemplo `ClientApplicationError`, com os proprios codigos. |
 | `src/shared/http/filters/application-exception.filter.ts` | Unico filtro HTTP para erros de aplicacao. Traduz `kind` em status e mantem o envelope `{ statusCode, message, error }`. Nenhum modulo registra filtro proprio. |
 | `src/shared/application/logger.port.ts` | `LoggerPort`, para casos de uso que precisam registrar erro sem conhecer o logger do framework. Implementada por `src/shared/infrastructure/logging/nest-logger.adapter.ts`. |
-| `src/architecture.spec.ts` + `test/architecture/` | Teste de fronteira: para cada modulo em `migrated-modules.ts`, resolve todo import de `domain/` e `application/` (inclusive `import type`, `require`, `import()` e aliases) e falha se apontar para Nest, Prisma, outro modulo, `presentation/` ou `infrastructure/`. Tambem monta o grafo entre `*.module.ts` e acusa ciclos e uso de `forwardRef`. |
+| `src/architecture.spec.ts` + `test/architecture/` | Teste de fronteira: para cada modulo em `src/modules`, resolve todo import de `domain/` e `application/` (inclusive `import type`, `require`, `import()` e aliases) e falha se apontar para Nest, Prisma, outro modulo, `presentation/` ou `infrastructure/`; em `infrastructure/` e `presentation/`, falha se alcancar outro modulo por algo que nao seja o `domain/` ou o `application/` dele. Checa tambem `shared/domain`, `shared/application` e o nucleo de `shared/identity`. Monta o grafo entre `*.module.ts` e acusa ciclos e uso de `forwardRef`. |
 
 O `kind` e uma categoria de negocio, nao um status HTTP. O caso de uso diz o que aconteceu; quem decide 404, 409 ou 410 e o filtro na borda. Isso permite que outro modulo, ou um adapter, reaja ao erro pelo `code` sem conhecer HTTP.
 
@@ -61,7 +61,7 @@ O `kind` e uma categoria de negocio, nao um status HTTP. O caso de uso diz o que
 | --- | --- |
 | `domain/` | o proprio `domain/`, `src/shared/domain` |
 | `application/` | o de cima, o proprio `application/`, `src/shared/application`, `node:crypto` |
-| `infrastructure/` e `presentation/` | qualquer coisa, inclusive casos de uso exportados por outros modulos |
+| `infrastructure/` e `presentation/` | qualquer coisa do proprio modulo, `shared`, bibliotecas e Prisma gerado; de outro modulo, so `domain/` e `application/` (casos de uso exportados, erros, entidades) |
 
 `application/` nunca importa outro modulo, nem o `application/` dele. Quando um caso de uso precisa de outro modulo, declara uma porta em `application/ports/` e o adapter em `infrastructure/integrations/` faz a ligacao.
 
@@ -79,6 +79,6 @@ O `kind` e uma categoria de negocio, nao um status HTTP. O caso de uso diz o que
 | Purchase Order  | migrado             | [Modulo Purchase Order](clean-architecture/modulo-purchase-order.md) |
 | Billing         | migrado             | [Modulo Billing](clean-architecture/modulo-billing.md)  |
 | Notification    | migrado             | [Modulo Notification](clean-architecture/modulo-notification.md) |
-| Auth            | layout legado       | —                                                       |
+| Auth            | migrado             | [Modulo Auth](clean-architecture/modulo-auth.md)        |
 
-Durante a transicao, um modulo migrado exporta so casos de uso; os modulos legados que dependem dele injetam esses casos de uso diretamente, nunca a implementacao Prisma nem o controller. Um modulo migrado que depende de um legado declara uma porta e o adapter chama o service legado, trocado pelo caso de uso quando o fornecedor migrar. Contratos HTTP, schema e migrations nao mudam na migracao.
+Um modulo exporta so casos de uso. Quem depende dele declara uma porta estreita em `application/ports/` e o adapter em `infrastructure/integrations/` injeta o caso de uso exportado. `shared/identity` segue as mesmas camadas e exporta so portas. Contratos HTTP, schema e migrations nao mudaram na migracao.
