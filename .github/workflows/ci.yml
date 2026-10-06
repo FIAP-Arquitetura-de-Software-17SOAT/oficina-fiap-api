@@ -49,6 +49,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Verificar código com ESLint
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+
       - name: Validate Prisma schema
         run: npx prisma validate
 
@@ -65,4 +68,7 @@ jobs:
         run: npm run test:cov -- --runInBand
 
       - name: Run E2E tests against PostgreSQL
-        run: npm run test:e2e:db
+        run: npm run test:e2e:db -- --detectOpenHandles
+
+      - name: Build Docker image
+        run: docker build --target runtime -t oficina-fiap-api:${{ github.sha }} .
