@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
@@ -64,7 +65,7 @@ describe('ServiceOrder (integração)', () => {
       moduleFixture.createNestApplication(),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
   });
 
   afterEach(async () => {

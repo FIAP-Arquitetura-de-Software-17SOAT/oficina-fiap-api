@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
 import { PaymentMethod } from '../src/modules/billing/enums/payment-method.enum';
 import { FakePaymentGateway } from '../src/modules/billing/gateways/fake-payment.gateway';
@@ -98,7 +99,7 @@ describe('Fluxo da oficina (e2e)', () => {
       moduleFixture.createNestApplication({ rawBody: true }),
     ) as INestApplication<App>;
     await app.init();
-    http = app.getHttpServer();
+    http = await listenOnLoopback(app);
 
     token = await jwt.signAsync(
       { sub: 'flow-user', role: 'ADMIN', type: 'access', jti: 'flow-jti' },
