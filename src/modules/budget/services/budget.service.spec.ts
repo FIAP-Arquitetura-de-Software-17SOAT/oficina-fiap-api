@@ -10,7 +10,10 @@ import {
   BudgetItemType,
   BudgetStatus,
 } from '../entities/budget.entity';
-import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
+import { ServiceOrderApplicationError } from '../../service-order/application/errors/service-order-application.error';
+import { AwaitApprovalUseCase } from '../../service-order/application/use-cases/await-approval.use-case';
+import { AwaitPartsUseCase } from '../../service-order/application/use-cases/await-parts.use-case';
+import { FindServiceOrderUseCase } from '../../service-order/application/use-cases/find-service-order.use-case';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
 import { Client } from '../../client/domain/entities/client.entity';
@@ -43,6 +46,12 @@ const makeBudget = () =>
     ],
   });
 
+/** A OS que os casos de uso do service-order devolvem: só os getters que o budget lê. */
+const serviceOrderLike = (clientId: string, status: string) => ({
+  getClientId: () => clientId,
+  getStatus: () => status,
+});
+
 describe('BudgetService', () => {
   let service: BudgetService;
   let repository: MockedRepository;
@@ -72,13 +81,12 @@ describe('BudgetService', () => {
     };
 
     serviceOrderController = {
-      awaitApproval: jest.fn().mockResolvedValue({ clientId: 'client-1' }),
+      awaitApproval: jest.fn().mockResolvedValue({}),
       awaitParts: jest.fn(),
       cancel: jest.fn(),
-      findById: jest.fn().mockResolvedValue({
-        clientId: 'client-1',
-        status: 'IN_DIAGNOSIS',
-      }),
+      findById: jest
+        .fn()
+        .mockResolvedValue(serviceOrderLike('client-1', 'IN_DIAGNOSIS')),
     };
     serviceCatalogController = { execute: jest.fn() };
     partController = { execute: jest.fn() };
@@ -91,8 +99,16 @@ describe('BudgetService', () => {
         BudgetService,
         { provide: BudgetRepository, useValue: repository },
         {
-          provide: ServiceOrderController,
-          useValue: serviceOrderController,
+          provide: FindServiceOrderUseCase,
+          useValue: { execute: serviceOrderController.findById },
+        },
+        {
+          provide: AwaitApprovalUseCase,
+          useValue: { execute: serviceOrderController.awaitApproval },
+        },
+        {
+          provide: AwaitPartsUseCase,
+          useValue: { execute: serviceOrderController.awaitParts },
         },
         {
           provide: FindServiceUseCase,
@@ -670,10 +686,9 @@ describe('BudgetService', () => {
         // A versão 2 não passa por `awaitApproval`, então sem esta conferência
         // ela era gravada em silêncio num atendimento já encerrado.
         repository.findLastVersionByServiceOrderId.mockResolvedValue(1);
-        serviceOrderController.findById.mockResolvedValue({
-          clientId: 'client-1',
-          status,
-        });
+        serviceOrderController.findById.mockResolvedValue(
+          serviceOrderLike('client-1', status),
+        );
 
         await expect(
           service.create({
@@ -964,7 +979,7 @@ describe('BudgetService', () => {
       const budget = makeBudget();
       repository.findById.mockResolvedValue(budget);
       serviceOrderController.findById.mockRejectedValue(
-        new NotFoundException('Service order not found'),
+        new ServiceOrderApplicationError('SERVICE_ORDER_NOT_FOUND'),
       );
 
       await expect(
@@ -1108,17 +1123,15 @@ describe('BudgetService — referência ao catálogo de serviços', () => {
         BudgetService,
         { provide: BudgetRepository, useValue: repository },
         {
-          provide: ServiceOrderController,
+          provide: FindServiceOrderUseCase,
           useValue: {
-            awaitApproval: jest.fn().mockResolvedValue({ clientId: 'c-1' }),
-            awaitParts: jest.fn(),
-            cancel: jest.fn(),
-            findById: jest.fn().mockResolvedValue({
-              clientId: 'c-1',
-              status: 'IN_DIAGNOSIS',
-            }),
+            execute: jest
+              .fn()
+              .mockResolvedValue(serviceOrderLike('c-1', 'IN_DIAGNOSIS')),
           },
         },
+        { provide: AwaitApprovalUseCase, useValue: { execute: jest.fn() } },
+        { provide: AwaitPartsUseCase, useValue: { execute: jest.fn() } },
         { provide: FindServiceUseCase, useValue: serviceCatalogController },
         { provide: FindPartUseCase, useValue: partController },
         { provide: ClientRepositoryPort, useValue: { findById: jest.fn() } },

@@ -1,6 +1,6 @@
-import { ServiceOrder } from '../entities/service-order.entity';
-import { ServiceOrderStatus } from '../enums/service-order-status.enum';
-import { ServiceOrderMapper } from './service-order.mapper';
+import { ServiceOrder } from '../../../domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../../../domain/enums/service-order-status.enum';
+import { ServiceOrderResponseMapper } from './service-order-response.mapper';
 
 const makeServiceOrder = () =>
   ServiceOrder.create({
@@ -9,9 +9,9 @@ const makeServiceOrder = () =>
     description: 'Barulho no motor',
   });
 
-describe('ServiceOrderMapper', () => {
+describe('ServiceOrderResponseMapper', () => {
   it('desembrulha a entidade em campos primitivos', () => {
-    const response = ServiceOrderMapper.toResponse(makeServiceOrder());
+    const response = ServiceOrderResponseMapper.toResponse(makeServiceOrder());
 
     expect(response).toEqual({
       id: expect.any(String) as string,
@@ -36,12 +36,12 @@ describe('ServiceOrderMapper', () => {
     const a = makeServiceOrder();
     const b = makeServiceOrder();
 
-    const responses = ServiceOrderMapper.toResponseList([a, b]);
+    const responses = ServiceOrderResponseMapper.toResponseList([a, b]);
 
     expect(responses.map((r) => r.id)).toEqual([a.getId(), b.getId()]);
   });
 
   it('mapeia lista vazia', () => {
-    expect(ServiceOrderMapper.toResponseList([])).toEqual([]);
+    expect(ServiceOrderResponseMapper.toResponseList([])).toEqual([]);
   });
 });

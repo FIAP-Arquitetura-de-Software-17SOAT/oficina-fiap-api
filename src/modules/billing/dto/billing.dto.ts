@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
-import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
+import { ServiceOrderStatus } from '../../service-order/domain/enums/service-order-status.enum';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
 

@@ -8,7 +8,7 @@ import { BudgetRepository } from '../src/modules/budget/repositories/budget.repo
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { NotificationType } from '../src/modules/notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
@@ -46,7 +46,7 @@ describe('Budget approval link and webhook (e2e)', () => {
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
-      .overrideProvider(ServiceOrderRepository)
+      .overrideProvider(ServiceOrderRepositoryPort)
       .useValue(new InMemoryServiceOrderRepository())
       .overrideProvider(BudgetRepository)
       .useValue(new InMemoryBudgetRepository())

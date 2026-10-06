@@ -1,6 +1,6 @@
 import { BudgetService } from '../../../budget/services/budget.service';
 import { RegisterShortageUseCase } from '../../../purchase-order/application/use-cases/register-shortage.use-case';
-import { ServiceOrderService } from '../../../service-order/services/service-order.service';
+import { RegisterPartsDispatchedUseCase } from '../../../service-order/application/use-cases/register-parts-dispatched.use-case';
 import { StockApplicationError } from '../../../stock/application/errors/stock-application.error';
 import { DecreaseStockUseCase } from '../../../stock/application/use-cases/decrease-stock.use-case';
 import { FindPartUseCase } from '../../../stock/application/use-cases/find-part.use-case';
@@ -96,16 +96,14 @@ describe('parts-dispatch adapters', () => {
   });
 
   it('ServiceOrderAdapter registers the dispatch on the service order', async () => {
-    const serviceOrders = {
-      registerPartsDispatched: jest.fn().mockResolvedValue({}),
-    };
+    const serviceOrders = { execute: jest.fn().mockResolvedValue({}) };
     const adapter = new ServiceOrderAdapter(
-      serviceOrders as unknown as ServiceOrderService,
+      serviceOrders as unknown as RegisterPartsDispatchedUseCase,
     );
 
     await adapter.registerPartsDispatched('so-1');
 
-    expect(serviceOrders.registerPartsDispatched).toHaveBeenCalledWith('so-1');
+    expect(serviceOrders.execute).toHaveBeenCalledWith('so-1');
   });
 
   it('PurchaseOrderAdapter opens the shortage purchase and returns its id', async () => {

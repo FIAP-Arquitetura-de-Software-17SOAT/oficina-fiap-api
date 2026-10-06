@@ -14,9 +14,11 @@ import { Client } from '../../client/domain/entities/client.entity';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
-import { ServiceOrder } from '../../service-order/entities/service-order.entity';
-import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
-import { ServiceOrderService } from '../../service-order/services/service-order.service';
+import { ServiceOrder } from '../../service-order/domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../../service-order/domain/enums/service-order-status.enum';
+import { AwaitPaymentUseCase } from '../../service-order/application/use-cases/await-payment.use-case';
+import { DeliverServiceOrderUseCase } from '../../service-order/application/use-cases/deliver-service-order.use-case';
+import { FindServiceOrderUseCase } from '../../service-order/application/use-cases/find-service-order.use-case';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
@@ -60,7 +62,11 @@ describe('BillingService', () => {
   let budgetService: jest.Mocked<BudgetService>;
   let clientRepository: jest.Mocked<ClientRepositoryPort>;
   let notifications: jest.Mocked<EnqueueNotificationUseCase>;
-  let serviceOrderService: jest.Mocked<ServiceOrderService>;
+  let serviceOrderService: {
+    findById: jest.Mock;
+    deliver: jest.Mock;
+    awaitPayment: jest.Mock;
+  };
   let paymentGateway: jest.Mocked<PaymentGateway>;
   let service: BillingService;
 
@@ -88,7 +94,7 @@ describe('BillingService', () => {
       findById: jest.fn(),
       deliver: jest.fn(),
       awaitPayment: jest.fn(),
-    } as unknown as jest.Mocked<ServiceOrderService>;
+    };
     paymentGateway = {
       createPaymentLink: jest.fn(),
       parsePaymentWebhook: jest.fn(),
@@ -97,7 +103,15 @@ describe('BillingService', () => {
     service = new BillingService(
       repository,
       budgetService,
-      serviceOrderService,
+      {
+        execute: serviceOrderService.findById,
+      } as unknown as FindServiceOrderUseCase,
+      {
+        execute: serviceOrderService.awaitPayment,
+      } as unknown as AwaitPaymentUseCase,
+      {
+        execute: serviceOrderService.deliver,
+      } as unknown as DeliverServiceOrderUseCase,
       paymentGateway,
       clientRepository,
       notifications,
@@ -624,7 +638,11 @@ describe('BillingService payment returns', () => {
   const sessionId = 'cs_test_return';
 
   let repository: jest.Mocked<BillingRepository>;
-  let serviceOrderService: jest.Mocked<ServiceOrderService>;
+  let serviceOrderService: {
+    findById: jest.Mock;
+    deliver: jest.Mock;
+    awaitPayment: jest.Mock;
+  };
   let paymentGateway: jest.Mocked<PaymentGateway>;
   let service: BillingService;
 
@@ -659,7 +677,7 @@ describe('BillingService payment returns', () => {
       findById: jest.fn(),
       deliver: jest.fn(),
       awaitPayment: jest.fn(),
-    } as unknown as jest.Mocked<ServiceOrderService>;
+    };
     paymentGateway = {
       createPaymentLink: jest.fn(),
       parsePaymentWebhook: jest.fn(),
@@ -668,7 +686,15 @@ describe('BillingService payment returns', () => {
     service = new BillingService(
       repository,
       {} as unknown as jest.Mocked<BudgetService>,
-      serviceOrderService,
+      {
+        execute: serviceOrderService.findById,
+      } as unknown as FindServiceOrderUseCase,
+      {
+        execute: serviceOrderService.awaitPayment,
+      } as unknown as AwaitPaymentUseCase,
+      {
+        execute: serviceOrderService.deliver,
+      } as unknown as DeliverServiceOrderUseCase,
       paymentGateway,
       {} as unknown as jest.Mocked<ClientRepositoryPort>,
       {} as unknown as jest.Mocked<EnqueueNotificationUseCase>,

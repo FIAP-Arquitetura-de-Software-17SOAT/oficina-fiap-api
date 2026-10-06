@@ -19,8 +19,11 @@ import {
   BudgetDecision,
   BudgetDecisionWebhookDto,
 } from '../dto/budget-webhook.dto';
-import { ServiceOrderController } from '../../service-order/controllers/service-order.controller';
-import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
+import { ServiceOrderApplicationError } from '../../service-order/application/errors/service-order-application.error';
+import { AwaitApprovalUseCase } from '../../service-order/application/use-cases/await-approval.use-case';
+import { AwaitPartsUseCase } from '../../service-order/application/use-cases/await-parts.use-case';
+import { FindServiceOrderUseCase } from '../../service-order/application/use-cases/find-service-order.use-case';
+import { ServiceOrderStatus } from '../../service-order/domain/enums/service-order-status.enum';
 import { FindServiceUseCase } from '../../service-catalog/application/use-cases/find-service.use-case';
 import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
@@ -51,7 +54,9 @@ export class BudgetService {
   // a chamada interna nao exige token: a autorizacao ja aconteceu na entrada.
   constructor(
     private readonly budgetRepository: BudgetRepository,
-    private readonly serviceOrderController: ServiceOrderController,
+    private readonly findServiceOrder: FindServiceOrderUseCase,
+    private readonly awaitApproval: AwaitApprovalUseCase,
+    private readonly awaitParts: AwaitPartsUseCase,
     private readonly clientRepository: ClientRepositoryPort,
     private readonly notifications: EnqueueNotificationUseCase,
     private readonly config: ConfigService,
@@ -76,7 +81,7 @@ export class BudgetService {
     // a execucao gera outro orcamento, e a OS ja nao esta mais em diagnostico -
     // nesse caso a transicao nao se aplica e o orcamento segue valido.
     if (budget.getVersion() === 1) {
-      await this.serviceOrderController.awaitApproval(serviceOrderId);
+      await this.awaitApproval.execute(serviceOrderId);
     }
 
     return budget;
@@ -222,7 +227,7 @@ export class BudgetService {
    * resolve isso liberando a OS direto para execucao.
    */
   private async requestPartsForAcceptedBudget(budget: Budget): Promise<void> {
-    await this.serviceOrderController.awaitParts(budget.getServiceOrderId());
+    await this.awaitParts.execute(budget.getServiceOrderId());
     void this.enqueueStockPartsRequestNotification(budget);
   }
 
@@ -268,11 +273,15 @@ export class BudgetService {
     if (clientScope === undefined) return true;
 
     try {
-      const serviceOrder =
-        await this.serviceOrderController.findById(serviceOrderId);
-      return serviceOrder.clientId === clientScope;
+      const serviceOrder = await this.findServiceOrder.execute(serviceOrderId);
+      return serviceOrder.getClientId() === clientScope;
     } catch (error) {
-      if (error instanceof NotFoundException) return false;
+      if (
+        error instanceof ServiceOrderApplicationError &&
+        error.code === 'SERVICE_ORDER_NOT_FOUND'
+      ) {
+        return false;
+      }
       throw error;
     }
   }
@@ -333,14 +342,15 @@ export class BudgetService {
   private async assertServiceOrderAcceptsNewBudget(
     serviceOrderId: string,
   ): Promise<void> {
-    const serviceOrder =
-      await this.serviceOrderController.findById(serviceOrderId);
+    const serviceOrder = await this.findServiceOrder.execute(serviceOrderId);
 
     if (
-      BudgetService.CLOSED_SERVICE_ORDER_STATUSES.includes(serviceOrder.status)
+      BudgetService.CLOSED_SERVICE_ORDER_STATUSES.includes(
+        serviceOrder.getStatus(),
+      )
     ) {
       throw new ConflictException(
-        `Ordem de serviço ${serviceOrder.status} não aceita novo orçamento`,
+        `Ordem de serviço ${serviceOrder.getStatus()} não aceita novo orçamento`,
       );
     }
   }
@@ -532,11 +542,11 @@ export class BudgetService {
     approvalToken: ApprovalToken,
   ): Promise<void> {
     try {
-      const serviceOrder = await this.serviceOrderController.findById(
+      const serviceOrder = await this.findServiceOrder.execute(
         budget.getServiceOrderId(),
       );
       const client = await this.clientRepository.findById(
-        serviceOrder.clientId,
+        serviceOrder.getClientId(),
       );
       if (!client) return;
 

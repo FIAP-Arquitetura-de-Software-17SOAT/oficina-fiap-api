@@ -1,4 +1,4 @@
-import { DomainException } from '../../../shared/domain/domain.exception';
+import { DomainException } from '../../../../shared/domain/domain.exception';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
 import { ServiceOrder, ServiceOrderProps } from './service-order.entity';
 
@@ -549,5 +549,13 @@ describe('ServiceOrder listagem', () => {
       'RECEIVED-2026-01-01T08:00:00Z',
       'CANCELLED-2026-01-01T07:00:00Z',
     ]);
+  });
+
+  it('recusa item pedido sem referência', () => {
+    expect(() =>
+      ServiceOrder.create(
+        validProps({ requestedServices: [{ serviceId: '  ', quantity: 1 }] }),
+      ),
+    ).toThrow('Item pedido sem referência');
   });
 });

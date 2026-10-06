@@ -1,7 +1,7 @@
 import { ServiceOrderResponseDto } from '../dto/service-order.dto';
-import { ServiceOrder } from '../entities/service-order.entity';
+import { ServiceOrder } from '../../../domain/entities/service-order.entity';
 
-export class ServiceOrderMapper {
+export class ServiceOrderResponseMapper {
   static toResponse(serviceOrder: ServiceOrder): ServiceOrderResponseDto {
     return {
       id: serviceOrder.getId(),
@@ -26,7 +26,7 @@ export class ServiceOrderMapper {
     serviceOrders: ServiceOrder[],
   ): ServiceOrderResponseDto[] {
     return serviceOrders.map((serviceOrder) =>
-      ServiceOrderMapper.toResponse(serviceOrder),
+      ServiceOrderResponseMapper.toResponse(serviceOrder),
     );
   }
 }

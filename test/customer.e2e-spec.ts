@@ -8,7 +8,7 @@ import { AppModule } from '../src/app.module';
 import { BudgetRepository } from '../src/modules/budget/repositories/budget.repository';
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { EnqueueNotificationUseCase } from '../src/modules/notification/application/use-cases/enqueue-notification.use-case';
-import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
+import { ServiceOrderRepositoryPort } from '../src/modules/service-order/application/ports/service-order-repository.port';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { User } from '../src/shared/identity/entities/user.entity';
@@ -69,7 +69,7 @@ describe('CUSTOMER (e2e)', () => {
       .useValue(new InMemoryClientRepository())
       .overrideProvider(VehicleRepositoryPort)
       .useValue(new InMemoryVehicleRepository())
-      .overrideProvider(ServiceOrderRepository)
+      .overrideProvider(ServiceOrderRepositoryPort)
       .useValue(new InMemoryServiceOrderRepository())
       .overrideProvider(BudgetRepository)
       .useValue(new InMemoryBudgetRepository())

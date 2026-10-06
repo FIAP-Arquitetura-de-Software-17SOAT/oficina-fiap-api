@@ -12,9 +12,11 @@ import { BudgetService } from '../../budget/services/budget.service';
 import { ClientRepositoryPort } from '../../client/application/ports/client-repository.port';
 import { NotificationType } from '../../notification/domain/enums/notification-type.enum';
 import { EnqueueNotificationUseCase } from '../../notification/application/use-cases/enqueue-notification.use-case';
-import { ServiceOrder } from '../../service-order/entities/service-order.entity';
-import { ServiceOrderStatus } from '../../service-order/enums/service-order-status.enum';
-import { ServiceOrderService } from '../../service-order/services/service-order.service';
+import { ServiceOrder } from '../../service-order/domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../../service-order/domain/enums/service-order-status.enum';
+import { AwaitPaymentUseCase } from '../../service-order/application/use-cases/await-payment.use-case';
+import { DeliverServiceOrderUseCase } from '../../service-order/application/use-cases/deliver-service-order.use-case';
+import { FindServiceOrderUseCase } from '../../service-order/application/use-cases/find-service-order.use-case';
 import { GenerateBillingDto } from '../dto/billing.dto';
 import { Billing } from '../entities/billing.entity';
 import { BillingStatus } from '../enums/billing-status.enum';
@@ -51,7 +53,9 @@ export class BillingService {
   constructor(
     private readonly billingRepository: BillingRepository,
     private readonly budgetService: BudgetService,
-    private readonly serviceOrderService: ServiceOrderService,
+    private readonly findServiceOrder: FindServiceOrderUseCase,
+    private readonly awaitPaymentUseCase: AwaitPaymentUseCase,
+    private readonly deliverServiceOrderUseCase: DeliverServiceOrderUseCase,
     private readonly paymentGateway: PaymentGateway,
     private readonly clientRepository: ClientRepositoryPort,
     private readonly notifications: EnqueueNotificationUseCase,
@@ -59,8 +63,7 @@ export class BillingService {
 
   async generateForServiceOrder(dto: GenerateBillingDto): Promise<Billing> {
     const serviceOrderId = dto.serviceOrderId.trim();
-    const serviceOrder =
-      await this.serviceOrderService.findById(serviceOrderId);
+    const serviceOrder = await this.findServiceOrder.execute(serviceOrderId);
 
     if (serviceOrder.getStatus() !== ServiceOrderStatus.COMPLETED) {
       throw new ConflictException(
@@ -153,7 +156,7 @@ export class BillingService {
     billing: Billing,
   ): Promise<void> {
     try {
-      const serviceOrder = await this.serviceOrderService.findById(
+      const serviceOrder = await this.findServiceOrder.execute(
         billing.getServiceOrderId(),
       );
       const client = await this.clientRepository.findById(
@@ -298,7 +301,7 @@ export class BillingService {
       return this.buildPaymentReturn(billing);
     }
 
-    const serviceOrder = await this.serviceOrderService.findById(
+    const serviceOrder = await this.findServiceOrder.execute(
       billing.getServiceOrderId(),
     );
 
@@ -308,7 +311,7 @@ export class BillingService {
 
     return {
       billing,
-      serviceOrder: await this.serviceOrderService.awaitPayment(
+      serviceOrder: await this.awaitPaymentUseCase.execute(
         serviceOrder.getId(),
       ),
     };
@@ -323,7 +326,7 @@ export class BillingService {
       );
     }
 
-    await this.serviceOrderService.deliver(billing.getServiceOrderId());
+    await this.deliverServiceOrderUseCase.execute(billing.getServiceOrderId());
   }
 
   private async confirmPaymentWithGateway(
@@ -388,7 +391,7 @@ export class BillingService {
   }
 
   private async deliverPaidOrder(billing: Billing): Promise<ServiceOrder> {
-    const serviceOrder = await this.serviceOrderService.findById(
+    const serviceOrder = await this.findServiceOrder.execute(
       billing.getServiceOrderId(),
     );
 
@@ -396,13 +399,13 @@ export class BillingService {
       return serviceOrder;
     }
 
-    return this.serviceOrderService.deliver(serviceOrder.getId());
+    return this.deliverServiceOrderUseCase.execute(serviceOrder.getId());
   }
 
   private async buildPaymentReturn(billing: Billing): Promise<PaymentReturn> {
     return {
       billing,
-      serviceOrder: await this.serviceOrderService.findById(
+      serviceOrder: await this.findServiceOrder.execute(
         billing.getServiceOrderId(),
       ),
     };

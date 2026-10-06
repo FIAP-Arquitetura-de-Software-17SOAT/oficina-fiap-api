@@ -1,7 +1,7 @@
-import { PrismaService } from '../../../shared/database/prisma.service';
-import { ServiceOrder } from '../entities/service-order.entity';
-import { ServiceOrderStatus } from '../enums/service-order-status.enum';
-import { ServiceOrderRepository } from './service-order.repository';
+import { PrismaService } from '../../../../shared/database/prisma.service';
+import { ServiceOrder } from '../../domain/entities/service-order.entity';
+import { ServiceOrderStatus } from '../../domain/enums/service-order-status.enum';
+import { PrismaServiceOrderRepository } from './prisma-service-order.repository';
 
 const row = {
   id: 'f2b3d0a4-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
@@ -15,13 +15,14 @@ const row = {
   updatedAt: new Date('2026-01-01T10:00:00.000Z'),
 };
 
-describe('ServiceOrderRepository', () => {
-  let repository: ServiceOrderRepository;
+describe('PrismaServiceOrderRepository', () => {
+  let repository: PrismaServiceOrderRepository;
   let prisma: {
     serviceOrder: {
       create: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
+      findFirst: jest.Mock;
       update: jest.Mock;
     };
   };
@@ -32,11 +33,14 @@ describe('ServiceOrderRepository', () => {
         create: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn(),
       },
     };
 
-    repository = new ServiceOrderRepository(prisma as unknown as PrismaService);
+    repository = new PrismaServiceOrderRepository(
+      prisma as unknown as PrismaService,
+    );
   });
 
   it('grava os campos primitivos ao criar', async () => {
@@ -232,5 +236,47 @@ describe('ServiceOrderRepository', () => {
       data: Record<string, unknown>;
     };
     expect(call.data.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('findByClientId lists the client orders newest first', async () => {
+    prisma.serviceOrder.findMany.mockResolvedValue([row]);
+
+    const found = await repository.findByClientId(row.clientId);
+
+    expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith({
+      where: { clientId: row.clientId },
+      orderBy: { createdAt: 'desc' },
+      include: { requestedItems: true },
+    });
+    expect(found).toHaveLength(1);
+  });
+
+  it('findActiveByMechanicId looks only at the active statuses', async () => {
+    prisma.serviceOrder.findFirst.mockResolvedValueOnce({
+      ...row,
+      mechanicId: 'mech-1',
+      status: 'IN_PROGRESS',
+    });
+
+    const active = await repository.findActiveByMechanicId('mech-1');
+
+    expect(prisma.serviceOrder.findFirst).toHaveBeenCalledWith({
+      where: {
+        mechanicId: 'mech-1',
+        status: {
+          in: [
+            ServiceOrderStatus.IN_DIAGNOSIS,
+            ServiceOrderStatus.AWAITING_APPROVAL,
+            ServiceOrderStatus.AWAITING_PARTS,
+            ServiceOrderStatus.IN_PROGRESS,
+          ],
+        },
+      },
+      include: { requestedItems: true },
+    });
+    expect(active?.getMechanicId()).toBe('mech-1');
+
+    prisma.serviceOrder.findFirst.mockResolvedValueOnce(null);
+    await expect(repository.findActiveByMechanicId('free')).resolves.toBeNull();
   });
 });

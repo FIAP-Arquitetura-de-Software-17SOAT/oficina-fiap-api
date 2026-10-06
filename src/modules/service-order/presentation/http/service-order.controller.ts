@@ -24,24 +24,46 @@ import {
   CancelServiceOrderDto,
   OpenServiceOrderDto,
   ServiceOrderResponseDto,
-} from '../dto/service-order.dto';
-import { ServiceOrderMapper } from '../mappers/service-order.mapper';
-import { ServiceOrderService } from '../services/service-order.service';
-import { Role } from '../../../../generated/prisma/enums';
-import { Roles } from '../../../shared/http/auth/roles.decorator';
+} from './dto/service-order.dto';
+import { ServiceOrderResponseMapper } from './mappers/service-order-response.mapper';
+import { AssignMechanicUseCase } from '../../application/use-cases/assign-mechanic.use-case';
+import { CancelServiceOrderUseCase } from '../../application/use-cases/cancel-service-order.use-case';
+import { CompleteServiceOrderUseCase } from '../../application/use-cases/complete-service-order.use-case';
+import { FindServiceOrderUseCase } from '../../application/use-cases/find-service-order.use-case';
+import { GetAverageExecutionTimeUseCase } from '../../application/use-cases/get-average-execution-time.use-case';
+import { ListServiceOrdersByClientUseCase } from '../../application/use-cases/list-service-orders-by-client.use-case';
+import { ListServiceOrdersUseCase } from '../../application/use-cases/list-service-orders.use-case';
+import { OpenServiceOrderUseCase } from '../../application/use-cases/open-service-order.use-case';
+import { Role } from '../../../../../generated/prisma/enums';
+import { Roles } from '../../../../shared/http/auth/roles.decorator';
 import {
   clientScopeOf,
   CurrentUser,
-} from '../../../shared/http/auth/current-user.decorator';
-import type { AuthenticatedUser } from '../../../shared/http/auth/current-user.decorator';
+} from '../../../../shared/http/auth/current-user.decorator';
+import type { AuthenticatedUser } from '../../../../shared/http/auth/current-user.decorator';
 
+/**
+ * Só as transições que são ação de alguém na oficina têm rota. As demais
+ * (aguardar aprovação, aguardar peças, peças atendidas, aguardar pagamento,
+ * entregar) são políticas disparadas por outros módulos, que injetam os
+ * casos de uso exportados pelo ServiceOrderModule.
+ */
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Roles(Role.ADMIN, Role.EMPLOYEE)
 @ApiTags('service-orders')
 @Controller('service-orders')
 export class ServiceOrderController {
-  constructor(private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    private readonly openServiceOrderUseCase: OpenServiceOrderUseCase,
+    private readonly listServiceOrders: ListServiceOrdersUseCase,
+    private readonly getAverageExecutionTimeUseCase: GetAverageExecutionTimeUseCase,
+    private readonly listByClient: ListServiceOrdersByClientUseCase,
+    private readonly findServiceOrder: FindServiceOrderUseCase,
+    private readonly assignMechanic: AssignMechanicUseCase,
+    private readonly completeServiceOrder: CompleteServiceOrderUseCase,
+    private readonly cancelServiceOrder: CancelServiceOrderUseCase,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Open a service order' })
@@ -51,8 +73,8 @@ export class ServiceOrderController {
   async openServiceOrder(
     @Body() dto: OpenServiceOrderDto,
   ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.openServiceOrder(dto),
+    return ServiceOrderResponseMapper.toResponse(
+      await this.openServiceOrderUseCase.execute(dto),
     );
   }
 
@@ -67,8 +89,8 @@ export class ServiceOrderController {
   })
   @ApiOkResponse({ type: ServiceOrderResponseDto, isArray: true })
   async findAll(): Promise<ServiceOrderResponseDto[]> {
-    return ServiceOrderMapper.toResponseList(
-      await this.serviceOrderService.findAll(),
+    return ServiceOrderResponseMapper.toResponseList(
+      await this.listServiceOrders.execute(),
     );
   }
 
@@ -78,7 +100,7 @@ export class ServiceOrderController {
   })
   @ApiOkResponse({ type: AverageExecutionTimeResponseDto })
   async getAverageExecutionTime(): Promise<AverageExecutionTimeResponseDto> {
-    return this.serviceOrderService.getAverageExecutionTime();
+    return this.getAverageExecutionTimeUseCase.execute();
   }
 
   @Get('clients/:clientId')
@@ -93,8 +115,8 @@ export class ServiceOrderController {
   async findByClientId(
     @Param('clientId', ParseUUIDPipe) clientId: string,
   ): Promise<ServiceOrderResponseDto[]> {
-    return ServiceOrderMapper.toResponseList(
-      await this.serviceOrderService.findByClientId(clientId),
+    return ServiceOrderResponseMapper.toResponseList(
+      await this.listByClient.execute(clientId),
     );
   }
 
@@ -110,15 +132,11 @@ export class ServiceOrderController {
   async findMine(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ServiceOrderResponseDto[]> {
-    return ServiceOrderMapper.toResponseList(
-      await this.serviceOrderService.findByClientId(user.clientId as string),
+    return ServiceOrderResponseMapper.toResponseList(
+      await this.listByClient.execute(user.clientId as string),
     );
   }
 
-  /**
-   * Também chamado por outros módulos sem `user`: a chamada interna não tem
-   * recorte, a autorização já aconteceu na entrada.
-   */
   @Get(':id')
   @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CUSTOMER)
   @ApiOperation({
@@ -132,8 +150,8 @@ export class ServiceOrderController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.findById(id, clientScopeOf(user)),
+    return ServiceOrderResponseMapper.toResponse(
+      await this.findServiceOrder.execute(id, clientScopeOf(user)),
     );
   }
 
@@ -156,41 +174,8 @@ export class ServiceOrderController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AssignMechanicDto,
   ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.assignToMechanic(id, dto),
-    );
-  }
-
-  /**
-   * Sem rota HTTP de propósito. Quem move a OS para AWAITING_APPROVAL é a
-   * política de geração do orçamento, que chama este método.
-   */
-  async awaitApproval(id: string): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.awaitApproval(id),
-    );
-  }
-
-  /**
-   * Sem rota HTTP de propósito. Quem move a OS para AWAITING_PARTS é a política
-   * de aceite do orçamento, que chama este método. Expor como endpoint criaria
-   * um caminho paralelo ao fluxo.
-   */
-  async awaitParts(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.awaitParts(id),
-    );
-  }
-
-  /**
-   * Sem rota HTTP de propósito. A OS só entra em execução pelas mãos do
-   * estoque, depois de as peças serem atendidas — ver o módulo parts-dispatch.
-   */
-  async registerPartsDispatched(id: string): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.registerPartsDispatched(id),
+    return ServiceOrderResponseMapper.toResponse(
+      await this.assignMechanic.execute(id, dto),
     );
   }
 
@@ -202,8 +187,8 @@ export class ServiceOrderController {
   async complete(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.complete(id),
+    return ServiceOrderResponseMapper.toResponse(
+      await this.completeServiceOrder.execute(id),
     );
   }
 
@@ -218,8 +203,8 @@ export class ServiceOrderController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CancelServiceOrderDto,
   ): Promise<ServiceOrderResponseDto> {
-    return ServiceOrderMapper.toResponse(
-      await this.serviceOrderService.cancel(id, dto),
+    return ServiceOrderResponseMapper.toResponse(
+      await this.cancelServiceOrder.execute(id, dto),
     );
   }
 }
