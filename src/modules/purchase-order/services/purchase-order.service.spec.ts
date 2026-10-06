@@ -16,12 +16,15 @@ import { Money } from '../../../shared/domain/value-objects/money.vo';
 
 import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
-import { PartController } from '../../stock/controllers/part.controller';
+import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
+import { IncreaseStockUseCase } from '../../stock/application/use-cases/increase-stock.use-case';
 
 describe('PurchaseOrderService', () => {
   let service: PurchaseOrderService;
 
-  let partController: jest.Mocked<PartController>;
+  let findPart: { execute: jest.Mock };
+
+  let increaseStock: { execute: jest.Mock };
 
   let repository: jest.Mocked<PurchaseOrderRepository>;
 
@@ -43,12 +46,14 @@ describe('PurchaseOrderService', () => {
       update: jest.fn(),
     } as unknown as jest.Mocked<PurchaseOrderRepository>;
 
-    partController = {
-      findById: jest.fn(),
-      increaseStock: jest.fn(),
-    } as unknown as jest.Mocked<PartController>;
+    findPart = { execute: jest.fn() };
+    increaseStock = { execute: jest.fn() };
 
-    service = new PurchaseOrderService(repository, partController);
+    service = new PurchaseOrderService(
+      repository,
+      findPart as unknown as FindPartUseCase,
+      increaseStock as unknown as IncreaseStockUseCase,
+    );
   });
 
   afterEach(() => {
@@ -247,7 +252,7 @@ describe('PurchaseOrderService', () => {
 
       await service.markAsDelivered('purchase-order-id');
 
-      expect(partController.increaseStock).toHaveBeenCalledWith('part-id', {
+      expect(increaseStock.execute).toHaveBeenCalledWith('part-id', {
         quantity: 4,
         idempotencyKey: 'purchase-order:purchase-order-id:item-id',
       });
@@ -256,8 +261,9 @@ describe('PurchaseOrderService', () => {
     it('abre o pedido da falta com número sequencial e preço da peça', async () => {
       repository.countByYear.mockResolvedValue(41);
 
-      partController.findById.mockResolvedValue({
-        unitPrice: 149.9,
+      findPart.execute.mockResolvedValue({
+        getUnitPrice: () => Money.fromDecimal(149.9),
+        getName: () => 'Filtro de óleo',
       } as never);
 
       repository.create.mockImplementation(

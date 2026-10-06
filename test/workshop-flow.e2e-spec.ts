@@ -16,8 +16,8 @@ import { EnqueueNotificationUseCase } from '../src/modules/notification/applicat
 import { ClientRepositoryPort } from '../src/modules/client/application/ports/client-repository.port';
 import { PurchaseOrderRepository } from '../src/modules/purchase-order/repositories/purchase-order.repository';
 import { ServiceOrderRepository } from '../src/modules/service-order/repositories/service-order.repository';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
-import { StockMovementRepository } from '../src/modules/stock/repositories/stock-movement.repository';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
+import { StockMovementRepositoryPort } from '../src/modules/stock/application/ports/stock-movement-repository.port';
 import { VehicleRepositoryPort } from '../src/modules/vehicle/application/ports/vehicle-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
@@ -79,9 +79,9 @@ describe('Fluxo da oficina (e2e)', () => {
         .useValue(new InMemoryServiceOrderRepository())
         .overrideProvider(BudgetRepository)
         .useValue(new InMemoryBudgetRepository())
-        .overrideProvider(PartRepository)
+        .overrideProvider(PartRepositoryPort)
         .useValue(parts)
-        .overrideProvider(StockMovementRepository)
+        .overrideProvider(StockMovementRepositoryPort)
         .useValue(new InMemoryStockMovementRepository(parts))
         .overrideProvider(PurchaseOrderRepository)
         .useValue(new InMemoryPurchaseOrderRepository())

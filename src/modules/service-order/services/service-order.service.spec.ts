@@ -10,7 +10,8 @@ import { ServiceCatalogApplicationError } from '../../service-catalog/applicatio
 import { FindVehicleUseCase } from '../../vehicle/application/use-cases/find-vehicle.use-case';
 import { ServiceOrder } from '../entities/service-order.entity';
 import { ServiceOrderStatus } from '../enums/service-order-status.enum';
-import { PART_CATALOG } from '../ports/part-catalog.port';
+import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
+import { StockApplicationError } from '../../stock/application/errors/stock-application.error';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderService } from './service-order.service';
 
@@ -45,12 +46,12 @@ describe('ServiceOrderService', () => {
   let clientRepository: MockedClientRepository;
   let findVehicle: { execute: jest.Mock };
   let serviceCatalog: { execute: jest.Mock };
-  let partCatalog: { findById: jest.Mock };
+  let partCatalog: { execute: jest.Mock };
   let notifications: { execute: jest.Mock };
 
   beforeEach(async () => {
     serviceCatalog = { execute: jest.fn().mockResolvedValue({}) };
-    partCatalog = { findById: jest.fn().mockResolvedValue({}) };
+    partCatalog = { execute: jest.fn().mockResolvedValue({}) };
     notifications = { execute: jest.fn().mockResolvedValue(undefined) };
     repository = {
       create: jest.fn(),
@@ -84,7 +85,7 @@ describe('ServiceOrderService', () => {
         { provide: ClientRepositoryPort, useValue: clientRepository },
         { provide: FindVehicleUseCase, useValue: findVehicle },
         { provide: FindServiceUseCase, useValue: serviceCatalog },
-        { provide: PART_CATALOG, useValue: partCatalog },
+        { provide: FindPartUseCase, useValue: partCatalog },
         { provide: EnqueueNotificationUseCase, useValue: notifications },
       ],
     }).compile();
@@ -122,7 +123,7 @@ describe('ServiceOrderService', () => {
       });
 
       expect(serviceCatalog.execute).toHaveBeenCalledWith('svc-1');
-      expect(partCatalog.findById).toHaveBeenCalledWith('part-1');
+      expect(partCatalog.execute).toHaveBeenCalledWith('part-1');
       expect(result.getRequestedServices()).toEqual([
         { serviceId: 'svc-1', quantity: 1 },
       ]);
@@ -145,8 +146,8 @@ describe('ServiceOrderService', () => {
 
     it('não grava a OS quando uma peça pedida não existe', async () => {
       clientRepository.findById.mockResolvedValue(makeClient());
-      partCatalog.findById.mockRejectedValue(
-        new NotFoundException('Peça não encontrada'),
+      partCatalog.execute.mockRejectedValue(
+        new StockApplicationError('PART_NOT_FOUND'),
       );
 
       await expect(
@@ -154,7 +155,7 @@ describe('ServiceOrderService', () => {
           ...dto,
           parts: [{ partId: 'x', quantity: 1 }],
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(StockApplicationError);
       expect(repository.create).not.toHaveBeenCalled();
     });
 

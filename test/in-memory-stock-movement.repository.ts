@@ -2,11 +2,10 @@ import { randomUUID } from 'crypto';
 import {
   AppliedStockMovement,
   ApplyStockMovementInput,
-  IdempotencyConflictError,
-  InsufficientStockError,
-  PartNotFoundError,
-  StockMovementType,
-} from '../src/modules/stock/repositories/stock-movement.repository';
+} from '../src/modules/stock/application/contracts/stock-movement';
+import { StockApplicationError } from '../src/modules/stock/application/errors/stock-application.error';
+import { StockMovementRepositoryPort } from '../src/modules/stock/application/ports/stock-movement-repository.port';
+import { StockMovementType } from '../src/modules/stock/domain/enums/stock-movement-type.enum';
 import { InMemoryPartRepository } from './in-memory-part.repository';
 
 /**
@@ -14,7 +13,7 @@ import { InMemoryPartRepository } from './in-memory-part.repository';
  * recusa saldo insuficiente e devolve o resultado anterior quando a mesma chave
  * de idempotência chega de novo.
  */
-export class InMemoryStockMovementRepository {
+export class InMemoryStockMovementRepository implements StockMovementRepositoryPort {
   private readonly applied = new Map<string, AppliedStockMovement>();
 
   constructor(private readonly parts: InMemoryPartRepository) {}
@@ -28,7 +27,7 @@ export class InMemoryStockMovementRepository {
         previous.movement.type !== input.type ||
         previous.movement.quantity !== input.quantity
       ) {
-        throw new IdempotencyConflictError();
+        throw new StockApplicationError('IDEMPOTENCY_KEY_CONFLICT');
       }
 
       return { ...previous, replayed: true };
@@ -37,12 +36,12 @@ export class InMemoryStockMovementRepository {
     const part = await this.parts.findById(input.partId);
 
     if (!part) {
-      throw new PartNotFoundError();
+      throw new StockApplicationError('MOVEMENT_PART_NOT_FOUND');
     }
 
     if (input.type === StockMovementType.OUT) {
       if (!part.hasAvailability(input.quantity)) {
-        throw new InsufficientStockError();
+        throw new StockApplicationError('INSUFFICIENT_STOCK');
       }
 
       part.decreaseStock(input.quantity);

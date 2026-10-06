@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { PartController } from '../../stock/controllers/part.controller';
+import { FindPartUseCase } from '../../stock/application/use-cases/find-part.use-case';
+import { IncreaseStockUseCase } from '../../stock/application/use-cases/increase-stock.use-case';
 
 import {
   AddPurchaseOrderItemDto,
@@ -22,11 +23,12 @@ import { Quantity } from '../../../shared/domain/value-objects/quantity.vo';
 
 @Injectable()
 export class PurchaseOrderService {
-  // O estoque e alcancado pelo controller dele (convencao da Fase 1; a porta
-  // propria vem na migracao deste modulo).
+  // O estoque ja e migrado: injetamos os casos de uso exportados. A porta
+  // propria deste modulo vem na migracao dele.
   constructor(
     private readonly repository: PurchaseOrderRepository,
-    private readonly partController: PartController,
+    private readonly findPart: FindPartUseCase,
+    private readonly increaseStock: IncreaseStockUseCase,
   ) {}
 
   async create(dto: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
@@ -100,7 +102,7 @@ export class PurchaseOrderService {
     // recebidas". A chave de idempotencia deriva do pedido e do item, entao
     // reentregar o mesmo pedido nao soma duas vezes.
     for (const item of delivered.getItems()) {
-      await this.partController.increaseStock(item.getPartId(), {
+      await this.increaseStock.execute(item.getPartId(), {
         quantity: item.getQuantity().getValue(),
         idempotencyKey: `purchase-order:${delivered.getId()}:${item.getId()}`,
       });
@@ -125,7 +127,7 @@ export class PurchaseOrderService {
     });
 
     for (const shortage of dto.items) {
-      const part = await this.partController.findById(shortage.partId);
+      const part = await this.findPart.execute(shortage.partId);
 
       purchaseOrder.addItem(
         new PurchaseOrderItem({
@@ -133,7 +135,7 @@ export class PurchaseOrderService {
 
           quantity: Quantity.positive(shortage.quantity),
 
-          unitPrice: Money.fromDecimal(part.unitPrice),
+          unitPrice: part.getUnitPrice(),
         }),
       );
     }
@@ -164,8 +166,8 @@ export class PurchaseOrderService {
 
     for (const partId of partIds) {
       try {
-        const part = await this.partController.findById(partId);
-        names.set(partId, part.name);
+        const part = await this.findPart.execute(partId);
+        names.set(partId, part.getName());
       } catch {
         names.set(partId, null);
       }

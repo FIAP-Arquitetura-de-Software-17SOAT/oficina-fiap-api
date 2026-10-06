@@ -5,7 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { listenOnLoopback } from './listen-on-loopback';
 import { AppModule } from '../src/app.module';
-import { PartRepository } from '../src/modules/stock/repositories/part.repository';
+import { PartRepositoryPort } from '../src/modules/stock/application/ports/part-repository.port';
 import { PrismaService } from '../src/shared/database/prisma.service';
 import { configureApp } from '../src/setup-app';
 import { InMemoryPartRepository } from './in-memory-part.repository';
@@ -31,7 +31,7 @@ describe('Stock (e2e)', () => {
     })
       .overrideProvider(PrismaService)
       .useValue({})
-      .overrideProvider(PartRepository)
+      .overrideProvider(PartRepositoryPort)
       .useValue(new InMemoryPartRepository())
       .compile();
 

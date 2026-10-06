@@ -1,9 +1,9 @@
-import { NotFoundException } from '@nestjs/common';
 import { BudgetService } from '../../../budget/services/budget.service';
 import { PurchaseOrderService } from '../../../purchase-order/services/purchase-order.service';
 import { ServiceOrderService } from '../../../service-order/services/service-order.service';
-import { PartService } from '../../../stock/services/part.service';
-import { StockMovementService } from '../../../stock/services/stock-movement.service';
+import { StockApplicationError } from '../../../stock/application/errors/stock-application.error';
+import { DecreaseStockUseCase } from '../../../stock/application/use-cases/decrease-stock.use-case';
+import { FindPartUseCase } from '../../../stock/application/use-cases/find-part.use-case';
 import { BudgetAdapter } from './budget.adapter';
 import { PurchaseOrderAdapter } from './purchase-order.adapter';
 import { ServiceOrderAdapter } from './service-order.adapter';
@@ -48,15 +48,15 @@ describe('parts-dispatch adapters', () => {
   });
 
   describe('StockAdapter', () => {
-    const parts = { findById: jest.fn() };
-    const movements = { decrease: jest.fn() };
+    const parts = { execute: jest.fn() };
+    const movements = { execute: jest.fn() };
     const adapter = new StockAdapter(
-      parts as unknown as PartService,
-      movements as unknown as StockMovementService,
+      parts as unknown as FindPartUseCase,
+      movements as unknown as DecreaseStockUseCase,
     );
 
     it('projects the part onto the port shape', async () => {
-      parts.findById.mockResolvedValue({
+      parts.execute.mockResolvedValue({
         getId: () => 'part-1',
         getName: () => 'Filtro',
         getQuantity: () => ({ getValue: () => 4 }),
@@ -69,26 +69,26 @@ describe('parts-dispatch adapters', () => {
       });
     });
 
-    it('turns the legacy NotFoundException into null', async () => {
-      parts.findById.mockRejectedValue(
-        new NotFoundException('Peça não encontrada'),
+    it('turns PART_NOT_FOUND into null', async () => {
+      parts.execute.mockRejectedValue(
+        new StockApplicationError('PART_NOT_FOUND'),
       );
 
       await expect(adapter.findPart('missing')).resolves.toBeNull();
     });
 
     it('propagates any other failure', async () => {
-      parts.findById.mockRejectedValue(new Error('database down'));
+      parts.execute.mockRejectedValue(new Error('database down'));
 
       await expect(adapter.findPart('part-1')).rejects.toThrow('database down');
     });
 
-    it('decreases stock through the movement service with the idempotency key', async () => {
-      movements.decrease.mockResolvedValue({});
+    it('decreases stock through the use case with the idempotency key', async () => {
+      movements.execute.mockResolvedValue({});
 
       await adapter.decrease('part-1', 3, 'budget:b1:part:part-1');
 
-      expect(movements.decrease).toHaveBeenCalledWith('part-1', {
+      expect(movements.execute).toHaveBeenCalledWith('part-1', {
         quantity: 3,
         idempotencyKey: 'budget:b1:part:part-1',
       });
