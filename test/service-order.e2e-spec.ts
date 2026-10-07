@@ -34,6 +34,19 @@ const openPayload = (clientId: string, vehicleId: string) => ({
   description: 'Barulho no motor ao acelerar',
 });
 
+function responseId(body: unknown): string {
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('id' in body) ||
+    typeof body.id !== 'string'
+  ) {
+    throw new TypeError('Esperava um id string na resposta da API');
+  }
+
+  return body.id;
+}
+
 describe('ServiceOrder (integração)', () => {
   let app: INestApplication<App>;
   let http: App;
@@ -328,10 +341,10 @@ describe('ServiceOrder (integração)', () => {
 
       // Não existe mais rota que mova a OS para IN_PROGRESS: quem faz isso é o
       // estoque, depois de atender as peças. O atalho sumiu.
-      await advance(created.id, 'start-diagnosis').expect(404);
-      await advance(created.id, 'start-progress').expect(404);
-      await advance(created.id, 'await-parts').expect(404);
-      await advance(created.id, 'await-approval').expect(404);
+      await advance(responseId(created), 'start-diagnosis').expect(404);
+      await advance(responseId(created), 'start-progress').expect(404);
+      await advance(responseId(created), 'await-parts').expect(404);
+      await advance(responseId(created), 'await-approval').expect(404);
 
       const response = await request(http)
         .get('/api/v1/service-orders/metrics/average-execution-time')
@@ -378,13 +391,13 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      const response = await advance(created.id, 'assign', {
+      const response = await advance(responseId(created), 'assign', {
         mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       }).expect(200);
 
       expect(response.body.status).toBe('IN_DIAGNOSIS');
       // Gerar o orçamento é que leva para AWAITING_APPROVAL; não há rota manual.
-      await advance(created.id, 'await-approval').expect(404);
+      await advance(responseId(created), 'await-approval').expect(404);
     });
 
     it('devolve 400 ao entregar OS que ainda não foi finalizada', async () => {
@@ -393,7 +406,7 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'deliver').expect(404);
+      await advance(responseId(created), 'deliver').expect(404);
     });
 
     it('cancelar é possível a qualquer momento antes da finalização', async () => {
@@ -402,10 +415,10 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'assign', {
+      await advance(responseId(created), 'assign', {
         mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       }).expect(200);
-      const response = await advance(created.id, 'cancel', {
+      const response = await advance(responseId(created), 'cancel', {
         reason: 'Cliente desistiu',
       }).expect(200);
 
@@ -418,7 +431,7 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'complete').expect(400);
+      await advance(responseId(created), 'complete').expect(400);
     });
 
     it('cancela com motivo', async () => {
@@ -427,7 +440,7 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      const response = await advance(created.id, 'cancel', {
+      const response = await advance(responseId(created), 'cancel', {
         reason: 'Cliente desistiu',
       }).expect(200);
 
@@ -441,7 +454,7 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'cancel', {}).expect(400);
+      await advance(responseId(created), 'cancel', {}).expect(400);
     });
 
     it('devolve 404 ao avançar OS inexistente', async () => {
@@ -461,7 +474,7 @@ describe('ServiceOrder (integração)', () => {
 
       expect(created.assignedAt).toBeNull();
 
-      await advance(created.id, 'assign', { mechanicId: MECHANIC })
+      await advance(responseId(created), 'assign', { mechanicId: MECHANIC })
         .expect(200)
         .expect(({ body }) => {
           expect(body.status).toBe('IN_DIAGNOSIS');
@@ -479,18 +492,22 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(primeira.id, 'assign', { mechanicId: MECHANIC }).expect(
-        200,
-      );
+      await advance(responseId(primeira), 'assign', {
+        mechanicId: MECHANIC,
+      }).expect(200);
 
-      await advance(segunda.id, 'assign', { mechanicId: MECHANIC }).expect(409);
+      await advance(responseId(segunda), 'assign', {
+        mechanicId: MECHANIC,
+      }).expect(409);
 
       // Encerrada a primeira, o mecânico fica livre para a próxima.
-      await advance(primeira.id, 'cancel', {
+      await advance(responseId(primeira), 'cancel', {
         reason: 'Cliente desistiu',
       }).expect(200);
 
-      await advance(segunda.id, 'assign', { mechanicId: MECHANIC }).expect(200);
+      await advance(responseId(segunda), 'assign', {
+        mechanicId: MECHANIC,
+      }).expect(200);
     });
 
     it('recusa reatribuir uma OS que já tem mecânico', async () => {
@@ -499,8 +516,10 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'assign', { mechanicId: MECHANIC }).expect(200);
-      await advance(created.id, 'assign', {
+      await advance(responseId(created), 'assign', {
+        mechanicId: MECHANIC,
+      }).expect(200);
+      await advance(responseId(created), 'assign', {
         mechanicId: 'dddddddd-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       }).expect(400);
     });
@@ -513,7 +532,7 @@ describe('ServiceOrder (integração)', () => {
         openPayload(clientId, vehicleId),
       ).expect(201);
 
-      await advance(created.id, 'assign', {
+      await advance(responseId(created), 'assign', {
         mechanicId: 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c',
       }).expect(200);
 

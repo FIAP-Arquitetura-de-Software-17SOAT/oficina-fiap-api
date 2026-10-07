@@ -1,3 +1,4 @@
+import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { bootstrap } from './main';
@@ -9,20 +10,25 @@ jest.mock('@nestjs/core', () => ({
 }));
 
 jest.mock('./setup-app', () => ({
-  configureApp: jest.fn((app) => app),
+  configureApp: jest.fn((app: INestApplication) => app),
   setupSwagger: jest.fn(),
 }));
 
 describe('main bootstrap', () => {
   it('enables rawBody for Stripe webhook signature verification', async () => {
+    const mockedNestFactory = jest.mocked(NestFactory);
     const listen = jest.fn();
-    (NestFactory.create as jest.Mock).mockResolvedValue({ listen });
+
+    mockedNestFactory.create.mockResolvedValue({
+      listen,
+    } as unknown as INestApplication);
 
     await bootstrap();
 
-    expect(NestFactory.create).toHaveBeenCalledWith(AppModule, {
-      rawBody: true,
-    });
+    expect(mockedNestFactory.create.mock.calls).toContainEqual([
+      AppModule,
+      { rawBody: true },
+    ]);
     expect(listen).toHaveBeenCalled();
   });
 });

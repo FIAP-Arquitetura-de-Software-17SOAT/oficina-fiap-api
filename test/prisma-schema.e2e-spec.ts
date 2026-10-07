@@ -19,7 +19,7 @@ describe('Prisma schema contracts', () => {
       /model ServiceOrder \{[\s\S]*?\n\}/,
     )?.[0];
 
-    expect(budgetModel).toMatch(/serviceOrderId\s+String\n/);
+    expect(budgetModel).toMatch(/serviceOrderId\s+String\r?\n/);
     expect(budgetModel).not.toMatch(/serviceOrderId\s+String\s+@db\.Uuid/);
     expect(budgetModel).not.toContain('serviceOrder ServiceOrder');
     expect(serviceOrderModel).not.toContain('budgets Budget[]');

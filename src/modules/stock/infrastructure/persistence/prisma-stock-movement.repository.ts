@@ -11,6 +11,14 @@ import { StockApplicationError } from '../../application/errors/stock-applicatio
 import { StockMovementRepositoryPort } from '../../application/ports/stock-movement-repository.port';
 import { PartPersistenceMapper } from './part-persistence.mapper';
 
+const toDomainStockMovementType: Record<
+  PrismaStockMovementType,
+  StockMovementType
+> = {
+  [PrismaStockMovementType.IN]: StockMovementType.IN,
+  [PrismaStockMovementType.OUT]: StockMovementType.OUT,
+};
+
 function isPrismaError(error: unknown, code: string): boolean {
   return (
     typeof error === 'object' &&
@@ -97,7 +105,7 @@ export class PrismaStockMovementRepository implements StockMovementRepositoryPor
 
     if (
       existing.partId !== input.partId ||
-      existing.type !== input.type ||
+      toDomainStockMovementType[existing.type] !== input.type ||
       existing.quantity !== input.quantity
     ) {
       throw new StockApplicationError('IDEMPOTENCY_KEY_CONFLICT');
@@ -126,6 +134,6 @@ export class PrismaStockMovementRepository implements StockMovementRepositoryPor
     partId: string;
     createdAt: Date;
   }) {
-    return { ...movement, type: movement.type as StockMovementType };
+    return { ...movement, type: toDomainStockMovementType[movement.type] };
   }
 }

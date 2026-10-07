@@ -25,6 +25,14 @@ import { InMemoryClientRepository } from './in-memory-client.repository';
 import { InMemoryServiceOrderRepository } from './in-memory-service-order.repository';
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 
+function responseString(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new TypeError('Esperava uma string na resposta da API');
+  }
+
+  return value;
+}
+
 describe('Billing (integracao)', () => {
   let app: INestApplication<App>;
   let http: App;
@@ -208,14 +216,17 @@ describe('Billing (integracao)', () => {
       .post('/api/v1/billings')
       .send({ serviceOrderId })
       .expect(201);
+
+    const paymentLink = responseString(response.body.paymentLink);
+
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(notifications.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         type: NotificationType.PAYMENT_LINK_READY,
         to: 'maria@example.com',
-        text: expect.stringContaining(response.body.paymentLink),
-        html: expect.stringContaining(response.body.paymentLink),
+        text: expect.stringContaining(paymentLink),
+        html: expect.stringContaining(paymentLink),
       }),
     );
     const [message] =
