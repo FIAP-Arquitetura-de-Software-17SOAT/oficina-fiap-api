@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Validate, build, and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: oficina_fiap_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d oficina_fiap_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/oficina_fiap_ci?schema=public
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Verificar código com ESLint
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Apply migrations to the CI database
+        run: npx prisma migrate deploy
+
+      - name: Build API and generate Prisma Client
+        run: npm run build
+
+      - name: Test seed logic
+        run: npm run test:seed
+
+      - name: Run unit tests and enforce coverage thresholds
+        run: npm run test:cov -- --runInBand
+
+      - name: Run E2E tests against PostgreSQL
+        run: npm run test:e2e:db -- --detectOpenHandles
+
+      - name: Build Docker image
+        run: docker build --target runtime -t oficina-fiap-api:${{ github.sha }} .

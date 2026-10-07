@@ -430,9 +430,13 @@ describe('Swagger', () => {
       );
 
     for (const operation of serviceOrderOperations) {
-      expect(
-        `${operation.summary ?? ''}${operation.description ?? ''}`,
-      ).toMatch(/^[\x00-\x7F]*$/);
+      const metadata: string = `${operation.summary ?? ''}${operation.description ?? ''}`;
+
+      const isAscii = [...metadata].every(
+        (character) => character.charCodeAt(0) <= 0x7f,
+      );
+
+      expect(isAscii).toBe(true);
     }
   });
 

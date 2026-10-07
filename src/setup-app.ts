@@ -1,17 +1,14 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { NextFunction, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response } from 'express';
 import { DomainExceptionFilter } from './shared/http/filters/domain-exception.filter';
 import { ApplicationExceptionFilter } from './shared/http/filters/application-exception.filter';
 
 export const API_PREFIX = 'api/v1';
 
 export function configureApp(app: INestApplication): INestApplication {
-  const httpInstance = app.getHttpAdapter().getInstance();
-
-  if (typeof httpInstance.disable === 'function') {
-    httpInstance.disable('x-powered-by');
-  }
+  const httpInstance = app.getHttpAdapter().getInstance() as Express;
+  httpInstance.disable('x-powered-by');
 
   app.enableCors({
     origin: ['http://localhost:5173'],
