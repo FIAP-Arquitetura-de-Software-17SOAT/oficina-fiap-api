@@ -1,0 +1,192 @@
+{
+  "name": "local",
+  "variables": [
+    {
+      "name": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "email",
+      "value": "{{ADMIN_EMAIL}}",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "password",
+      "value": "{{ADMIN_PASSWORD}}",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "useRandomData",
+      "value": "true",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "clientName",
+      "value": "Bruno QA Manual",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "document",
+      "value": "11222333000181",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "clientEmail",
+      "value": "bruno.qa.manual@example.com",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "clientPhone",
+      "value": "(11) 98888-7777",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "plate",
+      "value": "QAA1A11",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "vehicleBrand",
+      "value": "Fiat",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "vehicleModel",
+      "value": "Argo",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "vehicleYear",
+      "value": "2022",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "serviceName",
+      "value": "Troca de oleo manual",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "serviceDescription",
+      "value": "Servico manual para smoke QA",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "partCode",
+      "value": "MANUAL-PART-001",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "partName",
+      "value": "Filtro manual",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "partDescription",
+      "value": "Peca manual para smoke QA",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "serviceOrderDescription",
+      "value": "Atendimento manual de QA",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "budgetServiceDescription",
+      "value": "Servico manual",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "budgetPartDescription",
+      "value": "Peca manual",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "stockIdempotencyKey",
+      "value": "entrada-manual-001",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "mechanicId",
+      "value": "00000000-0000-4000-8000-000000000001",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "ADMIN_EMAIL",
+      "value": "teste@email.com",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "value": "12345678",
+      "type": "text",
+      "enabled": true,
+      "secret": false
+    },
+    {
+      "name": "ADMIN_EMAIL",
+      "value": "",
+      "type": "text",
+      "enabled": true,
+      "secret": true
+    },
+    {
+      "name": "ADMIN_PASSWORD",
+      "value": "",
+      "type": "text",
+      "enabled": true,
+      "secret": true
+    }
+  ],
+  "info": {
+    "type": "bruno-environment",
+    "exportedAt": "2026-08-31T00:31:30.555Z",
+    "exportedUsing": "Bruno/v4.1.0"
+  }
+}

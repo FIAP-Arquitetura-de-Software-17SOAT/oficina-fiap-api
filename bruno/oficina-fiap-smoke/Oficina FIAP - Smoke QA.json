@@ -1,0 +1,1251 @@
+{
+  "info": {
+    "name": "Oficina FIAP - Smoke QA",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Gerar dados do smoke",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "const useRandomData = String(pm.environment.get(\"useRandomData\")).toLowerCase() !== \"false\";",
+              "if (!useRandomData) {",
+              "  const runId = Date.now();",
+              "  pm.variables.set(\"runId\", runId);",
+              "  pm.variables.set(\"stockIdempotencyKey\", `${pm.environment.get(\"stockIdempotencyKey\")}-${runId}`);",
+              "  return;",
+              "}",
+              "const rnd = (n) => Math.floor(Math.random() * n);",
+              "const pick = (items) => items[rnd(items.length)];",
+              "const letter = () => String.fromCharCode(65 + rnd(26));",
+              "const runId = Date.now();",
+              "const cnpjBase = Array.from({ length: 8 }, () => rnd(10)).concat([0, 0, 0, 1]);",
+              "const cnpjDigit = (digits, weights) => {",
+              "  const sum = digits.reduce((acc, digit, index) => acc + digit * weights[index], 0);",
+              "  const rest = sum % 11;",
+              "  return rest < 2 ? 0 : 11 - rest;",
+              "};",
+              "const cnpjD1 = cnpjDigit(cnpjBase, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);",
+              "const cnpjD2 = cnpjDigit([...cnpjBase, cnpjD1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);",
+              "const suffix = (runId % 0xffffffffffff).toString(16).padStart(12, \"0\");",
+              "const firstNames = [\"Ana\", \"Bruno\", \"Carla\", \"Diego\", \"Elisa\", \"Felipe\"];",
+              "const lastNames = [\"Silva\", \"Souza\", \"Pereira\", \"Oliveira\", \"Costa\", \"Lima\"];",
+              "const brands = [\"Fiat\", \"Volkswagen\", \"Chevrolet\", \"Toyota\", \"Honda\", \"Renault\"];",
+              "const modelsByBrand = {",
+              "  Fiat: [\"Argo\", \"Pulse\", \"Cronos\"],",
+              "  Volkswagen: [\"Polo\", \"Virtus\", \"T-Cross\"],",
+              "  Chevrolet: [\"Onix\", \"Tracker\", \"Spin\"],",
+              "  Toyota: [\"Corolla\", \"Yaris\", \"Hilux\"],",
+              "  Honda: [\"City\", \"HR-V\", \"Civic\"],",
+              "  Renault: [\"Kwid\", \"Duster\", \"Sandero\"],",
+              "};",
+              "const services = [",
+              "  [\"Troca de oleo e filtro\", \"Substituicao de oleo, filtro e revisao visual\"],",
+              "  [\"Revisao de freios\", \"Inspecao e ajuste do sistema de freio\"],",
+              "  [\"Alinhamento e balanceamento\", \"Ajuste de geometria e balanceamento das rodas\"],",
+              "];",
+              "const parts = [",
+              "  [\"OIL-FILTER\", \"Filtro de oleo\", \"Filtro para oleo do motor\"],",
+              "  [\"BRAKE-PAD\", \"Pastilha de freio\", \"Jogo de pastilhas dianteiras\"],",
+              "  [\"AIR-FILTER\", \"Filtro de ar\", \"Filtro do sistema de admissao\"],",
+              "];",
+              "const clientName = `${pick(firstNames)} ${pick(lastNames)}`;",
+              "const brand = pick(brands);",
+              "const model = pick(modelsByBrand[brand]);",
+              "const service = pick(services);",
+              "const part = pick(parts);",
+              "pm.variables.set(\"runId\", runId);",
+              "pm.variables.set(\"clientName\", clientName);",
+              "pm.variables.set(\"document\", [...cnpjBase, cnpjD1, cnpjD2].join(\"\"));",
+              "pm.variables.set(\"plate\", `${letter()}${letter()}${letter()}${rnd(10)}${letter()}${rnd(10)}${rnd(10)}`);",
+              "pm.variables.set(\"clientEmail\", `${clientName.toLowerCase().replace(\" \", \".\")}.${runId}@example.com`);",
+              "pm.variables.set(\"clientPhone\", `(11) 9${String(rnd(100000000)).padStart(8, \"0\")}`);",
+              "pm.variables.set(\"vehicleBrand\", brand);",
+              "pm.variables.set(\"vehicleModel\", model);",
+              "pm.variables.set(\"vehicleYear\", 2018 + rnd(8));",
+              "pm.variables.set(\"serviceName\", `${service[0]} ${runId}`);",
+              "pm.variables.set(\"serviceDescription\", service[1]);",
+              "pm.variables.set(\"partCode\", `${part[0]}-${runId}`);",
+              "pm.variables.set(\"partName\", part[1]);",
+              "pm.variables.set(\"partDescription\", part[2]);",
+              "pm.variables.set(\"serviceOrderDescription\", `${pick([\"Barulho\", \"Vibracao\", \"Falha intermitente\"])} em ${model}`);",
+              "pm.variables.set(\"budgetServiceDescription\", service[0]);",
+              "pm.variables.set(\"budgetPartDescription\", part[1]);",
+              "pm.variables.set(\"stockIdempotencyKey\", `entrada-${runId}`);",
+              "pm.variables.set(\"mechanicId\", `00000000-0000-4000-8000-${suffix}`);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"dados do smoke preparados\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "  pm.expect(pm.variables.get(\"runId\")).to.exist;",
+              "  pm.expect(pm.variables.get(\"clientEmail\")).to.contain(\"@\");",
+              "});",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"API responde health check\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"login retorna tokens\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "  pm.expect(pm.response.json().accessToken).to.be.a(\"string\").and.not.empty;",
+              "  pm.expect(pm.response.json().refreshToken).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  pm.variables.set(\"accessToken\", pm.response.json().accessToken);",
+              "  pm.variables.set(\"refreshToken\", pm.response.json().refreshToken);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cria cliente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/clients",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "clients"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{clientName}}\",\n  \"document\": \"{{document}}\",\n  \"email\": \"{{clientEmail}}\",\n  \"phone\": \"{{clientPhone}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"cliente criado\", function () { pm.expect(pm.response.code).to.equal(201); });",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"clientId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cadastra veiculo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/vehicles",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "vehicles"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"plate\": \"{{plate}}\",\n  \"brand\": \"{{vehicleBrand}}\",\n  \"model\": \"{{vehicleModel}}\",\n  \"year\": \"{{vehicleYear}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"veiculo criado\", function () { pm.expect(pm.response.code).to.equal(201); });",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"vehicleId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cadastra servico no catalogo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "services"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{serviceName}}\",\n  \"description\": \"{{serviceDescription}}\",\n  \"price\": 149.9\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"servico criado\", function () { pm.expect(pm.response.code).to.equal(201); });",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"serviceId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cadastra peca",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/parts",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{partCode}}\",\n  \"name\": \"{{partName}}\",\n  \"description\": \"{{partDescription}}\",\n  \"type\": \"PART\",\n  \"unit\": \"UNIT\",\n  \"unitPrice\": 49.9,\n  \"minimumQuantity\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"peca criada\", function () { pm.expect(pm.response.code).to.equal(201); });",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"partId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Entrada no estoque",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/parts/{{partId}}/movements/in",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts",
+            "{{partId}}",
+            "movements",
+            "in"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 10,\n  \"idempotencyKey\": \"{{stockIdempotencyKey}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"entrada registrada\", function () { pm.expect(pm.response.code).to.equal(201); });",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Abre ordem de servico",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/service-orders",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"description\": \"{{serviceOrderDescription}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"OS aberta\", function () { pm.expect(pm.response.code).to.equal(201); });",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"serviceOrderId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Atribui mecanico",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/assign",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders",
+            "{{serviceOrderId}}",
+            "assign"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mechanicId\": \"{{mechanicId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"mecanico atribuido\", function () { pm.expect(pm.response.code).to.equal(200); });",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gera orcamento",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/budgets",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceOrderId\": \"{{serviceOrderId}}\",\n  \"items\": [\n    {\n      \"serviceId\": \"{{serviceId}}\",\n      \"description\": \"{{budgetServiceDescription}}\",\n      \"type\": \"SERVICE\",\n      \"quantity\": 1,\n      \"unitPrice\": 149.9\n    },\n    {\n      \"partId\": \"{{partId}}\",\n      \"description\": \"{{budgetPartDescription}}\",\n      \"type\": \"PART\",\n      \"quantity\": 1,\n      \"unitPrice\": 49.9\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"orcamento criado com total esperado\", function () {",
+              "  pm.expect(pm.response.code).to.equal(201);",
+              "  pm.expect(pm.response.json().totalAmount).to.equal(199.8);",
+              "});",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"budgetId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Envia orcamento ao cliente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/budgets/{{budgetId}}/send",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets",
+            "{{budgetId}}",
+            "send"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"orcamento enviado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Aceita orcamento",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/budgets/{{budgetId}}/accept",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "budgets",
+            "{{budgetId}}",
+            "accept"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"orcamento aceito\", function () { pm.expect(pm.response.code).to.equal(200); });",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Despacha pecas do estoque",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/parts/service-orders/{{serviceOrderId}}/dispatch",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "parts",
+            "service-orders",
+            "{{serviceOrderId}}",
+            "dispatch"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"pecas despachadas no smoke\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "  pm.expect(pm.response.json().dispatched).to.equal(true);",
+              "});",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Finaliza OS",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/service-orders/{{serviceOrderId}}/complete",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "service-orders",
+            "{{serviceOrderId}}",
+            "complete"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"OS finalizada\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "  pm.expect(pm.response.json().status).to.equal(\"COMPLETED\");",
+              "});",
+              "if (pm.response.code >= 400) {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gera cobranca",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/billings",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "billings"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceOrderId\": \"{{serviceOrderId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"cobranca gerada\", function () {",
+              "  pm.expect(pm.response.code).to.equal(201);",
+              "  pm.expect(pm.response.json().amount).to.equal(199.8);",
+              "});",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.variables.set(\"billingId\", pm.response.json().id);",
+              "} else {",
+              "  pm.execution.setNextRequest(null);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Entrega OS opcional",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/billings/{{billingId}}/deliver-service-order",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "billings",
+            "{{billingId}}",
+            "deliver-service-order"
+          ],
+          "query": [],
+          "variable": []
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "// Tests",
+              "pm.test(\"entrega depende de pagamento\", function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([204, 409]);",
+              "});",
+              "if (pm.response.code === 409) {",
+              "  console.log(\"Pagamento ainda nao confirmado. Confirme webhook Stripe e rode npm run bruno:smoke:optional-delivery.\");",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "clientName",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "document",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "clientEmail",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "clientPhone",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "clientId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "plate",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "vehicleBrand",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "vehicleModel",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "vehicleYear",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "serviceName",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "serviceDescription",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "partCode",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "partName",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "partDescription",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "partId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "stockIdempotencyKey",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "vehicleId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "serviceOrderDescription",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "serviceOrderId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "mechanicId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "budgetServiceDescription",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "budgetPartDescription",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "budgetId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "billingId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "ADMIN_EMAIL",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "ADMIN_PASSWORD",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}
