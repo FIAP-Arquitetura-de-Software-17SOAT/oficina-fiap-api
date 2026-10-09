@@ -5,6 +5,7 @@ generated
 .agents
 .claude
 .git
+.worktrees
 .gitignore
 .env
 .env.*
