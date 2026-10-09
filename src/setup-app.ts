@@ -1,4 +1,8 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  INestApplication,
+  RequestMethod,
+  ValidationPipe,
+} from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NextFunction, Request, Response } from 'express';
 import { DomainExceptionFilter } from './shared/http/filters/domain-exception.filter';
@@ -23,7 +27,14 @@ export function configureApp(app: INestApplication): INestApplication {
     next();
   });
 
-  app.setGlobalPrefix(API_PREFIX);
+  app.setGlobalPrefix(API_PREFIX, {
+    exclude: [
+      'health',
+      'live',
+      `${API_PREFIX}/health`,
+      `${API_PREFIX}/live`,
+    ].map((path) => ({ path, method: RequestMethod.GET })),
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
