@@ -65,13 +65,70 @@ O Docker cria o banco, aplica as migrations, cria o administrador inicial e inic
 | ------------ | ----------------------------------- |
 | API          | http://localhost:3000/api/v1        |
 | Swagger      | http://localhost:3000/api/v1/docs   |
-| Health check | http://localhost:3000/api/v1/health |
+| Readiness (consulta PostgreSQL) | http://localhost:3000/health |
+| Liveness (processo HTTP) | http://localhost:3000/live |
 
 Use o Swagger para consultar e testar todos os endpoints.
 
 Para percorrer o fluxo completo — do login a entrega da ordem de servico —
 importe a colecao do Postman em `postman/`. As instrucoes estao em
 [docs/wiki/colecao-postman.md](docs/wiki/colecao-postman.md).
+
+As rotas antigas `/api/v1/health` e `/api/v1/live` tambem estao disponiveis.
+O readiness retorna HTTP 503 quando a consulta `SELECT 1` falha. O liveness
+responde sem depender do banco. Ao receber `SIGTERM`, o Nest fecha a aplicacao
+e o `PrismaService` desconecta o cliente.
+
+## Contrato de ambiente para Kubernetes e Terraform
+
+As variaveis abaixo sao lidas pela API em execucao. Configure segredos no
+gerenciador de segredos do cluster, sem grava-los na imagem.
+
+| Variavel | Obrigatoria | Uso / valor padrao |
+| --- | --- | --- |
+| `DATABASE_URL` | Sim | URL PostgreSQL usada pelo Prisma e pelo migrator |
+| `PORT` | Nao | Porta HTTP; padrao `3000` |
+| `NODE_ENV` | Nao | Use `production` no EKS; habilita validacao forte dos segredos JWT |
+| `LOG_LEVEL` | Nao | Nivel Pino; padrao `info` |
+| `JWT_ACCESS_SECRET` | Sim | Segredo JWT distinto do refresh; em producao, minimo de 32 bytes UTF-8 |
+| `JWT_ACCESS_TTL` | Sim | Duracao do access token, por exemplo `15m` |
+| `JWT_REFRESH_SECRET` | Sim | Segredo JWT distinto do access; em producao, minimo de 32 bytes UTF-8 |
+| `JWT_REFRESH_TTL` | Sim | Duracao do refresh token, por exemplo `7d` |
+| `STRIPE_SECRET_KEY` | Sim | Chave `sk_test_...`; a implementacao atual recusa chaves live |
+| `STRIPE_WEBHOOK_SECRET` | Sim | Segredo para validar webhooks do Stripe |
+| `PAYMENT_SUCCESS_URL` | Sim | URL de retorno apos pagamento |
+| `PAYMENT_CANCEL_URL` | Sim | URL de retorno apos cancelamento |
+| `SMTP_HOST` | Para envio de e-mail | Host SMTP |
+| `SMTP_PORT` | Para envio de e-mail | Porta SMTP valida, por exemplo `587` |
+| `SMTP_SECURE` | Para envio de e-mail | `true` ou `false` |
+| `SMTP_USER` e `SMTP_PASSWORD` | Nao | Devem ser informados juntos quando o servidor exige autenticacao |
+| `MAIL_FROM` | Para envio de e-mail | Remetente com endereco de e-mail valido |
+| `STOCK_NOTIFICATION_EMAIL` | Nao | Destinatario de notificacoes de estoque; sem valor, nao envia |
+
+`POSTGRES_DB`, `POSTGRES_PASSWORD` e `POSTGRES_PORT` pertencem apenas ao
+Compose local. O Job de seed le `DATABASE_URL`, `ADMIN_EMAIL` e
+`ADMIN_PASSWORD`; os dois ultimos nao sao necessarios no Pod da API.
+`ADMIN_EMAIL` deve ser um endereco valido. `ADMIN_PASSWORD` deve ter de 8 a
+72 caracteres e no maximo 72 bytes UTF-8. O target `seeder` define
+`PRISMA_CLIENT_MODULE` internamente.
+
+O Dockerfile fixa Node.js 24.13.0. Gere as imagens da mesma revisao de
+codigo e identifique-as com o mesmo SHA do commit:
+
+```bash
+docker build --target runtime -t oficina-api:${GIT_SHA} .
+docker build --target migrator -t oficina-migrator:${GIT_SHA} .
+docker build --target seeder -t oficina-seeder:${GIT_SHA} .
+```
+
+Em um banco novo, execute o `migrator` como Job e, depois, o `seeder` como
+Job. O seed cria o administrador inicial se ainda nao existir; configure
+`DATABASE_URL`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` nesse Job. Depois,
+disponibilize os Pods da API. Use `/health` como readiness probe e `/live`
+como liveness probe na porta `3000`. Os tres targets executam com UID/GID
+`1000` (`node`); configure o `securityContext` do Kubernetes com esse usuario
+e um periodo de encerramento da API de pelo menos 30 segundos para o
+`SIGTERM` concluir.
 
 Para acessar rotas administrativas, autentique-se em `POST /api/v1/auth/login` com o e-mail e a senha definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD`. Envie o `accessToken` retornado no cabecalho:
 

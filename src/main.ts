@@ -7,6 +7,7 @@ export async function bootstrap() {
 
   configureApp(app);
   setupSwagger(app);
+  app.enableShutdownHooks(['SIGTERM', 'SIGINT']);
 
   await app.listen(process.env.PORT ?? 3000);
 }
