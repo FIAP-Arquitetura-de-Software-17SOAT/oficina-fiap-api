@@ -36,3 +36,44 @@ services:
       seed:
         condition: service_completed_successfully
     restart: "no"
+
+  # Banco descartável dos testes: tmpfs e senha fixa, nunca exposto no host e
+  # independente do banco de desenvolvimento.
+  db-test:
+    profiles: ["test"]
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: oficina_fiap_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -U postgres > /dev/null 2>&1 && psql -U postgres -d oficina_fiap_test -c 'SELECT 1' > /dev/null 2>&1",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  # Roda unit, e2e e e2e com persistência real (RUN_DATABASE_TESTS) contra o
+  # db-test. Aceita comando avulso: `run --rm test npm test -- <filtro>`.
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: dev
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@db-test:5432/oficina_fiap_test
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/generated
+    depends_on:
+      db-test:
+        condition: service_healthy
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm test && npm run test:e2e && npm run test:e2e:db"
+    restart: "no"
