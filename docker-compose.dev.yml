@@ -1,0 +1,38 @@
+# Desenvolvimento local, aplicado por cima do docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# (ou `npm run docker:dev`). Sem estes -f, o compose sobe o modo prod-like.
+services:
+  app:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+    # O inspector precisa escutar em 0.0.0.0 para ser alcançável do host.
+    command: sh -c "npx prisma generate && npx nest start --debug 0.0.0.0:9229 --watch"
+    ports:
+      - "${DEBUG_PORT:-9229}:9229"
+    volumes:
+      - .:/app
+      # Volumes anônimos: escondem os diretórios do host e são recriados com
+      # `up --build -V` quando package.json ou schema.prisma mudam. `dist/`
+      # fica no bind mount porque o Nest remove o diretório a cada build, e um
+      # ponto de montagem não pode ser removido (EBUSY).
+      - /app/node_modules
+      - /app/generated
+    healthcheck:
+      start_period: 90s
+
+  seed-demo:
+    profiles: ["demo"]
+    build:
+      context: .
+      target: dev
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-oficina_fiap}
+    command: npm run seed:demo
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    restart: "no"
