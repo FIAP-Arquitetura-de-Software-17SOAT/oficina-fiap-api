@@ -217,6 +217,19 @@ npm run test:cov
 npm run test:e2e
 ```
 
+### Testes de carga
+
+A suite k6 em `test/load/` mede a capacidade dos fluxos criticos e verifica
+regras de concorrencia (estoque, mecanico, refresh token, decisao do
+orcamento, webhook de pagamento). Roda isolada em Docker, com Stripe falso e
+Mailpit, sem tocar o banco de desenvolvimento:
+
+```bash
+npm run load:up && npm run load:smoke && npm run load:down
+```
+
+Cenarios e perfis em [test/load/README.md](test/load/README.md).
+
 ## Documentacao complementar
 
 Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto.
