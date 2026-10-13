@@ -67,8 +67,70 @@ npm run load:read
 
 ## Baselines e achados
 
-Preencha após cada medição, com data, commit e máquina.
+Primeira medição: 2026-10-13, commit `dd93896`, AMD Ryzen 5 5500 (12 threads),
+15 GB, Docker Desktop/WSL 2, 1 pod da API. Refaça e acrescente uma linha a
+cada mudança relevante.
 
-| Data | Commit | Cenário | Resultado |
-| --- | --- | --- | --- |
-| — | — | — | — |
+### Invariantes de concorrência (20 corridas cada)
+
+| Cenário | Resultado |
+| --- | --- |
+| `race:stock` | ✓ 10 de 30 saídas aceitas, saldo final 0; `idempotencyKey` repetida baixa uma vez |
+| `race:refresh` | ✓ 1 refresh vencedor (201), 9 × 401 |
+| `race:budget` | ✓ uma única decisão, OS coerente, sem 5xx |
+| `race:mechanic` | ✗ **regra preservada, contrato quebrado**: o índice único parcial `service_order_active_mechanic_key` impede a dupla atribuição, mas quem perde a corrida recebe **500** (`P2002` sem tradução) em vez de 409 `MECHANIC_BUSY` — 20 de 20 corridas, `{"200":1,"500":4}` |
+| `webhook` | ✓ evento duplicado ×5 → cobrança PAID sem 5xx; 3.000 assinaturas inválidas → 400; rajada de 50 eventos válidos → 204 |
+| `customer` (load) | ✓ 34.579 requisições, nenhum vazamento entre clientes; p95 < 11 ms |
+
+### Jornada da OS (`PROFILE=load`, até 20 VUs, 8 min)
+
+1.272 jornadas completas, 16.568 requisições, 0 falhas, jornada p95 7,3 s
+(inclui ~6 s de pausas simuladas).
+
+| Rota | p95 |
+| --- | --- |
+| `POST /billings` (inclui o stripe-fake) | 57 ms |
+| `POST /budgets` | 43 ms |
+| `POST /parts/service-orders/:id/dispatch` | 42 ms |
+| `POST /billings/stripe/webhook` | 38 ms |
+| `POST /budgets/:id/accept` | 38 ms |
+| `POST /budgets/:id/send`, `PATCH .../assign`, `.../complete`, `POST .../deliver-service-order`, `POST /service-orders` | 19–21 ms |
+| `GET /service-orders/:id` | 4 ms |
+
+### Autenticação (`PROFILE=stress`)
+
+Saturou em **~3,6 ciclos login→refresh→logout por segundo** (p95 do login
+46 s, 18.278 iterações descartadas, timeouts). A CPU do container ficou em
+~400%: o bcrypt (custo 12) roda no pool de 4 threads do libuv. Cada ciclo faz
+5 operações bcrypt — login compara a senha **e** gera o hash da sessão de
+refresh; refresh compara e gera outro hash; logout compara —, ~220 ms cada.
+Na prática: **~9 logins/s por pod**. Insumo para HPA e `requests` de CPU no
+EKS; o hash bcrypt do refresh token (já de alta entropia) é o candidato
+óbvio a otimização.
+
+### Leitura em volume (`VOLUME=1000`, 30 req/s, 3 min)
+
+Banco com 2.593 OSs, 2.483 clientes, 1.893 orçamentos e 14.130 notificações
+(seed + resíduo dos cenários anteriores). Todas as listagens reprovaram:
+p95 de 6 s (`/services`, `/parts`) a 14,6 s (`/clients`), 7,3 GB trafegados,
+870 iterações descartadas.
+
+| Rota | Tamanho da resposta | Tempo isolado |
+| --- | --- | --- |
+| `GET /notifications` | **10,8 MB** (HTML completo de cada e-mail) | 203 ms |
+| `GET /budgets` | 1,4 MB | 61 ms |
+| `GET /billings` | 780 KB | 22 ms |
+| `GET /clients` | 604 KB | 25 ms |
+| `GET /vehicles` | 581 KB | 35 ms |
+| `GET /service-orders` | 356 KB | 16 ms |
+| `GET /service-orders/metrics/average-execution-time` | 49 B | 21 ms |
+
+A serialização das listagens sem paginação satura o event loop, e até rotas
+pequenas entram na fila. `/notifications` sozinha responde por ~70% dos bytes.
+Os patamares de 10k e 50k não foram medidos.
+
+### Ainda não executados
+
+- `load:soak` (45 min) com `watch-resources.sh`.
+- `load:read` com `VOLUME=10000` e `VOLUME=50000`.
+- `load:auth` com `PROFILE=spike`.
