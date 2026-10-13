@@ -1,8 +1,8 @@
-// Regra: um mecânico não pega outra OS antes de concluir a atual. Hoje ela é
-// verificada com leitura seguida de escrita, sem lock nem constraint
-// (assign-mechanic.use-case.ts). Este cenário atribui o mesmo mecânico a
-// várias OSs ao mesmo tempo: o esperado é 1 sucesso e o resto 409.
-// Hipótese em teste: atribuições simultâneas podem passar todas.
+// Regra: um mecânico não pega outra OS antes de concluir a atual. O caso de
+// uso checa antes de gravar (assign-mechanic.use-case.ts) e um índice único
+// parcial (migration 20260821040000) fecha a corrida no banco. Este cenário
+// atribui o mesmo mecânico a várias OSs ao mesmo tempo: o esperado é 1
+// sucesso e o resto 409 MECHANIC_BUSY — nunca 500.
 import { check, group } from 'k6';
 import http from 'k6/http';
 import { api, batchItem, expectStatus } from '../lib/api.js';
@@ -13,8 +13,9 @@ import { countStatuses, raceOptions, violationCounter } from '../lib/race.js';
 const ORDERS = 5;
 
 const doubleAssignment = violationCounter('mechanic_double_assignment');
+const serverError = violationCounter('mechanic_race_server_error');
 
-export const options = raceOptions(['mechanic_double_assignment']);
+export const options = raceOptions(['mechanic_double_assignment', 'mechanic_race_server_error']);
 
 export function setup() {
   return { token: adminToken() };
@@ -44,6 +45,7 @@ export default function ({ token }) {
       .filter((order) => order.mechanicId === mechanicId).length;
 
     doubleAssignment.record(assigned !== 1 || statuses[200] !== 1, { mechanicId, statuses, assigned });
+    serverError.record(statuses[409] !== ORDERS - 1, { mechanicId, statuses });
     check(assigned, { 'mecânico ficou com exatamente uma OS': (n) => n === 1 });
   });
 }

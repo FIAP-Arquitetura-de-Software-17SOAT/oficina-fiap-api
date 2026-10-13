@@ -6,9 +6,14 @@ function randomInt(max) {
   return Math.floor(Math.random() * max);
 }
 
-/** Sufixo único por VU/iteração/instante, para e-mails e códigos. */
+/**
+ * Sufixo único por VU/iteração/instante, para e-mails e códigos. No setup()
+ * não há VU nem iteração (`__ITER` nem existe no k6 2.x).
+ */
 export function uniq() {
-  return `${__VU}-${__ITER}-${Date.now().toString(36)}-${randomInt(1e6).toString(36)}`;
+  const vu = typeof __VU === 'undefined' ? 0 : __VU;
+  const iter = typeof __ITER === 'undefined' ? 's' : __ITER;
+  return `${vu}-${iter}-${Date.now().toString(36)}-${randomInt(1e9).toString(36)}`;
 }
 
 export function uuid() {

@@ -74,7 +74,7 @@ export default function ({ accounts }) {
     check(customer.myServiceOrders(), { 'minhas OSs -> 200': (r) => r.status === 200 });
   }
 
-  const refreshed = expectStatus(auth.refresh(tokens.refreshToken), 200, 'refresh');
+  const refreshed = expectStatus(auth.refresh(tokens.refreshToken), 201, 'refresh');
   check(auth.logout(refreshed.refreshToken), { 'logout -> 204': (r) => r.status === 204 });
   sleep(0.1);
 }

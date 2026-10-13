@@ -51,7 +51,8 @@ export default function ({ token, catalog: catalogData }) {
       (final.status === 'ACCEPTED' && orderNow.status === 'AWAITING_PARTS') ||
       (final.status === 'REFUSED' && orderNow.status !== 'AWAITING_PARTS');
 
-    doubleDecision.record(winners.length !== 1 || winners[0] !== final.status || !consistentOrder, {
+    const serverErrors = responses.filter((r) => r.status >= 500).length;
+    doubleDecision.record(winners.length !== 1 || winners[0] !== final.status || !consistentOrder || serverErrors > 0, {
       budgetId: budget.id,
       statuses,
       winners,
