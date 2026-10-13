@@ -40,7 +40,9 @@
     "load:auth": "npm run load:run -- scenarios/auth-load.js",
     "load:seed": "npm run load:run -- scenarios/seed-volume.js",
     "load:read": "npm run load:run -- scenarios/read-heavy.js",
-    "load:soak": "PROFILE=soak npm run load:journey"
+    "load:soak": "PROFILE=soak npm run load:journey",
+    "load:webhook": "npm run load:run -- scenarios/stripe-webhook.js",
+    "load:customer": "npm run load:run -- scenarios/customer-area.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
