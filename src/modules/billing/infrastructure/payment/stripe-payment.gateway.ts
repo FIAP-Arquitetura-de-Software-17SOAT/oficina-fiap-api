@@ -23,7 +23,10 @@ export class StripePaymentGateway extends PaymentGatewayPort {
       throw new Error('STRIPE_SECRET_KEY must be a Stripe test key');
     }
 
-    this.stripe = new Stripe(secretKey);
+    const apiAddress = stripeApiAddress();
+    this.stripe = apiAddress
+      ? new Stripe(secretKey, apiAddress)
+      : new Stripe(secretKey);
     this.webhookSecret = requiredSetting('STRIPE_WEBHOOK_SECRET');
     this.successUrl = requiredSetting('PAYMENT_SUCCESS_URL');
     this.cancelUrl = requiredSetting('PAYMENT_CANCEL_URL');
@@ -157,6 +160,35 @@ function isStripeSignatureVerificationError(error: unknown): boolean {
     'type' in error &&
     error.type === 'StripeSignatureVerificationError'
   );
+}
+
+/**
+ * Destino alternativo da API do Stripe, só para os testes de carga locais
+ * (`test/load/stripe-fake`). Sem a variável, o SDK fala com a API real.
+ */
+function stripeApiAddress():
+  { host: string; port: number; protocol: 'http' | 'https' } | undefined {
+  const value = process.env['STRIPE_API_BASE_URL']?.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('STRIPE_API_BASE_URL must be an http(s) URL');
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('STRIPE_API_BASE_URL must be an http(s) URL');
+  }
+
+  const protocol = url.protocol === 'http:' ? 'http' : 'https';
+  return {
+    host: url.hostname,
+    port: url.port ? Number(url.port) : protocol === 'http' ? 80 : 443,
+    protocol,
+  };
 }
 
 function requiredSetting(key: string): string {
