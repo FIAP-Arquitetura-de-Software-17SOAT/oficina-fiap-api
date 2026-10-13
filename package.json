@@ -27,7 +27,11 @@
     "docker:migrate": "docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app npx prisma migrate dev",
     "docker:demo": "docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo run --rm seed-demo",
     "docker:test": "mkdir -p node_modules generated && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile test run --rm --build test",
-    "docker:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo --profile test down --remove-orphans"
+    "docker:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo --profile test down --remove-orphans",
+    "load:up": "sh test/load/preflight.sh && docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml up -d --build --wait app",
+    "load:run": "docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml --profile load run --rm k6 run",
+    "load:down": "docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml --profile load down -v --remove-orphans",
+    "load:smoke": "npm run load:run -- scenarios/smoke.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
