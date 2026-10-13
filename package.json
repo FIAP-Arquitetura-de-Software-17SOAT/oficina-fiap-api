@@ -31,7 +31,11 @@
     "load:up": "sh test/load/preflight.sh && docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml up -d --build --wait app",
     "load:run": "docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml --profile load run --rm k6 run",
     "load:down": "docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml --profile load down -v --remove-orphans",
-    "load:smoke": "npm run load:run -- scenarios/smoke.js"
+    "load:smoke": "npm run load:run -- scenarios/smoke.js",
+    "load:race:stock": "npm run load:run -- scenarios/stock-race.js",
+    "load:race:mechanic": "npm run load:run -- scenarios/mechanic-race.js",
+    "load:race:refresh": "npm run load:run -- scenarios/auth-refresh-race.js",
+    "load:race:budget": "npm run load:run -- scenarios/budget-decision-race.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
