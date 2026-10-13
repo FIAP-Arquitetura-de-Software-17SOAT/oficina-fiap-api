@@ -279,4 +279,58 @@ describe('PrismaServiceOrderRepository', () => {
     prisma.serviceOrder.findFirst.mockResolvedValueOnce(null);
     await expect(repository.findActiveByMechanicId('free')).resolves.toBeNull();
   });
+
+  describe('corrida na atribuição do mecânico', () => {
+    const MECHANIC = 'cccccccc-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+    const WINNER = 'dddddddd-1c2e-4f5a-8b9c-0d1e2f3a4b5c';
+
+    const assigned = () => {
+      const serviceOrder = ServiceOrder.create({
+        clientId: row.clientId,
+        vehicleId: row.vehicleId,
+        description: row.description,
+      });
+      serviceOrder.assignToMechanic(MECHANIC);
+      return serviceOrder;
+    };
+
+    it('traduz a violação do índice do mecânico ativo em MECHANIC_BUSY com a OS vencedora', async () => {
+      prisma.serviceOrder.update.mockRejectedValue({ code: 'P2002' });
+      prisma.serviceOrder.findFirst.mockResolvedValue({
+        ...row,
+        id: WINNER,
+        mechanicId: MECHANIC,
+        status: 'IN_DIAGNOSIS',
+      });
+
+      await expect(repository.update(assigned())).rejects.toMatchObject({
+        code: 'MECHANIC_BUSY',
+        kind: 'CONFLICT',
+        message: `Mechanic already has an open service order (${WINNER})`,
+      });
+      expect(prisma.serviceOrder.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ mechanicId: MECHANIC }),
+        }),
+      );
+    });
+
+    it('responde MECHANIC_BUSY mesmo se a OS vencedora já não estiver ativa', async () => {
+      prisma.serviceOrder.update.mockRejectedValue({ code: 'P2002' });
+      prisma.serviceOrder.findFirst.mockResolvedValue(null);
+
+      await expect(repository.update(assigned())).rejects.toMatchObject({
+        code: 'MECHANIC_BUSY',
+        message: 'Mechanic already has an open service order',
+      });
+    });
+
+    it('propaga outros erros do banco sem traduzir', async () => {
+      const failure = { code: 'P1001' };
+      prisma.serviceOrder.update.mockRejectedValue(failure);
+
+      await expect(repository.update(assigned())).rejects.toBe(failure);
+      expect(prisma.serviceOrder.findFirst).not.toHaveBeenCalled();
+    });
+  });
 });
