@@ -14,6 +14,22 @@ export function adminToken() {
   return loginOrFail(adminEmail, password).accessToken;
 }
 
+const TOKEN_MAX_AGE_MS = 10 * 60 * 1000;
+let vuToken = null;
+let vuTokenAt = 0;
+
+/**
+ * Cliente admin do VU, renovando o login antes de o access token (15 min)
+ * expirar. Para cenários longos (soak, seed de volume).
+ */
+export function adminApi() {
+  if (!vuToken || Date.now() - vuTokenAt > TOKEN_MAX_AGE_MS) {
+    vuToken = adminToken();
+    vuTokenAt = Date.now();
+  }
+  return api(vuToken);
+}
+
 /** Peça com saldo inicial (entrada idempotente). */
 export function partWithStock(a, quantity) {
   const part = expectStatus(
