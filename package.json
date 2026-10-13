@@ -35,7 +35,12 @@
     "load:race:stock": "npm run load:run -- scenarios/stock-race.js",
     "load:race:mechanic": "npm run load:run -- scenarios/mechanic-race.js",
     "load:race:refresh": "npm run load:run -- scenarios/auth-refresh-race.js",
-    "load:race:budget": "npm run load:run -- scenarios/budget-decision-race.js"
+    "load:race:budget": "npm run load:run -- scenarios/budget-decision-race.js",
+    "load:journey": "npm run load:run -- scenarios/journey.js",
+    "load:auth": "npm run load:run -- scenarios/auth-load.js",
+    "load:seed": "npm run load:run -- scenarios/seed-volume.js",
+    "load:read": "npm run load:run -- scenarios/read-heavy.js",
+    "load:soak": "PROFILE=soak npm run load:journey"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
