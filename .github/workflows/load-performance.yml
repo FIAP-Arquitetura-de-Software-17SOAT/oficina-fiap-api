@@ -1,0 +1,40 @@
+# Desempenho dos fluxos. O runner do GitHub tem 4 vCPUs compartilhadas: os
+# números servem para comparar execuções daqui entre si, não para dimensionar
+# o ambiente de produção.
+name: "Carga: desempenho"
+
+on:
+  workflow_dispatch:
+    inputs:
+      cenario:
+        description: Cenário
+        type: choice
+        default: journey
+        options:
+          - journey
+          - auth
+          - customer
+          - webhook
+      perfil:
+        description: >-
+          Perfil. journey: smoke|load · auth: smoke|stress|spike ·
+          customer: smoke|load · webhook: ignora o perfil
+        type: choice
+        default: load
+        options:
+          - smoke
+          - load
+          - stress
+          - spike
+
+permissions:
+  contents: read
+
+jobs:
+  performance:
+    uses: ./.github/workflows/k6-run.yml
+    with:
+      name: ${{ inputs.cenario }}-${{ inputs.perfil }}
+      scenarios: ${{ inputs.cenario }}
+      profile: ${{ inputs.perfil }}
+      timeout-minutes: 40

@@ -68,8 +68,17 @@ services:
       MAILPIT_URL: http://mailpit:8025
       ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      # Parâmetros dos cenários (veja test/load/README.md); vazio = padrão.
       PROFILE: ${PROFILE:-}
+      ITERATIONS: ${ITERATIONS:-}
+      ACCOUNTS: ${ACCOUNTS:-}
+      CUSTOMERS: ${CUSTOMERS:-}
+      DUPLICATES: ${DUPLICATES:-}
+      BURST: ${BURST:-}
       VOLUME: ${VOLUME:-}
+      SEED_VUS: ${SEED_VUS:-}
+      RATE: ${RATE:-}
+      DURATION: ${DURATION:-}
     depends_on:
       app:
         condition: service_healthy

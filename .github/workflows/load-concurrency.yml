@@ -1,0 +1,34 @@
+# Invariantes de concorrência: requisições simultâneas que não podem quebrar
+# regras de negócio. Verificam regras, não tempos, então o resultado é
+# confiável mesmo no runner compartilhado.
+name: "Carga: concorrência"
+
+on:
+  workflow_dispatch:
+    inputs:
+      cenario:
+        description: Corrida a executar
+        type: choice
+        default: todas
+        options:
+          - todas
+          - race:stock
+          - race:mechanic
+          - race:refresh
+          - race:budget
+      iteracoes:
+        description: Quantas vezes repetir cada corrida
+        type: number
+        default: 20
+
+permissions:
+  contents: read
+
+jobs:
+  concurrency:
+    uses: ./.github/workflows/k6-run.yml
+    with:
+      name: concorrencia
+      scenarios: ${{ inputs.cenario == 'todas' && 'race:stock race:mechanic race:refresh race:budget' || inputs.cenario }}
+      iterations: ${{ format('{0}', inputs.iteracoes) }}
+      timeout-minutes: 30

@@ -1,0 +1,67 @@
+# Workflow reutilizável: sobe o ambiente de carga (docker-compose.load.yml),
+# roda os cenários k6 pedidos e publica o resumo e os relatórios. Chamada
+# pelas workflows load-*.yml, que são disparadas manualmente.
+name: k6 (reutilizável)
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Nome curto da execução (usado no artefato)
+        type: string
+        required: true
+      scenarios:
+        description: Scripts npm sem o prefixo `load:`, separados por espaço
+        type: string
+        required: true
+      profile:
+        type: string
+        default: ""
+      iterations:
+        type: string
+        default: ""
+      volume:
+        type: string
+        default: ""
+      rate:
+        type: string
+        default: ""
+      duration:
+        type: string
+        default: ""
+      timeout-minutes:
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    name: k6 ${{ inputs.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rodar cenários
+        # Entradas passam por env, nunca interpoladas no script.
+        env:
+          SCENARIOS: ${{ inputs.scenarios }}
+          PROFILE: ${{ inputs.profile }}
+          ITERATIONS: ${{ inputs.iterations }}
+          VOLUME: ${{ inputs.volume }}
+          RATE: ${{ inputs.rate }}
+          DURATION: ${{ inputs.duration }}
+        run: |
+          # shellcheck disable=SC2086 # a lista de cenários é dividida de propósito
+          test/load/ci.sh $SCENARIOS
+
+      - name: Publicar relatórios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: k6-${{ inputs.name }}-${{ github.run_id }}
+          path: test/load/results/
+          retention-days: 14
+          if-no-files-found: ignore
