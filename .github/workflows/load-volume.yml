@@ -1,0 +1,37 @@
+# Leitura das listagens com o banco populado: semeia VOLUME ordens de serviço
+# pela API e mede as listagens no ritmo de um painel.
+name: "Carga: volume"
+
+on:
+  workflow_dispatch:
+    inputs:
+      volume:
+        description: Ordens de serviço a semear
+        type: choice
+        default: "1000"
+        options:
+          - "1000"
+          - "10000"
+          - "50000"
+      taxa:
+        description: Requisições de leitura por segundo
+        type: number
+        default: 30
+      duracao:
+        description: Duração da leitura (formato k6, ex. 3m)
+        type: string
+        default: 3m
+
+permissions:
+  contents: read
+
+jobs:
+  volume:
+    uses: ./.github/workflows/k6-run.yml
+    with:
+      name: volume-${{ inputs.volume }}
+      scenarios: seed read
+      volume: ${{ inputs.volume }}
+      rate: ${{ format('{0}', inputs.taxa) }}
+      duration: ${{ inputs.duracao }}
+      timeout-minutes: 180
