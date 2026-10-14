@@ -145,6 +145,7 @@ gerenciador de segredos do cluster, sem grava-los na imagem.
 | `JWT_REFRESH_TTL` | Sim | Duracao do refresh token, por exemplo `7d` |
 | `STRIPE_SECRET_KEY` | Sim | Chave `sk_test_...`; a implementacao atual recusa chaves live |
 | `STRIPE_WEBHOOK_SECRET` | Sim | Segredo para validar webhooks do Stripe |
+| `STRIPE_API_BASE_URL` | Nao | Somente testes de carga locais (`test/load`): aponta o SDK do Stripe para o fake. Nao defina no EKS |
 | `PAYMENT_SUCCESS_URL` | Sim | URL de retorno apos pagamento |
 | `PAYMENT_CANCEL_URL` | Sim | URL de retorno apos cancelamento |
 | `SMTP_HOST` | Para envio de e-mail | Host SMTP |
@@ -215,6 +216,19 @@ npm test
 npm run test:cov
 npm run test:e2e
 ```
+
+### Testes de carga
+
+A suite k6 em `test/load/` mede a capacidade dos fluxos criticos e verifica
+regras de concorrencia (estoque, mecanico, refresh token, decisao do
+orcamento, webhook de pagamento). Roda isolada em Docker, com Stripe falso e
+Mailpit, sem tocar o banco de desenvolvimento:
+
+```bash
+npm run load:up && npm run load:smoke && npm run load:down
+```
+
+Cenarios e perfis em [test/load/README.md](test/load/README.md).
 
 ## Documentacao complementar
 

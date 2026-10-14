@@ -1,5 +1,6 @@
 import { PaymentMethod } from '../../domain/enums/payment-method.enum';
 import { InvalidPaymentWebhookSignatureError } from '../../application/ports/payment-gateway.port';
+import Stripe from 'stripe';
 import { StripePaymentGateway } from './stripe-payment.gateway';
 
 const mockCreateCheckoutSession = jest.fn();
@@ -25,6 +26,7 @@ describe('StripePaymentGateway', () => {
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_123';
     process.env.PAYMENT_SUCCESS_URL = 'https://example.test/payment/success';
     process.env.PAYMENT_CANCEL_URL = 'https://example.test/payment/cancel';
+    delete process.env.STRIPE_API_BASE_URL;
     jest.clearAllMocks();
   });
 
@@ -291,4 +293,45 @@ describe('StripePaymentGateway', () => {
       reason: 'Unsupported Stripe event: payment_intent.succeeded',
     });
   });
+
+  it('talks to the real Stripe API when no base URL is configured', () => {
+    new StripePaymentGateway();
+
+    expect(Stripe).toHaveBeenCalledWith('sk_test_123');
+  });
+
+  it('points the Stripe SDK at STRIPE_API_BASE_URL for local load tests', () => {
+    process.env.STRIPE_API_BASE_URL = 'http://stripe-fake:12111';
+
+    new StripePaymentGateway();
+
+    expect(Stripe).toHaveBeenCalledWith('sk_test_123', {
+      host: 'stripe-fake',
+      port: 12111,
+      protocol: 'http',
+    });
+  });
+
+  it('uses the default port of the protocol when the base URL has none', () => {
+    process.env.STRIPE_API_BASE_URL = 'https://stripe.local';
+
+    new StripePaymentGateway();
+
+    expect(Stripe).toHaveBeenCalledWith('sk_test_123', {
+      host: 'stripe.local',
+      port: 443,
+      protocol: 'https',
+    });
+  });
+
+  it.each(['not a url', 'ftp://stripe-fake:21'])(
+    'rejects an invalid STRIPE_API_BASE_URL (%s)',
+    (value) => {
+      process.env.STRIPE_API_BASE_URL = value;
+
+      expect(() => new StripePaymentGateway()).toThrow(
+        'STRIPE_API_BASE_URL must be an http(s) URL',
+      );
+    },
+  );
 });
