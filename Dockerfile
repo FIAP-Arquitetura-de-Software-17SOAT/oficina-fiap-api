@@ -35,11 +35,22 @@ FROM prisma AS migrator
 USER node
 CMD ["sh", "-c", "for i in 1 2 3 4 5; do ./node_modules/.bin/prisma migrate deploy && exit 0; echo \"tentativa $i falhou, aguardando o banco...\"; sleep 3; done; echo 'migrate falhou apos 5 tentativas'; exit 1"]
 
-FROM prisma AS dev
-COPY tsconfig*.json nest-cli.json ./
-COPY src ./src
-COPY test ./test
-EXPOSE 3000
+# Desenvolvimento local (docker-compose.dev.yml). Instala as dependências já
+# como `node` (UID 1000): arquivos gerados no bind mount — migrations,
+# generated/ — ficam com o dono do usuário do host, não `root`.
+# `procps` fornece o `ps` que o `nest start --watch` usa para encerrar o
+# processo anterior; sem ele o restart falha com EADDRINUSE.
+FROM base AS dev
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends procps \
+  && rm -rf /var/lib/apt/lists/* \
+  && chown node:node /app
+USER node
+COPY --chown=node:node package*.json ./
+RUN npm ci
+COPY --chown=node:node . .
+RUN npx prisma generate
+EXPOSE 3000 9229
 CMD ["npm", "run", "start:dev"]
 
 FROM base AS production-deps

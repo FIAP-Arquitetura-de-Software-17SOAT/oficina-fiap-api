@@ -51,13 +51,62 @@ O sistema permite gerenciar clientes, veiculos, ordens de servico, orcamentos, e
 
    Para testes de e-mail, use uma conta do [Ethereal](https://ethereal.email/create) e preencha `SMTP_USER`, `SMTP_PASSWORD` e `MAIL_FROM`.
 
-3. Inicie a aplicacao:
-
-   ```bash
-   docker compose up --build
-   ```
+3. Inicie a aplicacao em um dos modos abaixo.
 
 O Docker cria o banco, aplica as migrations, cria o administrador inicial e inicia a API automaticamente.
+
+### Modo desenvolvimento
+
+```bash
+npm run docker:dev
+```
+
+Aplica o `docker-compose.dev.yml` por cima do `docker-compose.yml`: a API roda
+com `NODE_ENV=development`, o codigo e montado no container e cada alteracao em
+`src/` reinicia a aplicacao. O debugger do Node fica na porta `9229`
+(configuravel com `DEBUG_PORT`).
+
+| Tarefa | Comando |
+| --- | --- |
+| Criar migration | `npm run docker:migrate -- --name <nome>` (com a API em execucao) |
+| Dados demonstrativos | `npm run docker:demo` |
+| Comando avulso no container | `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app <comando>` |
+| Parar tudo | `npm run docker:down` |
+
+Depois de alterar `package.json` ou `prisma/schema.prisma`, rode
+`npm run docker:dev` novamente: o `-V` recria os volumes de `node_modules` e
+`generated/`. O container roda com UID `1000`, entao migrations e `dist/`
+criados por ele ficam com o usuario do host. No WSL, mantenha o repositorio no
+filesystem do Linux (`/home/...`); em `/mnt/c/...` o hot reload nao detecta
+alteracoes.
+
+### Modo producao (prod-like)
+
+```bash
+npm run docker:prod
+```
+
+Equivale a `docker compose up --build` e usa as mesmas imagens do deploy
+(`runtime`, `migrator`, `seeder`). Com `NODE_ENV=production`, a API exige
+`JWT_ACCESS_SECRET` e `JWT_REFRESH_SECRET` com pelo menos 32 bytes; gere-os com
+`openssl rand -base64 48`.
+
+### Testes com Docker
+
+```bash
+npm run docker:test
+```
+
+Sobe um Postgres descartavel (`db-test`, em memoria e sem porta no host),
+aplica as migrations e roda `npm test`, `npm run test:e2e` e
+`npm run test:e2e:db`. O banco de desenvolvimento nao e tocado. Para um comando
+especifico:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile test run --rm test npm test -- src/architecture.spec.ts
+```
+
+Remova o `db-test` com `npm run docker:down`.
 
 ## Como usar
 
