@@ -78,7 +78,7 @@ cada mudança relevante.
 | `race:stock` | ✓ 10 de 30 saídas aceitas, saldo final 0; `idempotencyKey` repetida baixa uma vez |
 | `race:refresh` | ✓ 1 refresh vencedor (201), 9 × 401 |
 | `race:budget` | ✓ uma única decisão, OS coerente, sem 5xx |
-| `race:mechanic` | ✗ **regra preservada, contrato quebrado**: o índice único parcial `service_order_active_mechanic_key` impede a dupla atribuição, mas quem perde a corrida recebe **500** (`P2002` sem tradução) em vez de 409 `MECHANIC_BUSY` — 20 de 20 corridas, `{"200":1,"500":4}` |
+| `race:mechanic` | ✓ desde o #69. Antes: o índice único parcial `service_order_active_mechanic_key` já impedia a dupla atribuição, mas quem perdia a corrida recebia **500** (`P2002` sem tradução) em vez de 409 `MECHANIC_BUSY` — 20 de 20 corridas `{"200":1,"500":4}`. Depois: 0 respostas 5xx, 0 duplas atribuições, 341/341 com o status esperado. Branches sem o commit do #69 ainda reprovam este cenário |
 | `webhook` | ✓ evento duplicado ×5 → cobrança PAID sem 5xx; 3.000 assinaturas inválidas → 400; rajada de 50 eventos válidos → 204 |
 | `customer` (load) | ✓ 34.579 requisições, nenhum vazamento entre clientes; p95 < 11 ms |
 
