@@ -12,10 +12,10 @@ cluster_admin_principal_arns = [
   # "arn:aws:iam::<ACCOUNT_ID>:user/<colega>",
 ]
 
-node_instance_types = ["t3.medium"]
+node_instance_types = ["t3.small"]
 node_min_size       = 2
 node_desired_size   = 2
-node_max_size       = 4
+node_max_size       = 2
 
 db_instance_class    = "db.t4g.micro"
 db_allocated_storage = 20

@@ -40,9 +40,9 @@ variable "cluster_admin_principal_arns" {
 }
 
 variable "node_instance_types" {
-  description = "Tipos de instancia do node group."
+  description = "Tipos de instancia do node group. Contas no plano Free da AWS so aceitam tipos free-tier eligible."
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.small"]
 }
 
 variable "node_min_size" {
@@ -52,9 +52,9 @@ variable "node_min_size" {
 }
 
 variable "node_max_size" {
-  description = "Maximo de nos do node group."
+  description = "Maximo de nos do node group. A quota padrao de 5 vCPU On-Demand comporta 2 nos de 2 vCPU."
   type        = number
-  default     = 4
+  default     = 2
 }
 
 variable "node_desired_size" {

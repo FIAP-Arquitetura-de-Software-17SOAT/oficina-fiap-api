@@ -18,7 +18,7 @@ do GitHub Actions. Manifestos Kubernetes ficam em `/k8s` e a pipeline em
         |   - Load Balancers dos Services K8s      |
         |                                          |
         |  Subnets privadas  10.0.10.0/24, .11.0/24|
-        |   - Nos EKS (t3.medium, 2 a 4)           |
+        |   - Nos EKS (t3.small, 2)                |
         |     Pods: API, Jobs migrator/seeder      |
         |                                          |
         |  Subnets de banco  10.0.20.0/24, .21.0/24|
@@ -36,15 +36,15 @@ do GitHub Actions. Manifestos Kubernetes ficam em `/k8s` e a pipeline em
 | --- | --- |
 | `bootstrap/main.tf` | Bucket S3 `oficina-fiap-tfstate-<account_id>` para o state: versionamento, criptografia SSE-S3, bloqueio de acesso publico, policy que nega acesso sem TLS e `prevent_destroy` |
 | `network.tf` | VPC `oficina-fiap-vpc` (`10.0.0.0/16`) em 2 AZs; 2 subnets publicas (tag `kubernetes.io/role/elb`), 2 privadas (tag `kubernetes.io/role/internal-elb`), 2 de banco com subnet group; Internet Gateway; 1 NAT Gateway com Elastic IP; route tables |
-| `eks.tf` | Cluster EKS `oficina-fiap-eks` (Kubernetes 1.37) com endpoint publico e privado, autenticacao por access entries, criptografia de secrets com KMS, logs do control plane (retencao de 7 dias); managed node group `default` (AL2023, `t3.medium`, ON_DEMAND, min 2 / desejado 2 / max 4, IMDSv2) em subnets privadas; add-ons `vpc-cni`, `kube-proxy`, `coredns`, `eks-pod-identity-agent` e `metrics-server` (necessario para o HPA); roles IAM do cluster e dos nos; security groups; access entries de admin para quem aplica, para `cluster_admin_principal_arns` e para a role do GitHub Actions |
+| `eks.tf` | Cluster EKS `oficina-fiap-eks` (Kubernetes 1.37) com endpoint publico e privado, autenticacao por access entries, criptografia de secrets com KMS, logs do control plane (retencao de 7 dias); managed node group `default` (AL2023, `t3.small`, ON_DEMAND, min 2 / desejado 2 / max 2, IMDSv2) em subnets privadas; add-ons `vpc-cni`, `kube-proxy`, `coredns`, `eks-pod-identity-agent` e `metrics-server` (necessario para o HPA); roles IAM do cluster e dos nos; security groups; access entries de admin para quem aplica, para `cluster_admin_principal_arns` e para a role do GitHub Actions |
 | `rds.tf` | RDS PostgreSQL 16 `oficina-fiap-postgres` (`db.t4g.micro`, 20 GB gp3 criptografado, single-AZ, sem acesso publico, backup de 1 dia, sem deletion protection); parameter group `postgres16` (TLS obrigatorio); security group que libera 5432 somente para o security group dos nos EKS; senha aleatoria de 32 caracteres (`random_password`) |
 | `ecr.tf` | Repositorios ECR `oficina-api`, `oficina-migrator`, `oficina-seeder` com scan on push e lifecycle que mantem as 10 imagens mais recentes |
 | `github-oidc.tf` | OIDC provider `token.actions.githubusercontent.com` e role `oficina-fiap-github-actions`, assumivel somente por workflows da branch `main` do repositorio `FIAP-Arquitetura-de-Software-17SOAT/oficina-fiap-api`; permite login/push/pull nos 3 repositorios ECR e `eks:DescribeCluster` |
 
 ## Custo estimado
 
-Com tudo ligado, cerca de **US$ 0,25 por hora** (~US$ 180/mes): control plane
-EKS US$ 0,10/h, 2 x `t3.medium` ~US$ 0,083/h, NAT Gateway ~US$ 0,045/h + dados,
+Com tudo ligado, cerca de **US$ 0,21 por hora** (~US$ 150/mes): control plane
+EKS US$ 0,10/h, 2 x `t3.small` ~US$ 0,042/h, NAT Gateway ~US$ 0,045/h + dados,
 RDS `db.t4g.micro` ~US$ 0,016/h, volumes EBS e KMS. Destrua o ambiente quando
 nao estiver usando.
 
@@ -55,6 +55,11 @@ nao estiver usando.
   na conta (`aws sts get-caller-identity` deve responder)
 - kubectl
 - Docker (para publicar imagens manualmente)
+
+Contas AWS no plano Free so lancam instancias free-tier eligible e tem quota
+padrao de 5 vCPU On-Demand. Por isso o node group usa `t3.small` com no
+maximo 2 nos. Em conta no plano Paid, ajuste `node_instance_types` e
+`node_max_size` (e a quota de vCPU, se necessario) em `terraform.tfvars`.
 
 ## Como aplicar
 

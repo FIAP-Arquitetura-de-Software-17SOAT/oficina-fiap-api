@@ -23,13 +23,13 @@ run "cluster_configuration" {
 
   assert {
     condition = (
-      local.default_node_group.instance_types == tolist(["t3.medium"]) &&
+      local.default_node_group.instance_types == tolist(["t3.small"]) &&
       local.default_node_group.capacity_type == "ON_DEMAND" &&
       local.default_node_group.min_size == 2 &&
       local.default_node_group.desired_size == 2 &&
-      local.default_node_group.max_size == 4
+      local.default_node_group.max_size == 2
     )
-    error_message = "Node group padrao deve ser t3.medium ON_DEMAND, min 2, desired 2, max 4."
+    error_message = "Node group padrao deve ser t3.small ON_DEMAND, min 2, desired 2, max 2 (plano Free da AWS: so tipos free-tier e quota de 5 vCPU)."
   }
 
   assert {
