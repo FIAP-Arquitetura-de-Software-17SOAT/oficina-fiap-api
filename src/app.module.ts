@@ -44,7 +44,12 @@ import { RolesGuard } from './shared/http/auth/roles.guard';
                 ? { target: 'pino-pretty' }
                 : undefined,
           },
-          exclude: [{ method: RequestMethod.GET, path: 'api/v1/health' }],
+          exclude: [
+            { method: RequestMethod.GET, path: 'health' },
+            { method: RequestMethod.GET, path: 'live' },
+            { method: RequestMethod.GET, path: 'api/v1/health' },
+            { method: RequestMethod.GET, path: 'api/v1/live' },
+          ],
           forRoutes: [{ method: RequestMethod.ALL, path: '{*path}' }],
         };
       },

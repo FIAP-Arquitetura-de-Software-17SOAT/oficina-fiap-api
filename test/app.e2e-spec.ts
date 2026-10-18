@@ -10,13 +10,14 @@ import { configureApp } from '../src/setup-app';
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let http: App;
+  const queryRaw = jest.fn().mockResolvedValue([{ '?column?': 1 }]);
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaService)
-      .useValue({})
+      .useValue({ $queryRaw: queryRaw })
       .compile();
 
     app = configureApp(
@@ -35,6 +36,25 @@ describe('AppController (e2e)', () => {
       .get('/api/v1/health')
       .expect(200)
       .expect({ status: 'ok' });
+  });
+
+  it('GET /api/v1/health responde 503 sem banco', async () => {
+    queryRaw.mockRejectedValueOnce(new Error('database unavailable'));
+    await request(http).get('/api/v1/health').expect(503);
+  });
+
+  it('GET /health responde 503 sem banco', async () => {
+    queryRaw.mockRejectedValueOnce(new Error('database unavailable'));
+    await request(http).get('/health').expect(503);
+  });
+
+  it('GET /api/v1/live responde ok sem consultar o banco', async () => {
+    queryRaw.mockClear();
+    await request(http)
+      .get('/api/v1/live')
+      .expect(200)
+      .expect({ status: 'ok' });
+    expect(queryRaw).not.toHaveBeenCalled();
   });
 
   it('aplica headers basicos de hardening HTTP', async () => {
@@ -68,7 +88,8 @@ describe('AppController (e2e)', () => {
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
-  it('rota fora do prefixo devolve 404', () => {
-    return request(http).get('/health').expect(404);
+  it('expoe readiness e liveness na raiz para probes do Kubernetes', async () => {
+    await request(http).get('/health').expect(200).expect({ status: 'ok' });
+    await request(http).get('/live').expect(200).expect({ status: 'ok' });
   });
 });

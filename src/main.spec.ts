@@ -18,10 +18,11 @@ describe('main bootstrap', () => {
   it('enables rawBody for Stripe webhook signature verification', async () => {
     const mockedNestFactory = jest.mocked(NestFactory);
     const listen = jest.fn();
-
-    mockedNestFactory.create.mockResolvedValue({
+    const enableShutdownHooks = jest.fn();
+    (NestFactory.create as jest.Mock).mockResolvedValue({
       listen,
-    } as unknown as INestApplication);
+      enableShutdownHooks,
+    });
 
     await bootstrap();
 
@@ -30,5 +31,6 @@ describe('main bootstrap', () => {
       { rawBody: true },
     ]);
     expect(listen).toHaveBeenCalled();
+    expect(enableShutdownHooks).toHaveBeenCalledWith(['SIGTERM', 'SIGINT']);
   });
 });

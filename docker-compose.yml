@@ -46,24 +46,12 @@ services:
   seed:
     build:
       context: .
-      target: build
+      target: seeder
     container_name: oficina-fiap-seed
-    # `prisma db seed` executa o script sob o loader ESM, que não resolve o
-    # Prisma Client gerado (.ts com imports .js). Sob require/CommonJS o
-    # ts-node resolve — é a mesma invocação que o Dockerfile já usa no build.
-    command:
-      [
-        "npx",
-        "ts-node",
-        "--transpile-only",
-        "-e",
-        "require('./prisma/seed').runSeed().catch((e) => { console.error(e); process.exit(1); })",
-      ]
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-oficina_fiap}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
-      PRISMA_CLIENT_MODULE: /app/dist/generated/prisma/client.js
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -108,12 +96,13 @@ services:
       test:
         [
           "CMD-SHELL",
-          "node -e \"fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+          "node -e \"fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
         ]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 15s
+    stop_grace_period: 30s
     restart: unless-stopped
 
 volumes:

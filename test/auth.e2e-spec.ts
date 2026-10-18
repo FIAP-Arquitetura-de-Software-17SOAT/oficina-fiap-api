@@ -54,7 +54,7 @@ describe('Authentication and authorization (e2e)', () => {
       imports: [AppModule, AuthTestModule],
     })
       .overrideProvider(PrismaService)
-      .useValue({})
+      .useValue({ $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) })
       .overrideProvider(UserRepositoryPort)
       .useValue(users)
       .overrideProvider(RefreshSessionRepositoryPort)
