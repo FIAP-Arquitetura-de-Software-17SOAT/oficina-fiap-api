@@ -67,3 +67,31 @@ variable "node_desired_size" {
     error_message = "Use node_min_size <= node_desired_size <= node_max_size."
   }
 }
+
+variable "github_repository" {
+  description = "Repositorio GitHub (owner/nome) autorizado a assumir a role de CI/CD."
+  type        = string
+  default     = "FIAP-Arquitetura-de-Software-17SOAT/oficina-fiap-api"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository))
+    error_message = "Use o formato owner/repositorio, sem curingas."
+  }
+}
+
+variable "github_branch" {
+  description = "Branch cujo workflow pode assumir a role de CI/CD."
+  type        = string
+  default     = "main"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_./-]+$", var.github_branch))
+    error_message = "Informe um nome de branch exato, sem curingas."
+  }
+}
+
+variable "create_github_oidc_provider" {
+  description = "Cria o OIDC provider do GitHub. Use false se a conta ja tiver um (so existe um por conta)."
+  type        = bool
+  default     = true
+}

@@ -34,17 +34,32 @@ locals {
     if arn != data.aws_iam_session_context.current.issuer_arn
   ]
 
-  cluster_access_entries = {
-    for arn in local.extra_cluster_admin_arns : arn => {
-      principal_arn = arn
-      policy_associations = {
-        cluster_admin = {
-          policy_arn   = local.cluster_admin_policy_arn
-          access_scope = { type = "cluster" }
+  cluster_access_entries = merge(
+    {
+      for arn in local.extra_cluster_admin_arns : arn => {
+        principal_arn = arn
+        policy_associations = {
+          cluster_admin = {
+            policy_arn   = local.cluster_admin_policy_arn
+            access_scope = { type = "cluster" }
+          }
         }
       }
-    }
-  }
+    },
+    {
+      # CI/CD aplica os manifestos de /k8s (inclusive recursos de escopo
+      # cluster, como Namespace).
+      github-actions = {
+        principal_arn = aws_iam_role.github_actions.arn
+        policy_associations = {
+          cluster_admin = {
+            policy_arn   = local.cluster_admin_policy_arn
+            access_scope = { type = "cluster" }
+          }
+        }
+      }
+    },
+  )
 }
 
 module "eks" {

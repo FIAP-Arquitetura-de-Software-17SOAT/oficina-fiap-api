@@ -22,3 +22,8 @@ output "configure_kubectl" {
   description = "Comando para configurar o kubectl local."
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+output "github_actions_role_arn" {
+  description = "ARN da role que o GitHub Actions assume via OIDC (secret AWS_ROLE_ARN)."
+  value       = aws_iam_role.github_actions.arn
+}

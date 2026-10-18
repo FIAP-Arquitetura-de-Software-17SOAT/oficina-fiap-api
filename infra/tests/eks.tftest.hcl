@@ -108,3 +108,17 @@ run "rejects_min_size_above_desired" {
 
   expect_failures = [var.node_desired_size]
 }
+
+run "github_actions_is_cluster_admin" {
+  command = plan
+
+  assert {
+    condition     = local.cluster_access_entries["github-actions"].policy_associations.cluster_admin.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    error_message = "Role do GitHub Actions deve ter AmazonEKSClusterAdminPolicy."
+  }
+
+  assert {
+    condition     = local.cluster_access_entries["github-actions"].policy_associations.cluster_admin.access_scope.type == "cluster"
+    error_message = "Acesso do GitHub Actions deve ter escopo de cluster."
+  }
+}
