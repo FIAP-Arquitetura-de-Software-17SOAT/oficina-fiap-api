@@ -31,6 +31,14 @@ import { InMemoryStockMovementRepository } from './in-memory-stock-movement.repo
 import { InMemoryVehicleRepository } from './in-memory-vehicle.repository';
 import { allowAuthenticated } from './allow-authenticated';
 
+function responseString(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new TypeError('Esperava uma string na resposta da API');
+  }
+
+  return value;
+}
+
 /**
  * Percorre as políticas do Event Storming que ligam os agregados:
  *
@@ -288,6 +296,8 @@ describe('Fluxo da oficina (e2e)', () => {
       .send({ serviceOrderId })
       .expect(201);
 
+    const paymentLink = responseString(billing.body.paymentLink);
+
     expect(billing.body).toMatchObject({
       serviceOrderId,
       status: 'WAITING_PAYMENT',
@@ -302,7 +312,7 @@ describe('Fluxo da oficina (e2e)', () => {
       expect.objectContaining({
         type: NotificationType.PAYMENT_LINK_READY,
         to: 'maria@example.com',
-        text: expect.stringContaining(billing.body.paymentLink),
+        text: expect.stringContaining(paymentLink),
       }),
     );
 
