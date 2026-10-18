@@ -71,7 +71,7 @@ jobs:
         run: npm run test:cov -- --runInBand
 
       - name: Run E2E tests against PostgreSQL
-        run: npm run test:e2e:db -- --detectOpenHandles
+        run: npm run test:e2e:db -- --forceExit
 
       - name: Build Docker image
         run: docker build --target runtime -t oficina-fiap-api:${{ github.sha }} .
