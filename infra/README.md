@@ -83,7 +83,9 @@ Todos os comandos a partir da raiz do repositorio.
    ```
 
    Para dar `kubectl` a colegas, informe os ARNs IAM deles em
-   `cluster_admin_principal_arns`. Se a conta ja tiver o OIDC provider do
+   `cluster_admin_principal_arns`. Quem aplica sempre vira admin; liste
+   todos os colegas que tambem rodam `apply` para que ninguem perca o acesso
+   quando outro aplicar. Se a conta ja tiver o OIDC provider do
    GitHub, use `create_github_oidc_provider = false`.
 
 3. Inicializar com o backend remoto e aplicar (cerca de 15 a 20 minutos):

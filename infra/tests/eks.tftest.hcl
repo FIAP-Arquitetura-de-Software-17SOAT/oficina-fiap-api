@@ -69,21 +69,42 @@ run "caller" {
   }
 }
 
-run "creator_is_not_duplicated_as_admin" {
+run "applier_is_always_cluster_admin" {
+  command = plan
+
+  assert {
+    condition     = local.cluster_access_entries[run.caller.issuer_arn].policy_associations.cluster_admin.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    error_message = "Quem aplica deve ser admin do cluster por uma access entry indexada pelo proprio ARN."
+  }
+
+  assert {
+    condition     = !contains(keys(local.cluster_access_entries), "cluster_creator")
+    error_message = "Nao usar a entrada cluster_creator do modulo: ela troca de dono conforme quem aplica."
+  }
+
+  assert {
+    condition     = local.cluster_admin_arns == tolist([run.caller.issuer_arn])
+    error_message = "Sem colegas listados, o unico admin (cluster e KMS) e quem aplica."
+  }
+}
+
+run "admin_entries_do_not_depend_on_who_applies" {
   command = plan
 
   variables {
     cluster_admin_principal_arns = [run.caller.issuer_arn, "arn:aws:iam::111122223333:user/colega"]
   }
 
+  # Mesmas chaves para qualquer colega listado que rode o apply: nenhuma
+  # access entry troca de dono e nenhuma e criada em duplicidade.
   assert {
-    condition     = !contains(keys(local.cluster_access_entries), run.caller.issuer_arn)
-    error_message = "ARN de quem aplica ja e admin como criador e nao pode virar access entry duplicada."
+    condition     = toset(local.cluster_admin_arns) == toset([run.caller.issuer_arn, "arn:aws:iam::111122223333:user/colega"]) && length(local.cluster_admin_arns) == 2
+    error_message = "Admins devem ser a uniao, sem repeticao, da lista configurada com quem aplica."
   }
 
   assert {
-    condition     = contains(keys(local.cluster_access_entries), "arn:aws:iam::111122223333:user/colega")
-    error_message = "Demais ARNs devem continuar na lista."
+    condition     = contains(keys(local.cluster_access_entries), run.caller.issuer_arn) && contains(keys(local.cluster_access_entries), "arn:aws:iam::111122223333:user/colega")
+    error_message = "Cada admin deve ter access entry indexada pelo proprio ARN."
   }
 }
 

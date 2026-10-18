@@ -27,16 +27,18 @@ locals {
     }
   }
 
-  # Quem aplica ja recebe admin via enable_cluster_creator_admin_permissions;
-  # repetir o ARN geraria uma access entry duplicada (ResourceInUseException).
-  extra_cluster_admin_arns = [
-    for arn in var.cluster_admin_principal_arns : arn
-    if arn != data.aws_iam_session_context.current.issuer_arn
-  ]
+  # Admins = colegas listados + quem aplica, cada um com access entry
+  # indexada pelo proprio ARN. A entrada "cluster_creator" do modulo nao e
+  # usada: ela troca de dono conforme quem roda o apply e colidiria
+  # (ResourceInUseException) com a entrada do colega que aplicou antes.
+  cluster_admin_arns = sort(distinct(concat(
+    var.cluster_admin_principal_arns,
+    [data.aws_iam_session_context.current.issuer_arn],
+  )))
 
   cluster_access_entries = merge(
     {
-      for arn in local.extra_cluster_admin_arns : arn => {
+      for arn in local.cluster_admin_arns : arn => {
         principal_arn = arn
         policy_associations = {
           cluster_admin = {
@@ -78,8 +80,12 @@ module "eks" {
   endpoint_public_access_cidrs = var.endpoint_public_access_cidrs
 
   authentication_mode                      = "API"
-  enable_cluster_creator_admin_permissions = true
+  enable_cluster_creator_admin_permissions = false
   access_entries                           = local.cluster_access_entries
+
+  # Mesmos admins na chave KMS dos secrets do cluster; o padrao do modulo
+  # tambem seguiria quem aplica.
+  kms_key_administrators = local.cluster_admin_arns
 
   cloudwatch_log_group_retention_in_days = 7
 
