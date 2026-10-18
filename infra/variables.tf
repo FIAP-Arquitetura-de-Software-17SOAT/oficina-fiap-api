@@ -95,3 +95,15 @@ variable "create_github_oidc_provider" {
   type        = bool
   default     = true
 }
+
+variable "db_instance_class" {
+  description = "Classe da instancia RDS."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "Armazenamento do RDS em GB."
+  type        = number
+  default     = 20
+}

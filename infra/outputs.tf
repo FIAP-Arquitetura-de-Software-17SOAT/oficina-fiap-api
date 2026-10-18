@@ -27,3 +27,14 @@ output "github_actions_role_arn" {
   description = "ARN da role que o GitHub Actions assume via OIDC (secret AWS_ROLE_ARN)."
   value       = aws_iam_role.github_actions.arn
 }
+
+output "rds_endpoint" {
+  description = "Endpoint (host:porta) do RDS PostgreSQL."
+  value       = module.rds.db_instance_endpoint
+}
+
+output "database_url" {
+  description = "DATABASE_URL para o Secret do Kubernetes (terraform output -raw database_url)."
+  value       = local.database_url
+  sensitive   = true
+}
