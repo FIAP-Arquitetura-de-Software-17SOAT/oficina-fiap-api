@@ -3,7 +3,7 @@
 Manifestos da API para rodar em **kind** (local) e **EKS** (AWS). A mesma base serve
 aos dois; cada ambiente so troca imagens e alguns valores. Para entender cada arquivo e
 cada campo do YAML, veja [docs/wiki/kubernetes.md](../docs/wiki/kubernetes.md). A infra
-(cluster, ECR, RDS) vem do Terraform, na pasta `infra/` (veja `infra/README.md`).
+(cluster, ECR, RDS) vem do [Terraform](../infra/README.md).
 
 ## Estrutura
 

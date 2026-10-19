@@ -195,7 +195,6 @@ fazer e diagnostico estao em [k8s/README.md](k8s/README.md). Os conceitos
 (Deployment, Service, HPA, Kustomize) estao em
 [docs/wiki/kubernetes.md](docs/wiki/kubernetes.md).
 
-
 ## Desenvolvimento sem container
 
 ```bash

@@ -1,6 +1,6 @@
 # Kubernetes
 
-Como o Kubernetes funciona neste projeto e o que cada arquivo de `k8s/` faz. O passo a passo para executar o deploy (kind e EKS), os Secrets e o diagnostico estao em [k8s/README.md](../../k8s/README.md); o que o Terraform entrega esta na pasta `infra/` (veja `infra/README.md`).
+Como o Kubernetes funciona neste projeto e o que cada arquivo de `k8s/` faz. O passo a passo para executar o deploy (kind e EKS), os Secrets e o diagnostico estao em [k8s/README.md](../../k8s/README.md); o que o Terraform entrega esta em [infra/README.md](../../infra/README.md).
 
 ## Como o Kubernetes funciona
 
