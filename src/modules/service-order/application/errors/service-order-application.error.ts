@@ -41,7 +41,9 @@ const catalog: Record<
   MECHANIC_BUSY: {
     kind: 'CONFLICT',
     message: (p) =>
-      `Mechanic already has an open service order (${p.activeServiceOrderId ?? ''})`,
+      p.activeServiceOrderId
+        ? `Mechanic already has an open service order (${p.activeServiceOrderId})`
+        : 'Mechanic already has an open service order',
   },
 };
 

@@ -1,0 +1,25 @@
+# Copie para terraform.tfvars (gitignored) e ajuste. Os valores abaixo sao
+# os padroes; remova as linhas que nao quiser alterar.
+
+aws_region         = "us-east-1"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+kubernetes_version           = "1.37"
+endpoint_public_access_cidrs = ["0.0.0.0/0"]
+
+# Colegas que tambem precisam de kubectl no cluster (quem aplica ja e admin).
+cluster_admin_principal_arns = [
+  # "arn:aws:iam::<ACCOUNT_ID>:user/<colega>",
+]
+
+node_instance_types = ["t3.small"]
+node_min_size       = 2
+node_desired_size   = 2
+node_max_size       = 2
+
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20
+
+github_repository           = "FIAP-Arquitetura-de-Software-17SOAT/oficina-fiap-api"
+github_branch               = "main"
+create_github_oidc_provider = true

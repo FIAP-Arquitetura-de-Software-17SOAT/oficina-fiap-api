@@ -1,9 +1,7 @@
-import { LoggerPort } from '../../../../shared/application/logger.port';
 import { Notification } from '../../domain/entities/notification.entity';
 import { NotificationStatus } from '../../domain/enums/notification-status.enum';
 import { NotificationType } from '../../domain/enums/notification-type.enum';
 import { NotificationApplicationError } from '../errors/notification-application.error';
-import { EmailSenderPort } from '../ports/email-sender.port';
 import { NotificationRepositoryPort } from '../ports/notification-repository.port';
 import { EnqueueNotificationUseCase } from './enqueue-notification.use-case';
 import { ListNotificationsUseCase } from './list-notifications.use-case';
@@ -35,16 +33,8 @@ describe('Notification use cases without Nest', () => {
     };
     email = { send: jest.fn() };
     logger = { error: jest.fn() };
-    enqueue = new EnqueueNotificationUseCase(
-      repository,
-      email as EmailSenderPort,
-      logger as LoggerPort,
-    );
-    retry = new RetryNotificationUseCase(
-      repository,
-      email as EmailSenderPort,
-      logger as LoggerPort,
-    );
+    enqueue = new EnqueueNotificationUseCase(repository, email, logger);
+    retry = new RetryNotificationUseCase(repository, email, logger);
   });
 
   describe('enqueue', () => {

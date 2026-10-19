@@ -5,47 +5,52 @@ import { NotificationRepositoryPort } from '../src/modules/notification/applicat
 export class InMemoryNotificationRepository implements NotificationRepositoryPort {
   private readonly notifications = new Map<string, Notification>();
 
-  async create(notification: Notification): Promise<Notification> {
+  create(notification: Notification): Promise<Notification> {
     const persisted = this.clone(notification);
     this.notifications.set(persisted.getId(), persisted);
-    return this.clone(persisted);
+    return Promise.resolve(this.clone(persisted));
   }
 
-  async findById(id: string): Promise<Notification | null> {
+  findById(id: string): Promise<Notification | null> {
     const notification = this.notifications.get(id);
-    return notification ? this.clone(notification) : null;
+    return Promise.resolve(notification ? this.clone(notification) : null);
   }
 
-  async findAll(filters: NotificationFilters = {}): Promise<Notification[]> {
-    return Array.from(this.notifications.values())
-      .filter(
-        (notification) =>
-          !filters.status || notification.getStatus() === filters.status,
-      )
-      .filter(
-        (notification) =>
-          !filters.type || notification.getType() === filters.type,
-      )
-      .sort(
-        (left, right) =>
-          right.getCreatedAt().getTime() - left.getCreatedAt().getTime(),
-      )
-      .map((notification) => this.clone(notification));
+  findAll(filters: NotificationFilters = {}): Promise<Notification[]> {
+    return Promise.resolve(
+      Array.from(this.notifications.values())
+        .filter(
+          (notification) =>
+            !filters.status || notification.getStatus() === filters.status,
+        )
+        .filter(
+          (notification) =>
+            !filters.type || notification.getType() === filters.type,
+        )
+        .sort(
+          (left, right) =>
+            right.getCreatedAt().getTime() - left.getCreatedAt().getTime(),
+        )
+        .map((notification) => this.clone(notification)),
+    );
   }
 
-  async update(
+  update(
     notification: Notification,
     expectedUpdatedAt: Date,
   ): Promise<Notification | null> {
     const stored = this.notifications.get(notification.getId());
+
     if (
       !stored ||
       stored.getUpdatedAt().getTime() !== expectedUpdatedAt.getTime()
-    )
-      return null;
+    ) {
+      return Promise.resolve(null);
+    }
+
     const persisted = this.clone(notification);
     this.notifications.set(persisted.getId(), persisted);
-    return this.clone(persisted);
+    return Promise.resolve(this.clone(persisted));
   }
 
   private clone(notification: Notification): Notification {
