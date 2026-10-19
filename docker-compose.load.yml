@@ -1,0 +1,75 @@
+# Testes de carga (k6), aplicado por cima do docker-compose.yml em um projeto
+# isolado, com banco próprio:
+#   docker compose -p oficina-load -f docker-compose.yml -f docker-compose.load.yml ...
+# Use os scripts `npm run load:*` (veja test/load/README.md).
+#
+# A API roda com a imagem de produção (`runtime`). Pagamentos vão para o
+# stripe-fake e e-mails para o Mailpit: nada sai para Stripe ou SMTP reais.
+services:
+  app:
+    environment:
+      LOG_LEVEL: warn
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      MAIL_FROM: oficina@load.test
+      STOCK_NOTIFICATION_EMAIL: estoque@load.test
+      STRIPE_SECRET_KEY: sk_test_load
+      STRIPE_WEBHOOK_SECRET: whsec_load
+      STRIPE_API_BASE_URL: http://stripe-fake:12111
+      # Segredos fixos (32+ bytes) válidos só neste ambiente descartável.
+      JWT_ACCESS_SECRET: load-access-secret-0123456789abcdef0123456789
+      JWT_REFRESH_SECRET: load-refresh-secret-0123456789abcdef012345678
+    depends_on:
+      mailpit:
+        condition: service_started
+      stripe-fake:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    container_name: oficina-load-mailpit
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  stripe-fake:
+    image: node:24.13.0-bookworm-slim
+    container_name: oficina-load-stripe-fake
+    working_dir: /fake
+    volumes:
+      - ./test/load/stripe-fake:/fake:ro
+    command: ["node", "server.mjs"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:12111/__health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  k6:
+    profiles: ["load"]
+    image: grafana/k6:2.3.0
+    # Mesmo UID do host, para os relatórios em test/load/results não ficarem
+    # com dono de outro usuário.
+    user: "${LOAD_UID:-1000}:${LOAD_GID:-1000}"
+    working_dir: /load
+    volumes:
+      - ./test/load:/load
+    environment:
+      BASE_URL: http://app:3000
+      STRIPE_WEBHOOK_SECRET: whsec_load
+      MAILPIT_URL: http://mailpit:8025
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      PROFILE: ${PROFILE:-}
+      VOLUME: ${VOLUME:-}
+    depends_on:
+      app:
+        condition: service_healthy

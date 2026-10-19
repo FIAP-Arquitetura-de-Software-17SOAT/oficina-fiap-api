@@ -70,6 +70,8 @@ docker-compose.override.yml
 # Runners auxiliares de teste (os comandos foram inlineados no package.json)
 /scripts
 
+# Relatórios dos testes de carga (k6)
+test/load/results/
 # Credenciais e artefatos locais do Kubernetes
 k8s/.env.*
 k8s/.local/
