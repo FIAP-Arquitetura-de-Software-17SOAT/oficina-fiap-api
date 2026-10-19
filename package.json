@@ -21,7 +21,13 @@
     "test:e2e": "cross-env LOG_LEVEL=silent jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:db": "cross-env NODE_OPTIONS=--experimental-vm-modules RUN_DATABASE_TESTS=true LOG_LEVEL=silent jest --config ./test/jest-e2e.json --runInBand",
     "test:seed": "jest --rootDir . prisma/seed.spec.ts prisma/seed-demo.spec.ts --runInBand",
-    "seed:demo": "ts-node -r dotenv/config prisma/seed-demo.ts"
+    "seed:demo": "ts-node -r dotenv/config prisma/seed-demo.ts",
+    "docker:dev": "mkdir -p node_modules generated && docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -V",
+    "docker:prod": "docker compose -f docker-compose.yml up --build",
+    "docker:migrate": "docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app npx prisma migrate dev",
+    "docker:demo": "docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo run --rm seed-demo",
+    "docker:test": "mkdir -p node_modules generated && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile test run --rm --build test",
+    "docker:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo --profile test down --remove-orphans"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
