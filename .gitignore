@@ -69,3 +69,7 @@ docker-compose.override.yml
 
 # Runners auxiliares de teste (os comandos foram inlineados no package.json)
 /scripts
+
+# Credenciais e artefatos locais do Kubernetes
+k8s/.env.*
+k8s/.local/

@@ -1,0 +1,8 @@
+# Tarefas que rodam UMA vez por deploy e terminam. Ficam separadas da API de proposito:
+# a migration precisa terminar ANTES de a API ser atualizada.
+# Use um overlay (k8s/overlays/<ambiente>/jobs), nao esta pasta.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - db-setup-job.yaml

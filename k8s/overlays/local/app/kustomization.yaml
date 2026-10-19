@@ -1,0 +1,25 @@
+# Overlay LOCAL (kind): pega a base da API e troca so o que e especifico deste ambiente.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/app
+
+# Imagens carregadas no kind com `kind load docker-image` (veja k8s/README.md).
+images:
+  - name: oficina-api
+    newTag: local
+
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: oficina-api-config
+        namespace: oficina
+      data:
+        NODE_ENV: development
+        LOG_LEVEL: debug
+        PUBLIC_API_URL: http://localhost:3000
+        PAYMENT_SUCCESS_URL: http://localhost:3000/api/v1/payment/success
+        PAYMENT_CANCEL_URL: http://localhost:3000/api/v1/payment/cancel

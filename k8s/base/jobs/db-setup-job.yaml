@@ -1,0 +1,81 @@
+# Job: tarefa que executa ate terminar (diferente do Deployment, que mantem algo rodando).
+# Prepara o banco em dois passos, sempre nesta ordem:
+#   1. initContainer `migrate`: aplica as migrations do Prisma (cria/atualiza as tabelas).
+#   2. container `seed`: cria o usuario administrador, se ainda nao existir (idempotente).
+# Os initContainers rodam um de cada vez e precisam terminar com sucesso antes do
+# container principal comecar. Se a migration falhar, o seed nem inicia.
+#
+# Um Job nao pode ser alterado depois de criado. Por isso o nome e fixo e o fluxo de
+# deploy apaga o Job anterior antes de aplicar este (veja k8s/README.md).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oficina-db-setup
+  namespace: oficina
+spec:
+  backoffLimit: 1 # 1 nova tentativa se o Pod falhar
+  activeDeadlineSeconds: 300 # desiste se passar de 5 min
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: migrate
+          # Nomes provisorios: o overlay troca pela imagem real (mesma tag da API).
+          image: oficina-migrator
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oficina-api-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      containers:
+        - name: seed
+          image: oficina-seeder
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oficina-api-secrets
+                  key: DATABASE_URL
+            # Credenciais do admin ficam num Secret a parte: a API nunca as recebe.
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: oficina-seed-secrets
+                  key: ADMIN_EMAIL
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oficina-seed-secrets
+                  key: ADMIN_PASSWORD
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

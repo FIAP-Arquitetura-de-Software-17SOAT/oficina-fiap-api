@@ -1,0 +1,21 @@
+# Service: endereco estavel para a API. Os Pods mudam de IP quando sao recriados;
+# o Service mantem o mesmo nome (oficina-api) e distribui as conexoes entre os Pods
+# que estao Ready.
+#
+# No kind ele fica como ClusterIP (so dentro do cluster; acesso pelo Mac via
+# port-forward). No EKS o overlay muda o `type` para LoadBalancer, que cria o
+# balanceador publico da AWS.
+apiVersion: v1
+kind: Service
+metadata:
+  name: oficina-api
+  namespace: oficina
+spec:
+  type: ClusterIP
+  # Encaminha para os Pods com este label (o mesmo do template do Deployment).
+  selector:
+    app: oficina-api
+  ports:
+    - name: http
+      port: 80 # porta do Service
+      targetPort: http # porta nomeada `http` do container (3000)

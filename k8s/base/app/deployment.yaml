@@ -1,0 +1,109 @@
+# Deployment: descreve COMO a API roda e mantem as copias (replicas) dela de pe.
+# Se um Pod morre, o Deployment cria outro. Ao trocar a imagem, faz a troca gradual.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oficina-api
+  namespace: oficina
+spec:
+  # Sem `replicas` de proposito: quem decide quantas copias existem e o HPA (hpa.yaml,
+  # minimo 2). Se o valor ficasse aqui, todo `kubectl apply` voltaria a escala para ele,
+  # desfazendo o que o HPA fez durante um pico.
+  revisionHistoryLimit: 3 # guarda 3 versoes antigas para `rollout undo`
+  minReadySeconds: 5 # um Pod so conta como disponivel apos 5s pronto
+  progressDeadlineSeconds: 300 # se a atualizacao nao andar em 5 min, e marcada como falha
+
+  # Atualizacao gradual sem derrubar a API: sobe 1 Pod novo (maxSurge) e so entao
+  # remove um antigo; nunca fica abaixo do numero de replicas (maxUnavailable: 0).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  # Como o Deployment encontra os Pods dele: pelo label app=oficina-api.
+  # Precisa ser igual ao label do template abaixo.
+  selector:
+    matchLabels:
+      app: oficina-api
+
+  # Molde dos Pods criados.
+  template:
+    metadata:
+      labels:
+        app: oficina-api # o Service e o HPA tambem encontram os Pods por este label
+    spec:
+      automountServiceAccountToken: false # a API nao fala com a API do Kubernetes
+      terminationGracePeriodSeconds: 30 # tempo para o Nest fechar conexoes ao receber SIGTERM
+      securityContext:
+        runAsNonRoot: true # recusa iniciar como root
+        runAsUser: 1000 # usuario `node` da imagem
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Prefere espalhar as replicas em nos diferentes (se um no cair, outro atende).
+      # `ScheduleAnyway`: com um no so (kind), nao impede de agendar.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: oficina-api
+      containers:
+        - name: api
+          # `oficina-api` sem tag e um nome provisorio: o overlay do ambiente troca
+          # pelo caminho e pela tag reais (ex.: ECR + SHA do commit).
+          image: oficina-api
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+          ports:
+            - name: http
+              containerPort: 3000
+
+          # Variaveis de ambiente vindas do ConfigMap (comum) e do Secret (sensivel).
+          envFrom:
+            - configMapRef:
+                name: oficina-api-config
+            - secretRef:
+                name: oficina-api-secrets # criado fora do Git: veja k8s/secrets/
+
+          # requests: o que o Pod reserva (base do agendamento e dos % do HPA).
+          # limits: o teto. CPU acima do teto sofre throttling; memoria acima, OOMKilled.
+          resources:
+            requests:
+              cpu: "100m" # 1000m = 1 CPU
+              memory: "384Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          # startup: da ate ~150s para a API subir; enquanto nao passa, os outros esperam.
+          startupProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+
+          # readiness: o Pod so recebe trafego se /health responde (inclui SELECT 1 no banco).
+          # Se falhar, sai do Service, mas NAO e reiniciado.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+
+          # liveness: se /live parar de responder, o container e reiniciado.
+          # Nao consulta o banco: queda do banco nao pode reiniciar todas as APIs.
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
