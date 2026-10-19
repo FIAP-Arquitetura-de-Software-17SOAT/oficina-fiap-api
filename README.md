@@ -136,6 +136,27 @@ Para acessar rotas administrativas, autentique-se em `POST /api/v1/auth/login` c
 Authorization: Bearer <accessToken>
 ```
 
+## Provisionamento da infraestrutura com Terraform
+
+Os scripts em [`infra/`](infra/README.md) criam na AWS (`us-east-1`) a VPC, o
+cluster EKS com `metrics-server` (para o HPA), o banco RDS PostgreSQL 16, os
+repositorios ECR das imagens `runtime`, `migrator` e `seeder` e a role OIDC
+usada pelo GitHub Actions. O state fica em um bucket S3 criado por
+`infra/bootstrap`.
+
+Resumo:
+
+```bash
+terraform -chdir=infra/bootstrap init && terraform -chdir=infra/bootstrap apply
+terraform -chdir=infra/bootstrap output -raw backend_config > infra/backend.hcl
+terraform -chdir=infra init -backend-config=backend.hcl
+terraform -chdir=infra apply
+$(terraform -chdir=infra output -raw configure_kubectl)
+```
+
+Recursos criados, custos, outputs consumidos pelo Kubernetes e pela pipeline e
+o procedimento de destroy estao em [infra/README.md](infra/README.md).
+
 ## Desenvolvimento sem container
 
 ```bash
