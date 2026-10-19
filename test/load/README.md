@@ -27,6 +27,39 @@ JWT são sobrescritos pelo `docker-compose.load.yml`.
 Variáveis passam pelo ambiente do shell, por exemplo
 `PROFILE=load npm run load:journey` ou `ITERATIONS=50 npm run load:race:stock`.
 
+## No GitHub Actions
+
+Workflows disparadas manualmente (aba **Actions** → escolha a workflow →
+**Run workflow**), todas usando a reutilizável `k6-run.yml`:
+
+| Workflow | O que roda | Entradas |
+| --- | --- | --- |
+| Carga: smoke | `smoke` | — |
+| Carga: concorrência | as 4 corridas ou uma delas | corrida, iterações |
+| Carga: desempenho | `journey`, `auth`, `customer` ou `webhook` | cenário, perfil |
+| Carga: volume | `seed` + `read` | volume (1k/10k/50k), taxa, duração |
+
+Cada execução mostra os thresholds de cada cenário no resumo da página e
+publica os relatórios (`test/load/results/`, inclusive `compose.log`) como
+artefato por 14 dias. O job falha se algum threshold falhar. Nenhum segredo é
+necessário: no CI o `test/load/ci.sh` gera um `.env` descartável, e Stripe,
+SMTP e JWT já são sobrescritos pelo `docker-compose.load.yml`.
+
+O mesmo script roda localmente com o seu `.env`:
+
+```bash
+npm run docker:down
+ITERATIONS=50 test/load/ci.sh race:stock race:mechanic
+PROFILE=load test/load/ci.sh journey
+```
+
+O runner `ubuntu-latest` tem 4 vCPUs compartilhadas. Smoke e concorrência
+verificam regras e são confiáveis lá; os números de desempenho e volume só
+se comparam com outras execuções do próprio Actions.
+
+Workflows com `workflow_dispatch` só aparecem na aba Actions depois que os
+arquivos chegam à branch padrão (`main`).
+
 ## Cenários
 
 | Comando | Objetivo | Perfis / variáveis |

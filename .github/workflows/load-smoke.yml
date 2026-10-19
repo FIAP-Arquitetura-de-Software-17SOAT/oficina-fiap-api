@@ -1,0 +1,16 @@
+# Sanidade do ambiente e da suíte: jornada completa da OS, listagens e e-mails.
+name: "Carga: smoke"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    uses: ./.github/workflows/k6-run.yml
+    with:
+      name: smoke
+      scenarios: smoke
+      timeout-minutes: 20
