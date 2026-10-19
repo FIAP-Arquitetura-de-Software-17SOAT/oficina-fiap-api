@@ -1,0 +1,22 @@
+# ConfigMap: configuracoes NAO secretas, entregues ao Pod como variaveis de ambiente
+# (veja `envFrom` no deployment.yaml). Segredos ficam em um Secret, nunca aqui.
+#
+# Aqui so entra o que e igual em todo ambiente. O que muda (NODE_ENV, LOG_LEVEL e as
+# URLs publicas) e definido em k8s/overlays/<ambiente>/app/kustomization.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-api-config
+  namespace: oficina
+data:
+  # Todo valor de ConfigMap e texto: numeros e booleanos vao entre aspas.
+  PORT: "3000"
+
+  JWT_ACCESS_TTL: "15m"
+  JWT_REFRESH_TTL: "7d"
+
+  SMTP_HOST: "smtp.ethereal.email"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  MAIL_FROM: "oficina-fiap@example.com"
+  STOCK_NOTIFICATION_EMAIL: "oficina-fiap-stock@example.com"

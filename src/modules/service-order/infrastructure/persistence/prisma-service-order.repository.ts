@@ -2,11 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared/database/prisma.service';
 import { ServiceOrder } from '../../domain/entities/service-order.entity';
 import { ServiceOrderStatus } from '../../domain/enums/service-order-status.enum';
+import { ServiceOrderApplicationError } from '../../application/errors/service-order-application.error';
 import { ServiceOrderRepositoryPort } from '../../application/ports/service-order-repository.port';
 import { ServiceOrderPersistenceMapper } from './service-order-persistence.mapper';
 
 // Os itens pedidos fazem parte da OS: toda leitura os traz junto.
 const include = { requestedItems: true } as const;
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
+}
 
 @Injectable()
 export class PrismaServiceOrderRepository implements ServiceOrderRepositoryPort {
@@ -85,11 +95,37 @@ export class PrismaServiceOrderRepository implements ServiceOrderRepositoryPort 
   }
 
   async update(serviceOrder: ServiceOrder): Promise<ServiceOrder> {
-    const row = await this.prisma.serviceOrder.update({
-      where: { id: serviceOrder.getId() },
-      data: ServiceOrderPersistenceMapper.toUpdate(serviceOrder),
-      include,
+    try {
+      const row = await this.prisma.serviceOrder.update({
+        where: { id: serviceOrder.getId() },
+        data: ServiceOrderPersistenceMapper.toUpdate(serviceOrder),
+        include,
+      });
+      return ServiceOrderPersistenceMapper.toDomain(row);
+    } catch (error: unknown) {
+      return this.translateUpdateError(error, serviceOrder);
+    }
+  }
+
+  /**
+   * O update só grava colunas da própria OS, e o único índice único além da
+   * chave é o parcial `service_order_active_mechanic_key`. Uma violação aqui
+   * é a corrida que a pré-checagem do caso de uso não fecha: duas atribuições
+   * simultâneas do mesmo mecânico. Quem perde recebe o mesmo MECHANIC_BUSY da
+   * pré-checagem, com a OS vencedora quando ela ainda está ativa.
+   */
+  private async translateUpdateError(
+    error: unknown,
+    serviceOrder: ServiceOrder,
+  ): Promise<never> {
+    const mechanicId = serviceOrder.getMechanicId();
+    if (!isUniqueViolation(error) || !mechanicId) {
+      throw error;
+    }
+
+    const active = await this.findActiveByMechanicId(mechanicId);
+    throw new ServiceOrderApplicationError('MECHANIC_BUSY', {
+      activeServiceOrderId: active?.getId(),
     });
-    return ServiceOrderPersistenceMapper.toDomain(row);
   }
 }

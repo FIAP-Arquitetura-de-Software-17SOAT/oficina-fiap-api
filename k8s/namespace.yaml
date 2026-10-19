@@ -1,0 +1,7 @@
+# Namespace: "pasta" que agrupa todos os recursos da Oficina dentro do cluster.
+# E o primeiro passo do deploy (kubectl apply -f k8s/namespace.yaml): os Secrets e
+# todo o resto precisam de um namespace que ja exista.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oficina

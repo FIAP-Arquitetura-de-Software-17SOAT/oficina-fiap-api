@@ -1,0 +1,4 @@
+# Copie para backend.hcl (gitignored). O bucket e criado por infra/bootstrap:
+#   terraform -chdir=infra/bootstrap output -raw backend_config > infra/backend.hcl
+bucket = "oficina-fiap-tfstate-<ACCOUNT_ID>"
+region = "us-east-1"

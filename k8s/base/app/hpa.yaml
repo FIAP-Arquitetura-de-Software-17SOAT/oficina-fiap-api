@@ -1,0 +1,49 @@
+# HorizontalPodAutoscaler (HPA): liga e desliga replicas conforme o consumo.
+# Le as metricas do Metrics Server (precisa estar instalado no cluster) e ajusta o
+# numero de Pods do Deployment entre `minReplicas` e `maxReplicas`.
+# Ele cria Pods, nao maquinas: se faltar capacidade nos nos, o Pod fica Pending.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: oficina-api
+  namespace: oficina
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: oficina-api
+
+  minReplicas: 2
+  maxReplicas: 4
+
+  # Ritmo da escala (opcional; deixa a subida e a descida faceis de mostrar no video).
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0 # sobe na hora
+      policies:
+        - type: Pods
+          value: 2 # no maximo +2 Pods por minuto
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300 # espera 5 min de calmaria antes de reduzir
+      policies:
+        - type: Pods
+          value: 1 # reduz 1 Pod por minuto
+          periodSeconds: 60
+
+  # Alvos em % do `request` do Pod (100m de CPU e 384Mi de memoria).
+  # Com mais de uma metrica, vale a que pedir mais replicas.
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
