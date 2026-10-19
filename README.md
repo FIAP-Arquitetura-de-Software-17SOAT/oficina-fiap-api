@@ -1,6 +1,6 @@
 # Oficina FIAP API
 
-API REST para o Sistema Integrado de Atendimento e Execucao de Servicos de uma oficina mecanica. Projeto academico do Tech Challenge da FIAP (Fase 1, 15SOAT).
+API REST para o Sistema Integrado de Atendimento e Execucao de Servicos de uma oficina mecanica. Projeto academico do Tech Challenge da FIAP, evoluido na Fase 2 com Clean Architecture e orquestracao Kubernetes.
 
 O sistema permite gerenciar clientes, veiculos, ordens de servico, orcamentos, estoque, pagamentos e notificacoes.
 
@@ -98,6 +98,7 @@ gerenciador de segredos do cluster, sem grava-los na imagem.
 | `STRIPE_WEBHOOK_SECRET` | Sim | Segredo para validar webhooks do Stripe |
 | `PAYMENT_SUCCESS_URL` | Sim | URL de retorno apos pagamento |
 | `PAYMENT_CANCEL_URL` | Sim | URL de retorno apos cancelamento |
+| `PUBLIC_API_URL` | No EKS | URL publica usada nos links de aprovacao de orcamento; padrao local `http://localhost:3000` |
 | `SMTP_HOST` | Para envio de e-mail | Host SMTP |
 | `SMTP_PORT` | Para envio de e-mail | Porta SMTP valida, por exemplo `587` |
 | `SMTP_SECURE` | Para envio de e-mail | `true` ou `false` |
@@ -157,6 +158,43 @@ $(terraform -chdir=infra output -raw configure_kubectl)
 Recursos criados, custos, outputs consumidos pelo Kubernetes e pela pipeline e
 o procedimento de destroy estao em [infra/README.md](infra/README.md).
 
+## Deploy no Kubernetes
+
+Os manifests em [`k8s/`](k8s/README.md) rodam a API em kind (local) e no EKS:
+Deployment com probes e recursos, Service, ConfigMap, modelos de Secret, HPA de
+CPU/memoria (2 a 4 replicas) e um Job de banco (migration e admin inicial). O banco
+fica fora dos Pods da API: PostgreSQL do Compose no kind e o RDS criado pelo
+Terraform no EKS. A estrutura usa Kustomize (embutido no `kubectl`): `k8s/base/`
+descreve a API e `k8s/overlays/local` e `k8s/overlays/eks` trocam imagens e valores.
+
+```text
+Cliente -> NLB publico (EKS) -> Service -> Pods da API (2 a 4) -> PostgreSQL
+                                           ^
+                               HPA <- Metrics Server
+
+Deploy: namespace -> Secrets -> Job de banco (migration + admin) -> API
+```
+
+Com o cluster kind criado, as imagens carregadas e os Secrets cadastrados
+(detalhes em [`k8s/README.md`](k8s/README.md)), o deploy local e:
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl -n oficina delete job oficina-db-setup --ignore-not-found
+kubectl apply -k k8s/overlays/local/jobs
+kubectl -n oficina wait --for=condition=complete job/oficina-db-setup --timeout=300s
+kubectl apply -k k8s/overlays/local/app
+kubectl -n oficina rollout status deployment/oficina-api
+```
+
+Para a AWS, troque `local` por `eks`. Confira o cluster alvo com
+`kubectl config current-context` antes de aplicar.
+
+Recursos criados, Secrets, endereco publico, o que o Terraform e o CD precisam
+fazer e diagnostico estao em [k8s/README.md](k8s/README.md). Os conceitos
+(Deployment, Service, HPA, Kustomize) estao em
+[docs/wiki/kubernetes.md](docs/wiki/kubernetes.md).
+
 ## Desenvolvimento sem container
 
 ```bash
@@ -194,6 +232,7 @@ Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto
 
 - [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
 - [docs/wiki/migracao-clean-architecture.md](docs/wiki/migracao-clean-architecture.md) — a migracao dos modulos para Clean Architecture na Fase 2: a regra de dependencia, o layout de um modulo migrado e a pagina de cada modulo ja migrado.
+- [docs/wiki/kubernetes.md](docs/wiki/kubernetes.md) — como o Kubernetes funciona neste projeto: cada recurso (Deployment, Service, ConfigMap, Secret, HPA, Job), labels e selectors, a ordem do deploy, Kustomize e os comandos do dia a dia. O passo a passo de deploy esta em [k8s/README.md](k8s/README.md).
 - [docs/wiki/colecao-postman.md](docs/wiki/colecao-postman.md) — a colecao do Postman: como importar, as variaveis que voce precisa preencher, o roteiro de ponta a ponta, o pagamento no Stripe e os erros mais comuns.
 - [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.
 - [docs/c4-diagrams/](docs/c4-diagrams/) — modelo C4 niveis 1 (contexto) e 2 (containers), em `.drawio`.

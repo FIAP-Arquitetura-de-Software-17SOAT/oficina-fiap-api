@@ -1,0 +1,15 @@
+# Overlay EKS (AWS) dos Jobs de banco: so escolhe as imagens no ECR.
+# Use a MESMA tag da API (SHA do commit).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/jobs
+
+images:
+  - name: oficina-migrator
+    newName: TROQUE_ACCOUNT_ID.dkr.ecr.TROQUE_REGIAO.amazonaws.com/oficina-migrator
+    newTag: TROQUE_SHA_DO_COMMIT
+  - name: oficina-seeder
+    newName: TROQUE_ACCOUNT_ID.dkr.ecr.TROQUE_REGIAO.amazonaws.com/oficina-seeder
+    newTag: TROQUE_SHA_DO_COMMIT

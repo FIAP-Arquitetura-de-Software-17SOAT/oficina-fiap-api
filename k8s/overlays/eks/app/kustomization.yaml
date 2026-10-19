@@ -1,0 +1,48 @@
+# Overlay EKS (AWS): pega a base da API e troca imagens, valores de producao e a
+# forma de expor a API.
+#
+# Antes do primeiro deploy, troque os valores marcados com TROQUE (ou deixe o CD
+# trocar: `kustomize edit set image ...`, veja k8s/README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/app
+
+# Imagem no ECR. A tag e o SHA do commit: a mesma tag nas tres imagens (api, migrator,
+# seeder) e nunca `latest`, para saber exatamente qual versao esta rodando.
+images:
+  - name: oficina-api
+    newName: TROQUE_ACCOUNT_ID.dkr.ecr.TROQUE_REGIAO.amazonaws.com/oficina-api
+    newTag: TROQUE_SHA_DO_COMMIT
+
+patches:
+  # Valores de producao. As URLs publicas dependem do endereco do balanceador, que so
+  # existe depois do primeiro deploy: veja "Endereco publico" em k8s/README.md.
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: oficina-api-config
+        namespace: oficina
+      data:
+        NODE_ENV: production
+        LOG_LEVEL: info
+        PUBLIC_API_URL: http://TROQUE_ENDERECO_DO_BALANCEADOR
+        PAYMENT_SUCCESS_URL: http://TROQUE_ENDERECO_DO_BALANCEADOR/api/v1/payment/success
+        PAYMENT_CANCEL_URL: http://TROQUE_ENDERECO_DO_BALANCEADOR/api/v1/payment/cancel
+
+  # Entrada publica: o mesmo Service da base passa a ser LoadBalancer. A AWS cria um
+  # Network Load Balancer e o preenche em `status.loadBalancer.ingress`.
+  # Combinar com quem faz o Terraform se o cluster usa o AWS Load Balancer Controller
+  # ou o EKS Auto Mode: nesses casos as anotacoes mudam (veja k8s/README.md).
+  - patch: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: oficina-api
+        namespace: oficina
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      spec:
+        type: LoadBalancer

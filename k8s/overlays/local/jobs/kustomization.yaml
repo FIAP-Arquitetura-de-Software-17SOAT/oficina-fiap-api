@@ -1,0 +1,12 @@
+# Overlay LOCAL (kind) dos Jobs de banco: so escolhe as imagens.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/jobs
+
+images:
+  - name: oficina-migrator
+    newTag: local
+  - name: oficina-seeder
+    newTag: local
