@@ -27,11 +27,13 @@ locals {
     }
   }
 
-  # Admins = colegas listados + quem aplica, cada um com access entry
-  # indexada pelo proprio ARN. A entrada "cluster_creator" do modulo nao e
-  # usada: ela troca de dono conforme quem roda o apply e colidiria
-  # (ResourceInUseException) com a entrada do colega que aplicou antes.
+  # Admins = membros do grupo IAM + colegas listados + quem aplica, cada um
+  # com access entry indexada pelo proprio ARN. A entrada "cluster_creator"
+  # do modulo nao e usada: ela troca de dono conforme quem roda o apply e
+  # colidiria (ResourceInUseException) com a entrada do colega que aplicou
+  # antes.
   cluster_admin_arns = sort(distinct(concat(
+    [for user in try(data.aws_iam_group.cluster_admins[0].users, []) : user.arn],
     var.cluster_admin_principal_arns,
     [data.aws_iam_session_context.current.issuer_arn],
   )))
@@ -62,6 +64,14 @@ locals {
       }
     },
   )
+}
+
+# Access entries do EKS aceitam so usuarios e roles, nao grupos: os membros
+# do grupo sao lidos aqui. Quem entrar no grupo ganha acesso no proximo apply.
+data "aws_iam_group" "cluster_admins" {
+  count = var.cluster_admin_group_name == "" ? 0 : 1
+
+  group_name = var.cluster_admin_group_name
 }
 
 module "eks" {
