@@ -72,6 +72,10 @@ run "caller" {
 run "applier_is_always_cluster_admin" {
   command = plan
 
+  variables {
+    cluster_admin_group_name = ""
+  }
+
   assert {
     condition     = local.cluster_access_entries[run.caller.issuer_arn].policy_associations.cluster_admin.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
     error_message = "Quem aplica deve ser admin do cluster por uma access entry indexada pelo proprio ARN."
@@ -93,6 +97,7 @@ run "admin_entries_do_not_depend_on_who_applies" {
 
   variables {
     cluster_admin_principal_arns = [run.caller.issuer_arn, "arn:aws:iam::111122223333:user/colega"]
+    cluster_admin_group_name     = ""
   }
 
   # Mesmas chaves para qualquer colega listado que rode o apply: nenhuma
@@ -105,6 +110,58 @@ run "admin_entries_do_not_depend_on_who_applies" {
   assert {
     condition     = contains(keys(local.cluster_access_entries), run.caller.issuer_arn) && contains(keys(local.cluster_access_entries), "arn:aws:iam::111122223333:user/colega")
     error_message = "Cada admin deve ter access entry indexada pelo proprio ARN."
+  }
+}
+
+run "group_members_become_cluster_admins" {
+  command = plan
+
+  # O EKS nao aceita grupo IAM em access entry: cada membro do grupo vira uma
+  # entrada propria, junto com os ARNs listados e quem aplica.
+  override_data {
+    target          = data.aws_iam_group.cluster_admins
+    override_during = plan
+    values = {
+      users = [
+        { arn = "arn:aws:iam::111122223333:user/ana", path = "/", user_id = "AIDAANA", user_name = "ana" },
+        { arn = "arn:aws:iam::111122223333:user/bia", path = "/", user_id = "AIDABIA", user_name = "bia" },
+      ]
+    }
+  }
+
+  assert {
+    condition = alltrue([
+      for arn in ["arn:aws:iam::111122223333:user/ana", "arn:aws:iam::111122223333:user/bia", run.caller.issuer_arn] :
+      contains(local.cluster_admin_arns, arn)
+    ])
+    error_message = "Membros do grupo e quem aplica devem ser admins do cluster."
+  }
+
+  assert {
+    condition     = local.cluster_access_entries["arn:aws:iam::111122223333:user/ana"].policy_associations.cluster_admin.access_scope.type == "cluster"
+    error_message = "Cada membro do grupo deve ter access entry de admin com escopo de cluster."
+  }
+}
+
+run "group_lookup_defaults_to_fiap_pos" {
+  command = plan
+
+  assert {
+    condition     = one(data.aws_iam_group.cluster_admins).group_name == "FIAP-POS"
+    error_message = "Grupo padrao dos admins do cluster deve ser FIAP-POS."
+  }
+}
+
+run "group_lookup_can_be_disabled" {
+  command = plan
+
+  variables {
+    cluster_admin_group_name = ""
+  }
+
+  assert {
+    condition     = length(data.aws_iam_group.cluster_admins) == 0
+    error_message = "Com cluster_admin_group_name vazio, o grupo nao deve ser consultado."
   }
 }
 

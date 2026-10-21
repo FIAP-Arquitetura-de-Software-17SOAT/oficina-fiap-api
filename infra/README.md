@@ -36,7 +36,7 @@ do GitHub Actions. Manifestos Kubernetes ficam em `/k8s` e a pipeline em
 | --- | --- |
 | `bootstrap/main.tf` | Bucket S3 `oficina-fiap-tfstate-<account_id>` para o state: versionamento, criptografia SSE-S3, bloqueio de acesso publico, policy que nega acesso sem TLS e `prevent_destroy` |
 | `network.tf` | VPC `oficina-fiap-vpc` (`10.0.0.0/16`) em 2 AZs; 2 subnets publicas (tag `kubernetes.io/role/elb`), 2 privadas (tag `kubernetes.io/role/internal-elb`), 2 de banco com subnet group; Internet Gateway; 1 NAT Gateway com Elastic IP; route tables |
-| `eks.tf` | Cluster EKS `oficina-fiap-eks` (Kubernetes 1.37) com endpoint publico e privado, autenticacao por access entries, criptografia de secrets com KMS, logs do control plane (retencao de 7 dias); managed node group `default` (AL2023, `t3.small`, ON_DEMAND, min 2 / desejado 2 / max 2, IMDSv2) em subnets privadas; add-ons `vpc-cni`, `kube-proxy`, `coredns`, `eks-pod-identity-agent` e `metrics-server` (necessario para o HPA); roles IAM do cluster e dos nos; security groups; access entries de admin para quem aplica, para `cluster_admin_principal_arns` e para a role do GitHub Actions |
+| `eks.tf` | Cluster EKS `oficina-fiap-eks` (Kubernetes 1.37) com endpoint publico e privado, autenticacao por access entries, criptografia de secrets com KMS, logs do control plane (retencao de 7 dias); managed node group `default` (AL2023, `t3.small`, ON_DEMAND, min 2 / desejado 2 / max 2, IMDSv2) em subnets privadas; add-ons `vpc-cni`, `kube-proxy`, `coredns`, `eks-pod-identity-agent` e `metrics-server` (necessario para o HPA); roles IAM do cluster e dos nos; security groups; access entries de admin para cada membro do grupo IAM `FIAP-POS` (`cluster_admin_group_name`), para `cluster_admin_principal_arns`, para quem aplica e para a role do GitHub Actions |
 | `rds.tf` | RDS PostgreSQL 16 `oficina-fiap-postgres` (`db.t4g.micro`, 20 GB gp3 criptografado, single-AZ, sem acesso publico, backup de 1 dia, sem deletion protection); parameter group `postgres16` (TLS obrigatorio); security group que libera 5432 somente para o security group dos nos EKS; senha aleatoria de 32 caracteres (`random_password`) |
 | `ecr.tf` | Repositorios ECR `oficina-api`, `oficina-migrator`, `oficina-seeder` com scan on push e lifecycle que mantem as 10 imagens mais recentes |
 | `github-oidc.tf` | OIDC provider `token.actions.githubusercontent.com` e role `oficina-fiap-github-actions`, assumivel somente por workflows da branch `main` do repositorio `FIAP-Arquitetura-de-Software-17SOAT/oficina-fiap-api`; permite login/push/pull nos 3 repositorios ECR e `eks:DescribeCluster` |
@@ -61,6 +61,13 @@ padrao de 5 vCPU On-Demand. Por isso o node group usa `t3.small` com no
 maximo 2 nos. Em conta no plano Paid, ajuste `node_instance_types` e
 `node_max_size` (e a quota de vCPU, se necessario) em `terraform.tfvars`.
 
+Capacidade: os manifestos de `/k8s` reservam 384Mi por Pod da API (HPA de 2 a
+4 Pods, mais 1 extra durante a atualizacao). Nos 2 nos `t3.small` (2 GiB cada)
+isso cabe, mas apertado. Se algum Pod ficar `Pending` com `Insufficient memory`,
+use `node_instance_types = ["c7i-flex.large"]` (2 vCPU / 4 GiB, aceito no plano
+Free; 2 nos usam 4 das 5 vCPU). Custo dos nos sobe de ~US$ 0,04/h para
+~US$ 0,17/h.
+
 ## Como aplicar
 
 Todos os comandos a partir da raiz do repositorio.
@@ -82,10 +89,12 @@ Todos os comandos a partir da raiz do repositorio.
    cp infra/terraform.tfvars.example infra/terraform.tfvars
    ```
 
-   Para dar `kubectl` a colegas, informe os ARNs IAM deles em
-   `cluster_admin_principal_arns`. Quem aplica sempre vira admin; liste
-   todos os colegas que tambem rodam `apply` para que ninguem perca o acesso
-   quando outro aplicar. Se a conta ja tiver o OIDC provider do
+   Acesso ao cluster (`kubectl`): todo membro do grupo IAM `FIAP-POS`
+   (`cluster_admin_group_name`) vira admin. O EKS nao aceita grupo em access
+   entry, entao o Terraform le os membros do grupo e cria uma entrada para
+   cada um; quem entrar no grupo ganha acesso no proximo `apply`. Quem aplica
+   sempre vira admin. Para alguem de fora do grupo, informe o ARN em
+   `cluster_admin_principal_arns`. Se a conta ja tiver o OIDC provider do
    GitHub, use `create_github_oidc_provider = false`.
 
 3. Inicializar com o backend remoto e aplicar (cerca de 15 a 20 minutos):
