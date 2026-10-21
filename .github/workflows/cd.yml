@@ -1,0 +1,198 @@
+name: CD
+
+on:
+  # O deploy só é iniciado depois do workflow CI terminar na main.
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish images and deploy to EKS
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'oficina-fiap-eks' }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+
+    steps:
+      - name: Validate deployment settings
+        run: |
+          set -euo pipefail
+          if [[ -z "$AWS_ROLE_ARN" ]]; then
+            echo "Configure the AWS_ROLE_ARN Actions secret before deploying." >&2
+            exit 1
+          fi
+          if [[ -n "$PUBLIC_API_URL" && ! "$PUBLIC_API_URL" =~ ^https?://[^/[:space:]][^[:space:]]*$ ]]; then
+            echo "PUBLIC_API_URL must be an absolute http:// or https:// URL." >&2
+            exit 1
+          fi
+
+      - name: Check out the commit validated by CI
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: oficina-fiap-cd-${{ github.run_id }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2.1.7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/oficina-api:${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=oficina-api-runtime
+          cache-to: type=gha,mode=max,scope=oficina-api-runtime
+
+      - name: Build and push database migrator image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./Dockerfile
+          target: migrator
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/oficina-migrator:${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=oficina-migrator
+          cache-to: type=gha,mode=max,scope=oficina-migrator
+
+      - name: Build and push database seeder image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./Dockerfile
+          target: seeder
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/oficina-seeder:${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=oficina-seeder
+          cache-to: type=gha,mode=max,scope=oficina-seeder
+
+      - name: Configure kubectl for EKS
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Render EKS overlays for the tested commit
+        env:
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          service_hostname="$(kubectl -n oficina get service oficina-api -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)"
+
+          if [[ -n "$PUBLIC_API_URL" ]]; then
+            public_api_url="$PUBLIC_API_URL"
+            while [[ "$public_api_url" == */ ]]; do
+              public_api_url="${public_api_url%/}"
+            done
+          elif [[ -n "$service_hostname" ]]; then
+            public_api_url="http://${service_hostname}"
+          else
+            # Usado apenas durante o primeiro deploy, até o LoadBalancer receber DNS.
+            public_api_url="http://pending.invalid"
+          fi
+
+          export AWS_ACCOUNT_ID="$account_id"
+          export PUBLIC_API_URL="$public_api_url"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          replacements = {
+              "TROQUE_ACCOUNT_ID": os.environ["AWS_ACCOUNT_ID"],
+              "TROQUE_REGIAO": os.environ["AWS_REGION"],
+              "TROQUE_SHA_DO_COMMIT": os.environ["IMAGE_TAG"],
+              "TROQUE_ENDERECO_DO_BALANCEADOR": os.environ["PUBLIC_API_URL"],
+          }
+          files = (
+              Path("k8s/overlays/eks/app/kustomization.yaml"),
+              Path("k8s/overlays/eks/jobs/kustomization.yaml"),
+          )
+
+          for path in files:
+              content = path.read_text(encoding="utf-8")
+              for marker, value in replacements.items():
+                  content = content.replace(marker, value)
+              if "TROQUE_" in content:
+                  raise SystemExit(f"Ainda existe marcador TROQUE_* em {path}")
+              path.write_text(content, encoding="utf-8")
+          PY
+
+      - name: Run database migrations and seed job
+        run: |
+          set -euo pipefail
+          kubectl apply -f k8s/namespace.yaml
+          kubectl -n oficina delete job oficina-db-setup --ignore-not-found
+          kubectl apply -k k8s/overlays/eks/jobs
+          kubectl -n oficina wait --for=condition=complete job/oficina-db-setup --timeout=360s
+
+      - name: Deploy API and wait for rollout
+        run: |
+          set -euo pipefail
+          kubectl apply -k k8s/overlays/eks/app
+
+          if [[ -z "$PUBLIC_API_URL" ]]; then
+            service_hostname=""
+            for attempt in $(seq 1 60); do
+              service_hostname="$(kubectl -n oficina get service oficina-api -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)"
+              if [[ -n "$service_hostname" ]]; then
+                break
+              fi
+              sleep 10
+            done
+
+            if [[ -z "$service_hostname" ]]; then
+              echo "The EKS LoadBalancer did not receive a hostname within 10 minutes." >&2
+              kubectl -n oficina get service oficina-api >&2 || true
+              exit 1
+            fi
+
+            public_api_url="http://${service_hostname}"
+            current_url="$(kubectl -n oficina get configmap oficina-api-config -o jsonpath='{.data.PUBLIC_API_URL}' 2>/dev/null || true)"
+            if [[ "$current_url" != "$public_api_url" ]]; then
+              patch="$(python3 - "$public_api_url" <<'PY'
+          import json
+          import sys
+
+          base_url = sys.argv[1].rstrip("/")
+          print(json.dumps({"data": {
+              "PUBLIC_API_URL": base_url,
+              "PAYMENT_SUCCESS_URL": f"{base_url}/api/v1/payment/success",
+              "PAYMENT_CANCEL_URL": f"{base_url}/api/v1/payment/cancel",
+          }}))
+          PY
+              )"
+              kubectl -n oficina patch configmap oficina-api-config --type merge -p "$patch"
+              kubectl -n oficina rollout restart deployment/oficina-api
+            fi
+          fi
+
+          kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
+          kubectl -n oficina get deployment,service oficina-api
