@@ -39,6 +39,12 @@ variable "cluster_admin_principal_arns" {
   default     = []
 }
 
+variable "cluster_admin_group_name" {
+  description = "Grupo IAM cujos membros recebem admin no cluster. O EKS nao aceita grupo em access entry; o Terraform le os membros e cria uma entrada para cada um. Vazio desativa."
+  type        = string
+  default     = "FIAP-POS"
+}
+
 variable "node_instance_types" {
   description = "Tipos de instancia do node group. Contas no plano Free da AWS so aceitam tipos free-tier eligible."
   type        = list(string)
