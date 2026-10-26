@@ -291,7 +291,7 @@ Cenarios e perfis em [test/load/README.md](test/load/README.md).
 
 ## Documentacao complementar
 
-Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto.
+Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto
 
 - [docs/wiki/guia-tecnico.md](docs/wiki/guia-tecnico.md) — configuracao, autenticacao, e-mail, pagamentos, migrations, arquitetura, convencoes de codigo e solucao de problemas.
 - [docs/wiki/migracao-clean-architecture.md](docs/wiki/migracao-clean-architecture.md) — a migracao dos modulos para Clean Architecture na Fase 2: a regra de dependencia, o layout de um modulo migrado e a pagina de cada modulo ja migrado.
