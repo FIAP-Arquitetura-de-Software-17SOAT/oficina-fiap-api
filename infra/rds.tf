@@ -20,6 +20,10 @@ resource "aws_security_group" "rds" {
   description = "PostgreSQL acessivel somente pelos nos do EKS"
   vpc_id      = module.vpc.vpc_id
 
+  tags = {
+    Name = "${var.project_name}-rds-sg"
+  }
+
   lifecycle {
     create_before_destroy = true
   }

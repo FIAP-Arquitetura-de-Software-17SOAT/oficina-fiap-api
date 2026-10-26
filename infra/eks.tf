@@ -20,6 +20,11 @@ locals {
     desired_size   = var.node_desired_size
     subnet_ids     = module.vpc.private_subnets
 
+    # Nome exibido na coluna "Name" das instancias no console do EC2.
+    tags = {
+      Name = "${var.project_name}-eks-worker"
+    }
+
     metadata_options = {
       http_endpoint               = "enabled"
       http_tokens                 = "required"
@@ -102,6 +107,6 @@ module "eks" {
   addons = local.cluster_addons
 
   eks_managed_node_groups = {
-    default = local.default_node_group
+    workers = local.default_node_group
   }
 }
