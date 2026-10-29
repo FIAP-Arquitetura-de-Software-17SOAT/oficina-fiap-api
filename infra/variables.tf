@@ -85,6 +85,22 @@ variable "github_repository" {
   }
 }
 
+variable "github_oidc_immutable_prefix" {
+  description = <<-EOT
+    Prefixo do claim "sub" quando o repositorio usa subject imutavel (com IDs),
+    no formato repo:<owner>@<owner_id>/<repo>@<repo_id>. Descubra com:
+    gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+    Vazio mantem so o formato por nome (repo:<owner>/<repo>).
+  EOT
+  type        = string
+  default     = "repo:FIAP-Arquitetura-de-Software-17SOAT@298907907/oficina-fiap-api@1325988245"
+
+  validation {
+    condition     = var.github_oidc_immutable_prefix == "" || can(regex("^repo:[^*?]+$", var.github_oidc_immutable_prefix))
+    error_message = "Use o prefixo exato retornado pela API do GitHub, sem curingas."
+  }
+}
+
 variable "github_branch" {
   description = "Branch cujo workflow pode assumir a role de CI/CD."
   type        = string
