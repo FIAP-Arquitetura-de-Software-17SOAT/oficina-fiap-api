@@ -20,7 +20,12 @@ locals {
 
   # Workflows que declaram "environment:" recebem outro subject
   # (repo:<repo>:environment:<nome>) e nao conseguem assumir esta role.
-  github_oidc_subject = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+  # Aceita o subject por nome e, quando o repositorio usa subject imutavel, o
+  # subject com IDs (o GitHub emite apenas um dos dois).
+  github_oidc_subjects = [
+    for prefix in compact(["repo:${var.github_repository}", var.github_oidc_immutable_prefix]) :
+    "${prefix}:ref:refs/heads/${var.github_branch}"
+  ]
 
   account_id  = data.aws_caller_identity.current.account_id
   cluster_arn = "arn:aws:eks:${var.aws_region}:${local.account_id}:cluster/${local.cluster_name}"
@@ -35,7 +40,7 @@ locals {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = local.github_oidc_subject
+            "token.actions.githubusercontent.com:sub" = local.github_oidc_subjects
           }
         }
       }
