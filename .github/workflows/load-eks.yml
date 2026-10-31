@@ -1,0 +1,88 @@
+# Carga contra a API de produção no EKS, para ver o HPA escalar. Roda só o
+# cenário `auth` (bcrypt, limitado por CPU): os outros chamam Stripe ou SMTP
+# reais. O setup cria contas "Cliente Carga" no banco de produção.
+#
+# A role do OIDC só aceita a branch main: dispare a partir dela.
+name: "Carga: escala no EKS"
+
+on:
+  workflow_dispatch:
+    inputs:
+      perfil:
+        description: >-
+          Perfil do auth. stress: 5 → 100 logins/s em 6 min · spike: 0 → 80
+          logins/s, 1 min de pico · smoke: 3 logins (só valida o ambiente)
+        type: choice
+        default: stress
+        options:
+          - stress
+          - spike
+          - smoke
+      contas:
+        description: Contas de cliente criadas no setup (1 a 200; ficam no banco)
+        type: string
+        default: "20"
+      observar_descida:
+        description: >-
+          Minutos acompanhando a descida após a carga (até 30). O HPA espera
+          5 min e remove 1 Pod por minuto
+        type: string
+        default: "8"
+      intervalo:
+        description: Segundos entre amostras do HPA (mínimo 5)
+        type: string
+        default: "10"
+      base_url:
+        description: URL da API (vazio = endereço do Service LoadBalancer)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-eks
+  cancel-in-progress: false
+
+jobs:
+  hpa:
+    name: k6 auth no EKS (${{ inputs.perfil }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'oficina-fiap-eks' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: oficina-fiap-load-${{ github.run_id }}
+
+      - name: Configure kubectl for EKS
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Rodar carga e acompanhar o HPA
+        # Entradas passam por env, nunca interpoladas no script.
+        env:
+          PROFILE: ${{ inputs.perfil }}
+          ACCOUNTS: ${{ inputs.contas }}
+          COOLDOWN_MINUTES: ${{ inputs.observar_descida }}
+          INTERVAL: ${{ inputs.intervalo }}
+          BASE_URL: ${{ inputs.base_url }}
+        run: test/load/eks.sh
+
+      - name: Publicar relatórios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: k6-eks-${{ inputs.perfil }}-${{ github.run_id }}
+          path: test/load/results/
+          retention-days: 14
+          if-no-files-found: ignore
