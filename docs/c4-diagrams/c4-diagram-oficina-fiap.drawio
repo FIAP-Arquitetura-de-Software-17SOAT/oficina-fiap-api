@@ -1,6 +1,6 @@
-<mxfile host="Electron" pages="2">
+<mxfile host="app.diagrams.net" pages="5">
   <diagram name="Diagrama de contexto - OFICINA FIAP API" id="3xCAevVJ99m73d0XVVtG">
-    <mxGraphModel dx="2520" dy="1530" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="3628" dy="1958" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -320,4 +320,251 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram name="Nível 3 - Componentes da API" id="oficina-c4-components">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1700" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="comp-title" parent="1" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#0F172A;strokeColor=none;fillColor=none;" value="&lt;b style=&quot;font-size:26px&quot;&gt;Nível 3 — Componentes da API&lt;/b&gt;&lt;div style=&quot;font-size:14px;color:#475569&quot;&gt;Uma instância completa da API NestJS roda em cada Pod; os módulos não são serviços independentes.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="1600" x="35" y="20" as="geometry" />
+        </mxCell>
+        <object placeholders="1" c4Name="Oficina FIAP API" c4Type="Container: NestJS 11" c4Description="Todos os módulos no mesmo processo" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-api">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=8 5;container=1;collapsible=0;metaEdit=1;" vertex="1">
+            <mxGeometry height="680" width="1070" x="245" y="135" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Atendente / Administrador" c4Type="Person" c4Description="Acessa a API REST" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-person">
+          <mxCell parent="1" style="html=1;whiteSpace=wrap;shape=mxgraph.c4.person2;fillColor=#083F75;strokeColor=#06315C;fontColor=#ffffff;align=center;verticalAlign=middle;metaEdit=1;" vertex="1">
+            <mxGeometry height="150" width="170" x="30" y="260" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Apresentação HTTP" c4Type="Component" c4Description="Controllers, DTOs, Swagger, guards" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-http">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="200" x="290" y="280" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Aplicação" c4Type="Component" c4Description="Casos de uso, contratos e portas" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-uc">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="205" x="550" y="280" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Domínio" c4Type="Component" c4Description="Entidades, invariantes e regras" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-domain">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="205" x="825" y="280" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Portas de integração" c4Type="Component" c4Description="Contratos de persistência e serviços externos" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-ports">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="205" x="550" y="505" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Adaptadores" c4Type="Component" c4Description="Prisma, Stripe, SMTP e integrações entre módulos" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-adapters">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="205" x="825" y="505" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="PostgreSQL 16" c4Type="Container: Database" c4Description="Persistência via Prisma 7" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-rds">
+          <mxCell parent="1" style="shape=mxgraph.flowchart.database;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;metaEdit=1;" vertex="1">
+            <mxGeometry height="115" width="215" x="1670" y="500" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Stripe" c4Type="Software System" c4Description="Checkout e webhooks" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-stripe">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="115" width="215" x="1390" y="425" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Servidor SMTP" c4Type="Software System" c4Description="Entrega de e-mails" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="comp-smtp">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="115" width="215" x="1390" y="615" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="comp-e1" edge="1" parent="1" source="comp-person" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-http" value="REST / JWT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-e2" edge="1" parent="1" source="comp-http" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-uc" value="delega">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-e3" edge="1" parent="1" source="comp-uc" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-domain" value="executa regras">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-e4" edge="1" parent="1" source="comp-uc" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-ports" value="usa contratos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-e5" edge="1" parent="1" source="comp-ports" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-adapters" value="implementados por">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-e6" edge="1" parent="1" source="comp-adapters" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-rds" value="SQL / TLS">
+          <mxGeometry relative="1" x="0.1875" y="-3" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1510" y="567.5" />
+              <mxPoint x="1510" y="567.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="comp-e7" edge="1" parent="1" source="comp-adapters" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-stripe" value="SDK / HTTPS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-e8" edge="1" parent="1" source="comp-adapters" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="comp-smtp" value="SMTP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="comp-modules" parent="1" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#334155;strokeColor=none;fillColor=none;" value="&lt;b&gt;Módulos:&lt;/b&gt; auth · client · vehicle · service-catalog · service-order · budget · stock · purchase-order · parts-dispatch · billing · notification" vertex="1">
+          <mxGeometry height="70" width="970" x="290" y="690" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Implantação AWS - C4" id="oficina-c4-deployment-aws">
+    <mxGraphModel dx="3761" dy="1025" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="960" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="dep-title" parent="1" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#0F172A;strokeColor=none;fillColor=none;" value="&lt;b style=&quot;font-size:26px&quot;&gt;Implantação AWS — C4&lt;/b&gt;&lt;div style=&quot;font-size:14px;color:#475569&quot;&gt;O Service Kubernetes é nativo; seu tipo LoadBalancer provisiona o NLB. Não há Istio VirtualService.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="1750" x="35" y="20" as="geometry" />
+        </mxCell>
+        <object placeholders="1" c4Name="Atendente / Administrador" c4Type="Person" c4Description="Acessa a API REST" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-person">
+          <mxCell parent="1" style="html=1;whiteSpace=wrap;shape=mxgraph.c4.person2;fillColor=#083F75;strokeColor=#06315C;fontColor=#ffffff;align=center;verticalAlign=middle;metaEdit=1;" vertex="1">
+            <mxGeometry height="180" width="180" x="-230" y="325" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="VPC AWS" c4Type="Deployment Node" c4Description="2 zonas de disponibilidade" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-vpc">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=8 5;container=1;collapsible=0;metaEdit=1;arcSize=10;" vertex="1">
+            <mxGeometry height="850" width="1280" x="260" y="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Sub-redes privadas" c4Type="Deployment Node" c4Description="Nós gerenciados do EKS" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-private">
+          <mxCell parent="dep-vpc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=8 5;container=1;collapsible=0;metaEdit=1;" vertex="1">
+            <mxGeometry height="600" width="600" x="320" y="70" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Cluster EKS" c4Type="Deployment Node" c4Description="Namespace oficina; Metrics Server" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-eks">
+          <mxCell parent="dep-private" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=8 5;container=1;collapsible=0;metaEdit=1;" vertex="1">
+            <mxGeometry height="480" width="549.66" x="20.34" y="90" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Pods da API" c4Type="Deployment Node" c4Description="2 a 4 réplicas idênticas" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-pod">
+          <mxCell parent="dep-eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F6FD;strokeColor=#1584B1;fontColor=#175A77;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=5 4;container=1;collapsible=0;metaEdit=1;" vertex="1">
+            <mxGeometry height="250" width="254.08811320754722" x="269.6445283018868" y="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="API NestJS" c4Type="Container" c4Description="Cada Pod contém a aplicação modular inteira" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-api">
+          <mxCell parent="dep-pod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="202.23339622641512" x="25.927358490566043" y="77" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="HPA" c4Type="Infrastructure Node" c4Description="Escala Pods por CPU e memória" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-hpa">
+          <mxCell parent="dep-eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="115" width="197.04792452830193" x="31.112830188679247" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="dep-e4" edge="1" parent="dep-eks" source="dep-hpa" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="dep-pod" value="escala o Pod completo">
+          <mxGeometry relative="1" x="0.234" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="129.6367924528302" y="297.5" />
+              <mxPoint x="228.16075471698116" y="297.5" />
+              <mxPoint x="228.16075471698116" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <object placeholders="1" c4Name="Service Kubernetes" c4Type="Infrastructure Node" c4Description="oficina-api; type LoadBalancer; porta 80" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-svc">
+          <mxCell parent="dep-eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="197.04792452830193" x="31.112830188679247" y="97" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="dep-e3" edge="1" parent="dep-eks" source="dep-svc" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="dep-api" value="seleciona Pods Ready">
+          <mxGeometry relative="1" x="-0.3846" y="20" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <object placeholders="1" c4Name="Job de banco" c4Type="Container: Job" c4Description="migrator → seeder, antes do rollout" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-job">
+          <mxCell parent="dep-eks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="110" width="248.90264150943398" x="274.83" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Sub-redes de banco" c4Type="Deployment Node" c4Description="Sem acesso público" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-dbnet">
+          <mxCell parent="dep-vpc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=8 5;container=1;collapsible=0;metaEdit=1;" vertex="1">
+            <mxGeometry height="390" width="290" x="950" y="70" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="RDS PostgreSQL 16" c4Type="Container: Database" c4Description="Porta 5432 liberada apenas aos nós EKS" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-rds">
+          <mxCell parent="dep-dbnet" style="shape=mxgraph.flowchart.database;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;metaEdit=1;" vertex="1">
+            <mxGeometry height="150" width="230" x="40" y="110" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="dep-e5" edge="1" parent="dep-vpc" source="dep-api" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="dep-rds" value="Prisma / TLS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-e6" edge="1" parent="dep-vpc" source="dep-job" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;exitX=1;exitY=0.5;entryX=0.517;entryY=0.667;entryDx=0;entryDy=0;entryPerimeter=0;" target="dep-dbnet" value="migrate + seed">
+          <mxGeometry relative="1" x="-0.5099" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="930" y="535" />
+              <mxPoint x="930" y="380" />
+              <mxPoint x="1099.9" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep-note" parent="dep-vpc" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#334155;strokeColor=none;fillColor=none;" value="&lt;b&gt;Observação:&lt;/b&gt; topologia aplicada e validada no EKS: o CD fez o deploy e a API respondeu 200 em /api/v1/health pelo NLB. Para webhooks do Stripe, o endpoint público precisa de HTTPS (hoje é HTTP)." vertex="1">
+          <mxGeometry height="70" width="1220" x="40" y="730" as="geometry" />
+        </mxCell>
+        <object placeholders="1" c4Name="Sub-redes públicas" c4Type="Deployment Node" c4Description="NLB e NAT Gateway" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-public">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=12;dashed=1;dashPattern=8 5;container=1;collapsible=0;metaEdit=1;" vertex="1">
+            <mxGeometry height="390" width="250" x="300" y="230" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Network Load Balancer" c4Type="Infrastructure Node" c4Description="Criado pelo Service type LoadBalancer" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-nlb">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="150" width="190" x="330" y="340" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Stripe" c4Type="Software System" c4Description="Checkout e webhook" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-stripe">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="250" x="1600" y="250" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Servidor SMTP" c4Type="Software System" c4Description="Envio de notificações" label="&lt;div style=&quot;font-size:16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:11px&quot;&gt;[%c4Type%]&lt;/div&gt;&lt;div style=&quot;font-size:11px;margin-top:7px&quot;&gt;%c4Description%&lt;/div&gt;" id="dep-smtp">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1">
+            <mxGeometry height="125" width="270" x="1590" y="630" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="dep-e1" edge="1" parent="1" source="dep-person" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="dep-nlb" value="HTTP (configuração atual)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-e2" edge="1" parent="1" source="dep-nlb" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;" target="dep-svc" value="encaminha tráfego">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-e7" edge="1" parent="1" source="dep-api" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="dep-stripe" value="Cria Checkout Session (HTTPS)">
+          <mxGeometry relative="1" x="0.154" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="997" y="195" />
+              <mxPoint x="1725" y="195" />
+            </Array>
+            <mxPoint x="1725" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep-e10" edge="1" parent="1" source="dep-stripe" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;dashed=1;dashPattern=7 5;exitX=0;exitY=0.5;entryX=0.5;entryY=0;exitDx=0;exitDy=0;" target="dep-nlb" value="Webhook de pagamento (requer HTTPS)">
+          <mxGeometry relative="1" x="0.0409" as="geometry">
+            <Array as="points">
+              <mxPoint x="1560" y="312.5" />
+              <mxPoint x="1560" y="125" />
+              <mxPoint x="425" y="125" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep-e8" edge="1" parent="1" source="dep-api" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;entryX=0.521;entryY=0.029;entryDx=0;entryDy=0;entryPerimeter=0;" target="dep-smtp" value="envia e-mail">
+          <mxGeometry relative="1" x="0.334" y="-150" as="geometry">
+            <mxPoint x="-150" y="-150" as="offset" />
+            <Array as="points">
+              <mxPoint x="997" y="600" />
+              <mxPoint x="1730.7" y="600" />
+            </Array>
+            <mxPoint x="1730" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Fluxo de deploy" id="oficina-c4-deploy-flow"><mxGraphModel dx="1900" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1000" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="f1" value='&lt;b style="font-size:26px"&gt;Fluxo de deploy&lt;/b&gt;&lt;div style="font-size:14px;color:#475569"&gt;Do push na main até a API no EKS. CI e CD são workflows do GitHub Actions (.github/workflows/ci.yml e cd.yml); o Terraform e os Secrets do cluster são feitos à mão, uma vez por ambiente.&lt;/div&gt;' style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#334155;strokeColor=none;fillColor=none;" vertex="1" parent="1"><mxGeometry x="30" y="15" width="1800" height="70" as="geometry"/></mxCell><mxCell id="f2" value='&lt;b style="font-size:15px"&gt;GitHub&lt;/b&gt; &lt;span style="font-size:11px"&gt;- Repositório e workflows&lt;/span&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10;dashed=1;dashPattern=8 5;container=0;" vertex="1" parent="1"><mxGeometry x="20" y="100" width="1100" height="150" as="geometry"/></mxCell><mxCell id="f3" value='&lt;b style="font-size:14px"&gt;Repositório GitHub&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Software System]&lt;/div&gt;&lt;div style="font-size:11px"&gt;push na main ou pull request&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="40" y="140" width="230" height="90" as="geometry"/></mxCell><mxCell id="f4" value='&lt;b style="font-size:14px"&gt;GitHub Actions: CI&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Container]&lt;/div&gt;&lt;div style="font-size:11px"&gt;ESLint, Prisma validate + migrations, build, testes unitários (cobertura 80%) e E2E, build da imagem (sem push)&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="340" y="140" width="330" height="90" as="geometry"/></mxCell><mxCell id="f5" value='&lt;b style="font-size:14px"&gt;GitHub Actions: CD&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Container]&lt;/div&gt;&lt;div style="font-size:11px"&gt;dispara sozinho quando o CI conclui com sucesso na main (workflow_run)&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="760" y="140" width="330" height="90" as="geometry"/></mxCell><mxCell id="f6" value="dispara" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f3" target="f4"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f7" value="CI verde" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f4" target="f5"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f8" value='&lt;b style="font-size:15px"&gt;Pipeline CD (cd.yml): job deploy&lt;/b&gt; &lt;span style="font-size:11px"&gt;- Passos em ordem; falha em qualquer um interrompe o deploy&lt;/span&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10;dashed=1;dashPattern=8 5;container=0;" vertex="1" parent="1"><mxGeometry x="20" y="280" width="1860" height="170" as="geometry"/></mxCell><mxCell id="f9" value='&lt;b style="font-size:14px"&gt;1. Autentica na AWS&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;OIDC: assume a role oficina-fiap-github-actions, sem chave fixa&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="40" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f10" value='&lt;b style="font-size:14px"&gt;2. Imagens no ECR&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;Login no ECR; build e push de api, migrator e seeder com a tag = SHA do commit&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="302" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f11" value='&lt;b style="font-size:14px"&gt;3. Kubeconfig e overlays&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;aws eks update-kubeconfig; renderiza k8s/overlays/eks (conta, região, SHA)&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="564" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f12" value='&lt;b style="font-size:14px"&gt;4. Banco&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;Job oficina-db-setup: migrate e depois seed; o pipeline aguarda concluir&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="826" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f13" value='&lt;b style="font-size:14px"&gt;5. API&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;kubectl apply -k do overlay da API (Deployment, Service, HPA, ConfigMap)&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1088" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f14" value='&lt;b style="font-size:14px"&gt;6. Endereço público&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;Lê o hostname do NLB; se mudou, atualiza PUBLIC_API_URL no ConfigMap e reinicia o Deployment&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1350" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f15" value='&lt;b style="font-size:14px"&gt;7. Verificação&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Step]&lt;/div&gt;&lt;div style="font-size:11px"&gt;rollout status: espera os Pods ficarem Ready (readiness probe em /health)&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1612" y="330" width="240" height="105" as="geometry"/></mxCell><mxCell id="f16" value="inicia" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="f5" target="f9"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="925" y="265"/><mxPoint x="160" y="265"/></Array></mxGeometry></mxCell><mxCell id="f17" value="" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f9" target="f10"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f18" value="" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f10" target="f11"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f19" value="" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f11" target="f12"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f20" value="" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f12" target="f13"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f21" value="" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f13" target="f14"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f22" value="" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f14" target="f15"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f23" value='&lt;b style="font-size:15px"&gt;AWS (us-east-1)&lt;/b&gt; &lt;span style="font-size:11px"&gt;- Recursos criados pelo Terraform&lt;/span&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10;dashed=1;dashPattern=8 5;container=0;" vertex="1" parent="1"><mxGeometry x="20" y="480" width="1860" height="190" as="geometry"/></mxCell><mxCell id="f24" value='&lt;b style="font-size:14px"&gt;IAM&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Infrastructure Node]&lt;/div&gt;&lt;div style="font-size:11px"&gt;role oficina-fiap-github-actions (confia só neste repositório, branch main)&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="40" y="530" width="240" height="100" as="geometry"/></mxCell><mxCell id="f25" value='&lt;b style="font-size:14px"&gt;Amazon ECR&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Infrastructure Node]&lt;/div&gt;&lt;div style="font-size:11px"&gt;oficina-api, oficina-migrator, oficina-seeder&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="302" y="530" width="240" height="100" as="geometry"/></mxCell><mxCell id="f26" value='&lt;b style="font-size:14px"&gt;RDS PostgreSQL 16&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Container: Database]&lt;/div&gt;&lt;div style="font-size:11px"&gt;recebe migrations e o seed do admin&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="826" y="530" width="240" height="100" as="geometry"/></mxCell><mxCell id="f27" value='&lt;b style="font-size:14px"&gt;EKS oficina-fiap-eks&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Infrastructure Node]&lt;/div&gt;&lt;div style="font-size:11px"&gt;namespace oficina: Deployment (2 a 4 Pods), Service, HPA&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1088" y="530" width="240" height="100" as="geometry"/></mxCell><mxCell id="f28" value='&lt;b style="font-size:14px"&gt;Network Load Balancer&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Infrastructure Node]&lt;/div&gt;&lt;div style="font-size:11px"&gt;criado pelo Service; URL pública da API em /api/v1&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1350" y="530" width="240" height="100" as="geometry"/></mxCell><mxCell id="f29" value="OIDC" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;dashed=1;dashPattern=7 5;" edge="1" parent="1" source="f9" target="f24"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f30" value="push" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f10" target="f25"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f31" value="migrate + seed" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f12" target="f26"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f32" value="kubectl apply" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f13" target="f27"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f33" value="lê o hostname" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;dashed=1;dashPattern=7 5;" edge="1" parent="1" source="f14" target="f28"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f34" value="pull das imagens (SHA)" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;dashed=1;dashPattern=7 5;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="f25" target="f27"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="422" y="655"/><mxPoint x="1208" y="655"/></Array></mxGeometry></mxCell><mxCell id="f35" value='&lt;b style="font-size:15px"&gt;Preparação manual (fora do pipeline)&lt;/b&gt; &lt;span style="font-size:11px"&gt;- Feita uma vez por ambiente&lt;/span&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#64748B;fontColor=#334155;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10;dashed=1;dashPattern=8 5;container=0;" vertex="1" parent="1"><mxGeometry x="20" y="700" width="1860" height="210" as="geometry"/></mxCell><mxCell id="f36" value='&lt;b style="font-size:14px"&gt;Terraform&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Component]&lt;/div&gt;&lt;div style="font-size:11px"&gt;infra/bootstrap (bucket do state) e infra: plan e apply à mão&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4EB6E4;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="40" y="750" width="280" height="130" as="geometry"/></mxCell><mxCell id="f37" value='&lt;b style="font-size:14px"&gt;S3 state&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Infrastructure Node]&lt;/div&gt;&lt;div style="font-size:11px"&gt;Estado remoto, compartilhado pelo grupo&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4387BF;strokeColor=#245984;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="370" y="750" width="240" height="130" as="geometry"/></mxCell><mxCell id="f38" value='&lt;b style="font-size:14px"&gt;Infraestrutura AWS&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Deployment Node]&lt;/div&gt;&lt;div style="font-size:11px"&gt;VPC, EKS, RDS, ECR e role OIDC&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="660" y="750" width="300" height="130" as="geometry"/></mxCell><mxCell id="f39" value="grava state" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f36" target="f37"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f40" value="descreve" style="endArrow=blockThin;html=1;fontSize=11;fontColor=#334155;strokeWidth=2;endFill=1;strokeColor=#64748B;endSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;jettySize=auto;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f37" target="f38"><mxGeometry relative="1" as="geometry"></mxGeometry></mxCell><mxCell id="f41" value='&lt;b style="font-size:14px"&gt;Secrets do cluster&lt;/b&gt;&lt;div style="font-size:10px"&gt;[kubectl]&lt;/div&gt;&lt;div style="font-size:11px"&gt;oficina-api-secrets (DATABASE_URL do RDS, JWT, Stripe, SMTP) e oficina-seed-secrets (admin). O CD não cria Secrets.&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1010" y="750" width="400" height="130" as="geometry"/></mxCell><mxCell id="f42" value='&lt;b style="font-size:14px"&gt;Secret do GitHub&lt;/b&gt;&lt;div style="font-size:10px"&gt;[Actions]&lt;/div&gt;&lt;div style="font-size:11px"&gt;AWS_ROLE_ARN = ARN da role criada pelo Terraform&lt;/div&gt;' style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;verticalAlign=middle;arcSize=10;metaEdit=1;" vertex="1" parent="1"><mxGeometry x="1460" y="750" width="390" height="130" as="geometry"/></mxCell><mxCell id="f43" value="&lt;b&gt;Estado atual:&lt;/b&gt; o CD está implementado e foi executado no EKS; a API respondeu 200 em /api/v1/health pelo NLB. O CD não faz teste HTTP externo: a verificação é o rollout status. O endpoint é HTTP." style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=13;fontColor=#334155;strokeColor=none;fillColor=none;" vertex="1" parent="1"><mxGeometry x="30" y="925" width="1850" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram>
 </mxfile>
