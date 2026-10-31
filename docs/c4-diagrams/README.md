@@ -15,7 +15,7 @@ As imagens são exportações do `c4-diagram-oficina-fiap.drawio`, que é a font
 um XML sem compactação, versionável e diffável. Para editar, abra em
 [app.diagrams.net](https://app.diagrams.net) ou no draw.io desktop — as cinco
 páginas aparecem como abas na parte de baixo. **Ao alterar o diagrama, reexporte
-as imagens**, senão elas passam a contar uma história diferente da fonte.
+as imagens**, senão elas passam a contar uma história diferente da fonte
 
 ## Nível 1 — Contexto
 
