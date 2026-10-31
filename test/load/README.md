@@ -38,6 +38,7 @@ Workflows disparadas manualmente (aba **Actions** → escolha a workflow →
 | Carga: concorrência | as 4 corridas ou uma delas | corrida, iterações |
 | Carga: desempenho | `journey`, `auth`, `customer` ou `webhook` | cenário, perfil |
 | Carga: volume | `seed` + `read` | volume (1k/10k/50k), taxa, duração |
+| Carga: escala no EKS | `auth` contra a produção, acompanhando o HPA | perfil, contas, minutos de descida, intervalo, URL |
 
 Cada execução mostra os thresholds de cada cenário no resumo da página e
 publica os relatórios (`test/load/results/`, inclusive `compose.log`) como
@@ -56,6 +57,25 @@ PROFILE=load test/load/ci.sh journey
 O runner `ubuntu-latest` tem 4 vCPUs compartilhadas. Smoke e concorrência
 verificam regras e são confiáveis lá; os números de desempenho e volume só
 se comparam com outras execuções do próprio Actions.
+
+### Escala no EKS
+
+A "Carga: escala no EKS" não sobe o Compose: assume a role do CD (OIDC, só a
+partir da `main`), roda o `auth` contra o Service LoadBalancer e amostra o
+HPA a cada `intervalo` segundos, antes, durante e depois da carga. O log
+mostra as réplicas ao vivo (`[hpa hh:mm:ss load] réplicas 2→4 · CPU 340% ...`);
+o resumo traz o pico e cada mudança de réplicas, e o artefato guarda
+`eks-hpa.csv`, `eks-hpa-describe.txt` e `eks-events.txt`.
+
+- Só o `auth`: `journey`, `webhook` e `customer` chamam o Stripe ou o SMTP de
+  produção.
+- As credenciais do admin vêm do Secret `oficina-seed-secrets` do cluster;
+  nenhum segredo novo no GitHub.
+- O setup cria `contas` clientes "Cliente Carga" no banco de produção.
+- O job falha se o HPA não escalar. Thresholds do k6 reprovados no `stress`
+  e no `spike` são esperados e aparecem só como aviso.
+
+Localmente, com o kubeconfig do cluster: `PROFILE=stress test/load/eks.sh`.
 
 Workflows com `workflow_dispatch` só aparecem na aba Actions depois que os
 arquivos chegam à branch padrão (`main`).
