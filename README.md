@@ -51,6 +51,18 @@ O sistema permite gerenciar clientes, veiculos, ordens de servico, orcamentos, e
 
    Para testes de e-mail, use uma conta do [Ethereal](https://ethereal.email/create) e preencha `SMTP_USER`, `SMTP_PASSWORD` e `MAIL_FROM`.
 
+   > **O que funciona com cada configuracao**
+   >
+   > - Com os valores acima (inclusive o `sk_test_xxx` de exemplo), a API sobe e
+   >   todo o fluxo funciona ate a conclusao da OS: clientes, veiculos, servicos,
+   >   pecas, estoque, ordens de servico e orcamentos.
+   > - **Cobranca (`POST /billings`)** exige uma chave **real** de teste do Stripe
+   >   em `STRIPE_SECRET_KEY` (comeca com `sk_test_`, gratuita em
+   >   [dashboard.stripe.com/test/apikeys](https://dashboard.stripe.com/test/apikeys)).
+   >   Com a chave de exemplo, o Stripe recusa a chave e a cobranca falha.
+   > - **E-mails** sao opcionais: sem SMTP valido, as notificacoes ficam
+   >   registradas como falhas, mas nenhum fluxo da API e interrompido.
+
 3. Inicie a aplicacao em um dos modos abaixo.
 
 O Docker cria o banco, aplica as migrations, cria o administrador inicial e inicia a API automaticamente.
