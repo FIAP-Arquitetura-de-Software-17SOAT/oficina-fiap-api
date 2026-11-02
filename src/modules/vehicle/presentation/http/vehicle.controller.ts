@@ -105,6 +105,9 @@ export class VehicleController {
   @ApiOperation({ summary: 'Remove um veículo' })
   @ApiNoContentResponse({ description: 'Veículo removido' })
   @ApiNotFoundResponse({ description: 'Vehicle not found' })
+  @ApiConflictResponse({
+    description: 'O veículo tem ordens de serviço e não pode ser removido',
+  })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.deleteVehicle.execute(id);
   }

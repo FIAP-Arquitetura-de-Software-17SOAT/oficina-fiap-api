@@ -4,7 +4,10 @@ import {
 } from '../../../../shared/application/application.error';
 
 export type ServiceCatalogErrorCode =
-  'SERVICE_NOT_FOUND' | 'SERVICE_NAME_IN_USE' | 'SERVICE_ALREADY_EXISTS';
+  | 'SERVICE_NOT_FOUND'
+  | 'SERVICE_NAME_IN_USE'
+  | 'SERVICE_ALREADY_EXISTS'
+  | 'SERVICE_IN_USE';
 
 const catalog: Record<
   ServiceCatalogErrorCode,
@@ -20,6 +23,11 @@ const catalog: Record<
   SERVICE_ALREADY_EXISTS: {
     kind: 'CONFLICT',
     message: 'Service already exists',
+  },
+  // Serviço já usado em ordens de serviço (P2003 no delete).
+  SERVICE_IN_USE: {
+    kind: 'CONFLICT',
+    message: 'Service is in use by service orders and cannot be removed',
   },
 };
 

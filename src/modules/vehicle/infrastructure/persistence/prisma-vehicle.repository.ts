@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared/database/prisma.service';
-import { isUniqueViolation } from '../../../../shared/database/prisma-errors';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from '../../../../shared/database/prisma-errors';
 import { Vehicle } from '../../domain/entities/vehicle.entity';
 import { VehicleApplicationError } from '../../application/errors/vehicle-application.error';
 import { VehicleRepositoryPort } from '../../application/ports/vehicle-repository.port';
@@ -61,6 +64,14 @@ export class PrismaVehicleRepository implements VehicleRepositoryPort {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.vehicle.delete({ where: { id } });
+    try {
+      await this.prisma.vehicle.delete({ where: { id } });
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw new VehicleApplicationError('VEHICLE_HAS_SERVICE_ORDERS');
+      }
+
+      throw error;
+    }
   }
 }
