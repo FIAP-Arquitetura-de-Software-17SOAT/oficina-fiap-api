@@ -4,6 +4,82 @@ API REST para o Sistema Integrado de Atendimento e Execucao de Servicos de uma o
 
 O sistema permite gerenciar clientes, veiculos, ordens de servico, orcamentos, estoque, pagamentos e notificacoes.
 
+## Objetivos da Fase 2
+
+Com o aumento da demanda e a expansao para novas unidades, a aplicacao da
+Fase 1 evoluiu para ganhar qualidade, resiliencia e escalabilidade:
+
+- **Qualidade do codigo:** todos os modulos de `src/modules` migrados para
+  Clean Architecture, com fronteiras de import verificadas por teste
+  (`src/architecture.spec.ts`) e testes unitarios, E2E e de carga.
+- **Infraestrutura escalavel:** API em Kubernetes (EKS) com 2 a 4 replicas
+  controladas por HPA de CPU e memoria, banco gerenciado (RDS PostgreSQL) fora
+  dos Pods.
+- **Provisionamento automatizado:** Terraform cria VPC, EKS, RDS, ECR e a role
+  OIDC do GitHub Actions.
+- **Deploy automatizado:** pipeline CI/CD no GitHub Actions faz build, testes,
+  imagens Docker, migration do banco e aplicacao dos manifests no cluster.
+
+## Links da entrega
+
+| Item | Link |
+| --- | --- |
+| Video demonstrativo | https://www.youtube.com/watch?v=oSiGOuYF60E |
+| Colecao Postman (fluxo E2E) | [postman/Oficina FIAP — Fluxo E2E.postman_collection.json](<postman/Oficina FIAP — Fluxo E2E.postman_collection.json>) |
+| Swagger (com a API em execucao) | http://localhost:3000/api/v1/docs |
+| Diagramas de arquitetura | [docs/c4-diagrams/](docs/c4-diagrams/README.md) |
+
+## Arquitetura
+
+Os diagramas seguem o modelo C4. A fonte editavel e
+`docs/c4-diagrams/c4-diagram-oficina-fiap.drawio`; os niveis 1 (contexto) e 2
+(containers) e a descricao de cada diagrama estao em
+[docs/c4-diagrams/README.md](docs/c4-diagrams/README.md).
+
+### Componentes da aplicacao
+
+Uma instancia completa da API NestJS roda em cada Pod. Cada modulo de
+`src/modules` tem as camadas apresentacao HTTP, aplicacao (casos de uso e
+portas), dominio e adaptadores (Prisma, Stripe, SMTP e integracoes entre
+modulos). A dependencia aponta sempre para o dominio.
+
+![Componentes da API](docs/c4-diagrams/nivel-3-componentes.png)
+
+### Infraestrutura provisionada
+
+Na AWS (`us-east-1`), a VPC tem duas zonas de disponibilidade. O Network Load
+Balancer fica nas sub-redes publicas, os nos do EKS (API, HPA e Job de banco)
+nas privadas e o RDS PostgreSQL 16 nas sub-redes de banco, sem acesso publico.
+
+![Implantacao na AWS](docs/c4-diagrams/implantacao-aws.png)
+
+### Fluxo de deploy
+
+O push na `main` dispara o CI. Com o CI verde, o CD publica as imagens no ECR,
+roda a migration e o seed no RDS e aplica os manifests no EKS. O Terraform e os
+Secrets do cluster sao aplicados a mao, uma vez por ambiente.
+
+![Fluxo de deploy](docs/c4-diagrams/fluxo-de-deploy.png)
+
+## APIs da Fase 2
+
+Todas as rotas ficam sob `/api/v1` e exigem `Authorization: Bearer <accessToken>`,
+exceto o webhook de orcamento.
+
+| Requisito | Endpoint | Comportamento |
+| --- | --- | --- |
+| Abertura de OS | `POST /service-orders` | Recebe `clientId`, `vehicleId`, `description`, `services` e `parts`; retorna a OS com o `id` unico |
+| Consulta de status | `GET /service-orders/:id` | Retorna a OS com o campo `status` atual |
+| Aprovacao de orcamento | `POST /budgets/webhooks/decision` | Webhook publico que recebe a aprovacao ou recusa do cliente, autenticado pelo token do link enviado por e-mail |
+| Listagem de OS | `GET /service-orders` | Ordena por status (`IN_PROGRESS` > `AWAITING_PARTS` > `AWAITING_PAYMENT` > `AWAITING_APPROVAL` > `IN_DIAGNOSIS` > `RECEIVED` > `CANCELLED`) e, dentro de cada status, da mais antiga para a mais nova. Oculta OS `COMPLETED` e `DELIVERED`, que continuam no banco |
+| Atualizacao de status por e-mail | Notificacao automatica | A cada mudanca de status, o cliente recebe um e-mail com o novo status. O e-mail do orcamento traz o link para aprovar ou recusar |
+
+Status da OS: `RECEIVED` (Recebida), `IN_DIAGNOSIS` (Diagnostico),
+`AWAITING_APPROVAL` (Aguardando aprovacao), `AWAITING_PARTS` (Aguardando
+pecas), `IN_PROGRESS` (Execucao), `COMPLETED` (Finalizada),
+`AWAITING_PAYMENT` (Aguardando pagamento), `DELIVERED` (Entregue) e
+`CANCELLED` (Cancelada).
+
 ## Tecnologias
 
 - Node.js e TypeScript
@@ -257,6 +333,60 @@ fazer e diagnostico estao em [k8s/README.md](k8s/README.md). Os conceitos
 (Deployment, Service, HPA, Kustomize) estao em
 [docs/wiki/kubernetes.md](docs/wiki/kubernetes.md).
 
+## CI/CD
+
+A pipeline usa GitHub Actions, com os arquivos em
+[`.github/workflows/`](.github/workflows/).
+
+**CI** ([`ci.yml`](.github/workflows/ci.yml)) roda em todo push e pull request,
+com um PostgreSQL 16 de servico:
+
+1. `npm ci` e `prisma generate`.
+2. ESLint e `prisma validate`.
+3. `prisma migrate deploy` no banco do CI.
+4. Build da aplicacao (`npm run build`).
+5. Testes do seed, testes unitarios com limite de cobertura e testes E2E
+   contra o PostgreSQL.
+6. Build da imagem Docker (`runtime`).
+
+**CD** ([`cd.yml`](.github/workflows/cd.yml)) dispara sozinho quando o CI
+termina com sucesso na `main`:
+
+1. Autentica na AWS por OIDC, assumindo a role criada pelo Terraform (sem
+   chave fixa).
+2. Faz build e push das imagens `oficina-api`, `oficina-migrator` e
+   `oficina-seeder` no ECR, com o SHA do commit como tag.
+3. Atualiza o kubeconfig do EKS e ajusta `k8s/overlays/eks` com conta, regiao
+   e SHA.
+4. Deploy do banco: roda o Job `oficina-db-setup` (migration e administrador
+   inicial) no RDS e aguarda a conclusao.
+5. Aplica os manifests da API (Deployment, Service, ConfigMap e HPA).
+6. Le o hostname do NLB e, se ele mudou, atualiza `PUBLIC_API_URL` no
+   ConfigMap.
+7. Aguarda o rollout (`kubectl rollout status`).
+
+Antes do primeiro deploy, configure uma vez por ambiente:
+
+- O Terraform em `infra/`, que cria o cluster, o banco, o ECR e a role OIDC.
+- Os Secrets do cluster (`oficina-api-secrets` e `oficina-seed-secrets`),
+  descritos em [k8s/README.md](k8s/README.md).
+- O secret `AWS_ROLE_ARN` do GitHub Actions, com o ARN da role do output do
+  Terraform. As variaveis `AWS_REGION`, `EKS_CLUSTER_NAME` e `PUBLIC_API_URL`
+  sao opcionais.
+
+## Escalabilidade automatica
+
+O HPA mantem de 2 a 4 replicas da API conforme o consumo de CPU e memoria
+lido pelo `metrics-server`. Para ver o HPA escalar no EKS, dispare o workflow
+**"Carga: escala no EKS"** ([`load-eks.yml`](.github/workflows/load-eks.yml))
+a partir da `main`. Ele roda um teste k6 de login contra a API publica e
+registra as replicas do HPA durante a carga e a descida. Para acompanhar no
+terminal:
+
+```bash
+kubectl -n oficina get hpa oficina-api --watch
+```
+
 ## Desenvolvimento sem container
 
 ```bash
@@ -310,4 +440,5 @@ Ambos os documentos estao estruturados para futura publicacao na Wiki do projeto
 - [docs/wiki/kubernetes.md](docs/wiki/kubernetes.md) — como o Kubernetes funciona neste projeto: cada recurso (Deployment, Service, ConfigMap, Secret, HPA, Job), labels e selectors, a ordem do deploy, Kustomize e os comandos do dia a dia. O passo a passo de deploy esta em [k8s/README.md](k8s/README.md).
 - [docs/wiki/colecao-postman.md](docs/wiki/colecao-postman.md) — a colecao do Postman: como importar, as variaveis que voce precisa preencher, o roteiro de ponta a ponta, o pagamento no Stripe e os erros mais comuns.
 - [docs/wiki/linguagem-ubiqua.md](docs/wiki/linguagem-ubiqua.md) — a linguagem ubiqua do dominio: termos canonicos, contextos delimitados, agregados, comandos e eventos, estados, regras de negocio e o mapeamento entre termo de negocio e identificador no codigo.
-- [docs/c4-diagrams/](docs/c4-diagrams/) — modelo C4 niveis 1 (contexto) e 2 (containers), em `.drawio`.
+- [docs/wiki/infraestrutura-terraform.md](docs/wiki/infraestrutura-terraform.md) — o que a pasta `infra/` cria na AWS, recurso por recurso, e como aplicar e destruir o ambiente. A rede esta detalhada em [docs/wiki/rede-vpc.md](docs/wiki/rede-vpc.md) e as siglas em [docs/wiki/acronimos-infraestrutura.md](docs/wiki/acronimos-infraestrutura.md).
+- [docs/c4-diagrams/](docs/c4-diagrams/README.md) — modelo C4 niveis 1 (contexto), 2 (containers) e 3 (componentes), implantacao na AWS e fluxo de deploy, em `.drawio` e `.png`.
