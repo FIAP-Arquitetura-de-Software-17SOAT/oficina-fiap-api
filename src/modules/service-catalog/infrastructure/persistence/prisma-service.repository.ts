@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared/database/prisma.service';
-import { isUniqueViolation } from '../../../../shared/database/prisma-errors';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from '../../../../shared/database/prisma-errors';
 import { Service } from '../../domain/entities/service.entity';
 import { ServiceCatalogApplicationError } from '../../application/errors/service-catalog-application.error';
 import { ServiceRepositoryPort } from '../../application/ports/service-repository.port';
@@ -68,6 +71,14 @@ export class PrismaServiceRepository implements ServiceRepositoryPort {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.service.delete({ where: { id } });
+    try {
+      await this.prisma.service.delete({ where: { id } });
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw new ServiceCatalogApplicationError('SERVICE_IN_USE');
+      }
+
+      throw error;
+    }
   }
 }

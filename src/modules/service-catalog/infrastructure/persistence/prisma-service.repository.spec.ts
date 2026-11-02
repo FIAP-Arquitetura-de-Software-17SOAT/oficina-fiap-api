@@ -166,4 +166,22 @@ describe('PrismaServiceRepository', () => {
       where: { id: row.id },
     });
   });
+
+  it('traduz P2003 em conflito quando o serviço já foi usado em ordens de serviço', async () => {
+    prisma.service.delete.mockRejectedValue({ code: 'P2003' });
+
+    await expect(repository.delete(row.id)).rejects.toMatchObject({
+      code: 'SERVICE_IN_USE',
+      kind: 'CONFLICT',
+    });
+    await expect(repository.delete(row.id)).rejects.toBeInstanceOf(
+      ServiceCatalogApplicationError,
+    );
+  });
+
+  it('propaga qualquer outro erro do banco no delete', async () => {
+    prisma.service.delete.mockRejectedValue(new Error('conexão caiu'));
+
+    await expect(repository.delete(row.id)).rejects.toThrow('conexão caiu');
+  });
 });

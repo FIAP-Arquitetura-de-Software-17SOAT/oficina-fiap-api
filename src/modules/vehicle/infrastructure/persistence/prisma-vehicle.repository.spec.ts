@@ -181,4 +181,22 @@ describe('PrismaVehicleRepository', () => {
       where: { id: row.id },
     });
   });
+
+  it('traduz P2003 em conflito quando o veículo já tem ordens de serviço', async () => {
+    prisma.vehicle.delete.mockRejectedValue({ code: 'P2003' });
+
+    await expect(repository.delete(row.id)).rejects.toMatchObject({
+      code: 'VEHICLE_HAS_SERVICE_ORDERS',
+      kind: 'CONFLICT',
+    });
+    await expect(repository.delete(row.id)).rejects.toBeInstanceOf(
+      VehicleApplicationError,
+    );
+  });
+
+  it('propaga qualquer outro erro do banco no delete', async () => {
+    prisma.vehicle.delete.mockRejectedValue(new Error('conexão caiu'));
+
+    await expect(repository.delete(row.id)).rejects.toThrow('conexão caiu');
+  });
 });

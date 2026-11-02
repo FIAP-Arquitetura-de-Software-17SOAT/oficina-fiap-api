@@ -4,7 +4,10 @@ import {
 } from '../../../../shared/application/application.error';
 
 export type VehicleErrorCode =
-  'VEHICLE_NOT_FOUND' | 'VEHICLE_ALREADY_EXISTS' | 'CLIENT_NOT_FOUND';
+  | 'VEHICLE_NOT_FOUND'
+  | 'VEHICLE_ALREADY_EXISTS'
+  | 'VEHICLE_HAS_SERVICE_ORDERS'
+  | 'CLIENT_NOT_FOUND';
 
 const catalog: Record<
   VehicleErrorCode,
@@ -14,6 +17,10 @@ const catalog: Record<
   VEHICLE_ALREADY_EXISTS: {
     kind: 'CONFLICT',
     message: 'Vehicle already exists',
+  },
+  VEHICLE_HAS_SERVICE_ORDERS: {
+    kind: 'CONFLICT',
+    message: 'Vehicle has service orders and cannot be removed',
   },
   CLIENT_NOT_FOUND: { kind: 'NOT_FOUND', message: 'Client not found' },
 };

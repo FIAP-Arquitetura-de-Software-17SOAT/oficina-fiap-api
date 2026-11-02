@@ -100,6 +100,10 @@ export class ServiceController {
   @ApiOperation({ summary: 'Remove um serviço do catálogo' })
   @ApiNoContentResponse({ description: 'Serviço removido' })
   @ApiNotFoundResponse({ description: 'Service not found' })
+  @ApiConflictResponse({
+    description:
+      'O serviço já foi usado em ordens de serviço e não pode ser removido',
+  })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.deleteService.execute(id);
   }
